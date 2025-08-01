@@ -1,0 +1,94 @@
+import { Card } from "@/components/ui/card";
+import { CreditCard, Users, CheckSquare, Truck } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+
+export default function StatsCards() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['/api/dashboard/stats'],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i} className="p-6 animate-pulse">
+            <div className="flex items-center">
+              <div className="p-2 bg-gray-200 rounded-lg w-12 h-12"></div>
+              <div className="ml-4 flex-1">
+                <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                <div className="h-6 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  const cards = [
+    {
+      title: "Pending Payments",
+      value: `₹${parseInt(stats?.pendingPayments || '0').toLocaleString()}`,
+      icon: CreditCard,
+      iconColor: "text-primary",
+      bgColor: "bg-primary/10",
+      change: "+12% from last week",
+      changeColor: "text-error"
+    },
+    {
+      title: "Active Clients",
+      value: stats?.activeClients || 0,
+      icon: Users,
+      iconColor: "text-success",
+      bgColor: "bg-success/10",
+      change: "+5% from last week",
+      changeColor: "text-success"
+    },
+    {
+      title: "Open Tasks",
+      value: stats?.openTasks || 0,
+      icon: CheckSquare,
+      iconColor: "text-warning",
+      bgColor: "bg-warning/10",
+      change: "3 overdue",
+      changeColor: "text-warning"
+    },
+    {
+      title: "In Transit",
+      value: stats?.inTransit || 0,
+      icon: Truck,
+      iconColor: "text-info",
+      bgColor: "bg-info/10",
+      change: "12 arriving today",
+      changeColor: "text-info"
+    }
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {cards.map((card, index) => {
+        const Icon = card.icon;
+        return (
+          <Card key={index} className="p-6">
+            <div className="flex items-center">
+              <div className={`p-2 ${card.bgColor} rounded-lg`}>
+                <Icon className={card.iconColor} size={24} />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">{card.title}</p>
+                <p className="text-2xl font-bold text-gray-900">{card.value}</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="flex items-center">
+                <span className={`text-sm font-medium ${card.changeColor}`}>
+                  {card.change}
+                </span>
+              </div>
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
