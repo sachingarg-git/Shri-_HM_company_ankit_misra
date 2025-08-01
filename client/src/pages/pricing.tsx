@@ -204,21 +204,30 @@ const plans = [
     price: "₹1,78,500",
     description: "Essential features for small businesses",
     recommended: false,
-    color: "border-gray-300 shadow-lg hover:shadow-xl"
+    color: "border-green-400 ring-4 ring-green-100 shadow-xl hover:shadow-2xl bg-gradient-to-br from-green-50 to-green-100",
+    buttonColor: "bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white",
+    textColor: "text-green-700",
+    priceColor: "text-green-800"
   },
   {
     name: "Advanced",
     price: "₹3,16,500",
     description: "Complete business management solution",
     recommended: true,
-    color: "border-blue-500 ring-4 ring-blue-100 shadow-xl hover:shadow-2xl transform scale-105"
+    color: "border-yellow-400 ring-4 ring-yellow-100 shadow-xl hover:shadow-2xl transform scale-105 bg-gradient-to-br from-yellow-50 to-orange-100",
+    buttonColor: "bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-black",
+    textColor: "text-orange-700",
+    priceColor: "text-orange-800"
   },
   {
     name: "Premium",
     price: "₹3,88,500",
     description: "Enterprise-grade with full customization",
     recommended: false,
-    color: "border-gray-300 shadow-lg hover:shadow-xl"
+    color: "border-purple-400 ring-4 ring-purple-100 shadow-xl hover:shadow-2xl bg-gradient-to-br from-purple-50 to-purple-100",
+    buttonColor: "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white",
+    textColor: "text-purple-700",
+    priceColor: "text-purple-800"
   }
 ];
 
@@ -236,11 +245,11 @@ function FeatureIcon({ available }: { available: boolean | string }) {
 
 export default function Pricing() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-pink-100 via-blue-50 via-yellow-50 to-purple-100">
       <div className="container mx-auto px-8 py-16">
         {/* Header Section */}
         <div className="text-center mb-20">
-          <h1 className="text-6xl font-black text-gray-900 mb-8 tracking-tight leading-tight">
+          <h1 className="text-6xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-orange-600 bg-clip-text text-transparent mb-8 tracking-tight leading-tight">
             Choose Your Plan
           </h1>
           <p className="text-2xl font-semibold text-gray-800 max-w-5xl mx-auto leading-relaxed">
@@ -254,19 +263,19 @@ export default function Pricing() {
             <Card key={plan.name} className={`relative ${plan.color} transition-all duration-300`}>
               {plan.recommended && (
                 <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 text-base font-bold shadow-lg">
-                    <Star className="h-5 w-5 mr-2" />
+                  <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-6 py-2 text-base font-black shadow-lg">
+                    <Star className="h-5 w-5 mr-2 fill-black" />
                     RECOMMENDED
                   </Badge>
                 </div>
               )}
               
               <CardHeader className="text-center pb-8 pt-8">
-                <CardTitle className="text-3xl font-black text-gray-900 mb-4">{plan.name}</CardTitle>
+                <CardTitle className={`text-3xl font-black mb-4 ${plan.textColor}`}>{plan.name}</CardTitle>
                 <CardDescription className="text-lg font-semibold text-gray-700 mb-6">
                   {plan.description}
                 </CardDescription>
-                <div className="text-5xl font-black text-gray-900 mb-2">
+                <div className={`text-5xl font-black mb-2 ${plan.priceColor}`}>
                   {plan.price}
                 </div>
                 <span className="text-xl font-bold text-gray-600">/year</span>
@@ -274,11 +283,7 @@ export default function Pricing() {
               
               <CardContent className="px-8 pb-8">
                 <Button 
-                  className={`w-full mb-8 py-4 text-lg font-bold transition-all duration-300 ${
-                    plan.recommended 
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl' 
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-900 border-2 border-gray-300 hover:border-gray-400'
-                  }`}
+                  className={`w-full mb-8 py-4 text-lg font-bold transition-all duration-300 shadow-lg hover:shadow-xl ${plan.buttonColor}`}
                 >
                   Get Started
                 </Button>
@@ -303,9 +308,9 @@ export default function Pricing() {
         </div>
 
         {/* Detailed Feature Comparison Table */}
-        <Card className="overflow-hidden shadow-2xl border-2 border-gray-200">
-          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
-            <CardTitle className="text-4xl font-black text-center text-gray-900 mb-4">
+        <Card className="overflow-hidden shadow-2xl border-4 border-gradient-to-r from-pink-300 via-blue-300 to-purple-300">
+          <CardHeader className="bg-gradient-to-r from-pink-100 via-blue-100 to-purple-100 border-b-4 border-gradient-to-r from-pink-300 to-purple-300">
+            <CardTitle className="text-4xl font-black text-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
               Complete Feature Comparison
             </CardTitle>
             <CardDescription className="text-xl font-semibold text-center text-gray-700">
@@ -316,51 +321,68 @@ export default function Pricing() {
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-gray-100 to-gray-200">
+                <thead className="bg-gradient-to-r from-green-200 via-yellow-200 to-purple-200">
                   <tr>
-                    <th className="px-8 py-6 text-left text-lg font-black text-gray-900 border-r-2 border-gray-300">
+                    <th className="px-8 py-6 text-left text-lg font-black text-gray-900 border-r-4 border-white">
                       Features
                     </th>
-                    {plans.map((plan) => (
-                      <th key={plan.name} className="px-8 py-6 text-center text-lg font-black text-gray-900 border-r-2 border-gray-300 last:border-r-0">
-                        <div className="flex flex-col items-center">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="text-2xl">{plan.name}</span>
-                            {plan.recommended && (
-                              <Badge variant="secondary" className="text-sm font-bold bg-blue-100 text-blue-800">
-                                RECOMMENDED
-                              </Badge>
-                            )}
+                    {plans.map((plan, index) => {
+                      const headerColors = [
+                        'text-green-800', // Basic
+                        'text-orange-800', // Advanced  
+                        'text-purple-800'  // Premium
+                      ];
+                      const bgColors = [
+                        'bg-green-100', // Basic
+                        'bg-yellow-100', // Advanced
+                        'bg-purple-100'  // Premium
+                      ];
+                      return (
+                        <th key={plan.name} className={`px-8 py-6 text-center text-lg font-black border-r-4 border-white last:border-r-0 ${bgColors[index]}`}>
+                          <div className="flex flex-col items-center">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className={`text-2xl ${headerColors[index]}`}>{plan.name}</span>
+                              {plan.recommended && (
+                                <Badge className="text-xs font-bold bg-yellow-400 text-black">
+                                  RECOMMENDED
+                                </Badge>
+                              )}
+                            </div>
+                            <div className={`text-2xl font-black ${headerColors[index]}`}>{plan.price}</div>
                           </div>
-                          <div className="text-2xl font-black text-blue-600">{plan.price}</div>
-                        </div>
-                      </th>
-                    ))}
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 
-                <tbody className="divide-y-2 divide-gray-200">
-                  {features.map((feature, index) => (
-                    <tr key={index} className="hover:bg-gray-50 transition-colors duration-200">
-                      <td className="px-8 py-4 text-base font-bold text-gray-900 border-r-2 border-gray-200">
-                        <div>
-                          <div className="font-black">{feature.name}</div>
-                          {feature.description && (
-                            <div className="text-sm font-medium text-gray-600 mt-1">{feature.description}</div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-8 py-4 text-center border-r-2 border-gray-200">
-                        <FeatureIcon available={feature.basic} />
-                      </td>
-                      <td className="px-8 py-4 text-center bg-blue-25 border-r-2 border-gray-200">
-                        <FeatureIcon available={feature.advanced} />
-                      </td>
-                      <td className="px-8 py-4 text-center">
-                        <FeatureIcon available={feature.premium} />
-                      </td>
-                    </tr>
-                  ))}
+                <tbody className="divide-y-4 divide-white">
+                  {features.map((feature, index) => {
+                    const rowColors = index % 2 === 0 
+                      ? "bg-gradient-to-r from-gray-50 to-gray-100" 
+                      : "bg-gradient-to-r from-blue-50 to-purple-50";
+                    return (
+                      <tr key={index} className={`${rowColors} hover:bg-gradient-to-r hover:from-yellow-50 hover:to-orange-50 transition-all duration-300`}>
+                        <td className="px-8 py-4 text-base font-bold text-gray-900 border-r-4 border-white">
+                          <div>
+                            <div className="font-black">{feature.name}</div>
+                            {feature.description && (
+                              <div className="text-sm font-medium text-gray-600 mt-1">{feature.description}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-8 py-4 text-center bg-green-50 border-r-4 border-white">
+                          <FeatureIcon available={feature.basic} />
+                        </td>
+                        <td className="px-8 py-4 text-center bg-yellow-50 border-r-4 border-white">
+                          <FeatureIcon available={feature.advanced} />
+                        </td>
+                        <td className="px-8 py-4 text-center bg-purple-50">
+                          <FeatureIcon available={feature.premium} />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -369,14 +391,14 @@ export default function Pricing() {
 
         {/* FAQ Section */}
         <div className="mt-20 text-center">
-          <h2 className="text-4xl font-black text-gray-900 mb-12">
+          <h2 className="text-4xl font-black bg-gradient-to-r from-green-600 via-blue-600 to-purple-600 bg-clip-text text-transparent mb-12">
             Frequently Asked Questions
           </h2>
           
           <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-4 border-green-200 bg-gradient-to-br from-green-50 to-green-100 hover:scale-105">
               <CardHeader>
-                <CardTitle className="text-xl font-black text-gray-900">Can I upgrade my plan later?</CardTitle>
+                <CardTitle className="text-xl font-black text-green-800">Can I upgrade my plan later?</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-semibold text-gray-700">
@@ -385,9 +407,9 @@ export default function Pricing() {
               </CardContent>
             </Card>
             
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-4 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 hover:scale-105">
               <CardHeader>
-                <CardTitle className="text-xl font-black text-gray-900">Is there a free trial available?</CardTitle>
+                <CardTitle className="text-xl font-black text-blue-800">Is there a free trial available?</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-semibold text-gray-700">
@@ -396,9 +418,9 @@ export default function Pricing() {
               </CardContent>
             </Card>
             
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-4 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 hover:scale-105">
               <CardHeader>
-                <CardTitle className="text-xl font-black text-gray-900">What support is included?</CardTitle>
+                <CardTitle className="text-xl font-black text-purple-800">What support is included?</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-semibold text-gray-700">
@@ -407,9 +429,9 @@ export default function Pricing() {
               </CardContent>
             </Card>
             
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+            <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 border-4 border-orange-200 bg-gradient-to-br from-orange-50 to-orange-100 hover:scale-105">
               <CardHeader>
-                <CardTitle className="text-xl font-black text-gray-900">Can I cancel anytime?</CardTitle>
+                <CardTitle className="text-xl font-black text-orange-800">Can I cancel anytime?</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-lg font-semibold text-gray-700">
