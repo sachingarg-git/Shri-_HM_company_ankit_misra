@@ -4,110 +4,194 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const features = [
+  // Core Business Management Features
   {
-    name: "Credit Payment Management",
+    name: "Credit Payment Automation",
+    description: "Automated payment tracking, due date alerts, and overdue notifications",
     basic: true,
     advanced: true,
     premium: true
   },
   {
     name: "Client Categorization (Alfa, Beta, Gamma, Delta)",
+    description: "Smart client classification system with custom categories",
     basic: true,
+    advanced: true,
+    premium: true
+  },
+  {
+    name: "Task Classification (One-time vs Recurring)",
+    description: "Comprehensive task management with automatic scheduling",
+    basic: "Limited",
     advanced: true,
     premium: true
   },
   {
     name: "Order Workflow Automation",
-    basic: true,
+    description: "Complete order lifecycle from agreement to delivery",
+    basic: "Basic",
     advanced: true,
     premium: true
   },
   {
+    name: "Credit Agreement Enforcement",
+    description: "Automatic credit verification before material loading",
+    basic: false,
+    advanced: true,
+    premium: true
+  },
+  {
+    name: "Sales Team PO Access",
+    description: "Role-based purchase order management and approval",
+    basic: false,
+    advanced: true,
+    premium: true
+  },
+  {
+    name: "E-way Bill Validity Extension",
+    description: "Automated e-way bill management with extension capabilities",
+    basic: false,
+    advanced: true,
+    premium: true
+  },
+  {
+    name: "Client-wise Tracking (Vehicle Location & Timeline)",
+    description: "Real-time vehicle tracking with delivery timeline updates",
+    basic: false,
+    advanced: true,
+    premium: true
+  },
+  {
+    name: "Pending Payment Alerts",
+    description: "Smart notification system for payment follow-ups",
+    basic: "Email only",
+    advanced: "Multi-channel",
+    premium: "Advanced AI"
+  },
+  {
+    name: "Client-wise Sales Rate Display",
+    description: "Dynamic pricing and rate management per client",
+    basic: false,
+    advanced: true,
+    premium: true
+  },
+  {
+    name: "Payment Due Alerts",
+    description: "Automated reminder system with escalation rules",
+    basic: "Basic",
+    advanced: "Advanced",
+    premium: "AI-powered"
+  },
+  {
+    name: "Sales Team Performance Dashboard",
+    description: "Comprehensive analytics and performance metrics",
+    basic: false,
+    advanced: true,
+    premium: true
+  },
+  // System Features
+  {
     name: "User Limit",
+    description: "Maximum number of system users",
     basic: "10 users",
     advanced: "50 users",
     premium: "Unlimited"
   },
   {
-    name: "Task Management (One-time & Recurring)",
-    basic: false,
-    advanced: true,
-    premium: true
-  },
-  {
-    name: "E-way Bill Management",
-    basic: false,
-    advanced: true,
-    premium: true
-  },
-  {
-    name: "Real-time Client Tracking",
-    basic: false,
-    advanced: true,
-    premium: true
-  },
-  {
-    name: "Advanced Analytics & Reports",
-    basic: false,
-    advanced: true,
-    premium: true
-  },
-  {
-    name: "Purchase Order Management",
-    basic: false,
-    advanced: true,
-    premium: true
-  },
-  {
-    name: "Sales Performance Dashboard",
-    basic: false,
-    advanced: true,
-    premium: true
-  },
-  {
-    name: "Email Support",
-    basic: true,
-    advanced: true,
-    premium: true
-  },
-  {
-    name: "Priority Support",
-    basic: false,
-    advanced: true,
-    premium: true
-  },
-  {
-    name: "Custom Integrations",
-    basic: false,
-    advanced: false,
-    premium: true
+    name: "Data Storage",
+    description: "Database storage capacity",
+    basic: "5 GB",
+    advanced: "50 GB",
+    premium: "Unlimited"
   },
   {
     name: "API Access",
+    description: "Integration capabilities with third-party systems",
     basic: false,
-    advanced: false,
-    premium: true
+    advanced: "Limited",
+    premium: "Full API"
   },
   {
-    name: "White-label Solution",
-    basic: false,
-    advanced: false,
-    premium: true
+    name: "Custom Reports",
+    description: "Generate custom business reports and analytics",
+    basic: "Pre-built only",
+    advanced: "Custom reports",
+    premium: "Advanced BI"
   },
   {
-    name: "SLA Guarantee",
-    basic: false,
-    advanced: true,
-    premium: true
-  },
-  {
-    name: "Data Export/Import",
+    name: "Mobile App Access",
+    description: "Mobile application for field operations",
     basic: false,
     advanced: true,
     premium: true
   },
   {
     name: "Multi-branch Support",
+    description: "Manage multiple business locations",
+    basic: false,
+    advanced: "Up to 5",
+    premium: "Unlimited"
+  },
+  {
+    name: "Data Export/Import",
+    description: "Bulk data management capabilities",
+    basic: "Basic CSV",
+    advanced: "Multiple formats",
+    premium: "Advanced tools"
+  },
+  {
+    name: "Backup & Recovery",
+    description: "Data backup and disaster recovery",
+    basic: "Weekly",
+    advanced: "Daily",
+    premium: "Real-time"
+  },
+  // Support Features
+  {
+    name: "Email Support",
+    description: "Email-based customer support",
+    basic: true,
+    advanced: true,
+    premium: true
+  },
+  {
+    name: "Phone Support",
+    description: "Direct phone support access",
+    basic: false,
+    advanced: "Business hours",
+    premium: "24/7"
+  },
+  {
+    name: "Priority Support",
+    description: "Faster response times and dedicated support",
+    basic: false,
+    advanced: true,
+    premium: true
+  },
+  {
+    name: "Training & Onboarding",
+    description: "System training and implementation support",
+    basic: "Self-service",
+    advanced: "Guided setup",
+    premium: "Full service"
+  },
+  {
+    name: "SLA Guarantee",
+    description: "Service level agreement with uptime guarantee",
+    basic: false,
+    advanced: "99.5%",
+    premium: "99.9%"
+  },
+  {
+    name: "Custom Integrations",
+    description: "Custom integration development services",
+    basic: false,
+    advanced: false,
+    premium: true
+  },
+  {
+    name: "White-label Solution",
+    description: "Branded solution with your company branding",
     basic: false,
     advanced: false,
     premium: true

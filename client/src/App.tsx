@@ -15,6 +15,7 @@ import EwayBills from "@/pages/eway-bills";
 import PurchaseOrders from "@/pages/purchase-orders";
 import TeamPerformance from "@/pages/team-performance";
 import SalesRates from "@/pages/sales-rates";
+import Pricing from "@/pages/pricing";
 
 function Router() {
   return (
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/purchase-orders" component={PurchaseOrders} />
       <Route path="/team-performance" component={TeamPerformance} />
       <Route path="/sales-rates" component={SalesRates} />
+      <Route path="/pricing" component={Pricing} />
       <Route component={NotFound} />
     </Switch>
   );

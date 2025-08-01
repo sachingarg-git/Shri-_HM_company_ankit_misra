@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { 
   Home, CreditCard, Bell, Users, MapPin, BarChart3, 
   CheckSquare, ShoppingCart, File, Receipt, 
-  FileText, TrendingUp
+  FileText, TrendingUp, DollarSign
 } from "lucide-react";
 
 const navigation = [
@@ -37,6 +37,7 @@ const navigation = [
     items: [
       { name: "Purchase Orders", href: "/purchase-orders", icon: FileText },
       { name: "Team Performance", href: "/team-performance", icon: TrendingUp },
+      { name: "Pricing Plans", href: "/pricing", icon: DollarSign },
     ],
   },
 ];
