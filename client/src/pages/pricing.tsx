@@ -204,212 +204,220 @@ const plans = [
     price: "₹1,78,500",
     description: "Essential features for small businesses",
     recommended: false,
-    color: "border-gray-200"
+    color: "border-gray-300 shadow-lg hover:shadow-xl"
   },
   {
     name: "Advanced",
     price: "₹3,16,500",
     description: "Complete business management solution",
     recommended: true,
-    color: "border-blue-500 ring-2 ring-blue-200"
+    color: "border-blue-500 ring-4 ring-blue-100 shadow-xl hover:shadow-2xl transform scale-105"
   },
   {
     name: "Premium",
     price: "₹3,88,500",
     description: "Enterprise-grade with full customization",
     recommended: false,
-    color: "border-gray-200"
+    color: "border-gray-300 shadow-lg hover:shadow-xl"
   }
 ];
 
-function FeatureIcon({ available, value }: { available: boolean | string; value?: string }) {
+function FeatureIcon({ available }: { available: boolean | string }) {
   if (typeof available === "string") {
-    return <span className="text-sm font-medium text-gray-900">{available}</span>;
+    return <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">{available}</span>;
   }
   
   return available ? (
-    <Check className="h-5 w-5 text-green-500" />
+    <Check className="h-6 w-6 text-green-600 font-bold" />
   ) : (
-    <X className="h-5 w-5 text-gray-300" />
+    <X className="h-6 w-6 text-gray-400" />
   );
 }
 
 export default function Pricing() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Choose Your Plan
-        </h1>
-        <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-          Select the perfect plan for your business management needs. All plans include core functionality with varying levels of advanced features.
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <div className="container mx-auto px-8 py-16">
+        {/* Header Section */}
+        <div className="text-center mb-20">
+          <h1 className="text-6xl font-black text-gray-900 mb-8 tracking-tight leading-tight">
+            Choose Your Plan
+          </h1>
+          <p className="text-2xl font-semibold text-gray-800 max-w-5xl mx-auto leading-relaxed">
+            Select the perfect plan for your business management needs. All plans include core functionality with varying levels of advanced features.
+          </p>
+        </div>
 
-      {/* Pricing Cards */}
-      <div className="grid md:grid-cols-3 gap-8 mb-16">
-        {plans.map((plan, index) => (
-          <Card key={plan.name} className={`relative ${plan.color} ${plan.recommended ? 'scale-105' : ''}`}>
-            {plan.recommended && (
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-blue-500 text-white px-4 py-1 text-sm font-medium">
-                  <Star className="h-4 w-4 mr-1" />
-                  Recommended
-                </Badge>
-              </div>
-            )}
-            
-            <CardHeader className="text-center pb-6">
-              <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-              <CardDescription className="text-gray-600 mb-4">
-                {plan.description}
-              </CardDescription>
-              <div className="text-4xl font-bold text-gray-900">
-                {plan.price}
-                <span className="text-lg font-normal text-gray-600">/year</span>
-              </div>
-            </CardHeader>
-            
-            <CardContent>
-              <Button 
-                className={`w-full mb-6 ${
-                  plan.recommended 
-                    ? 'bg-blue-500 hover:bg-blue-600 text-white' 
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-                }`}
-              >
-                Get Started
-              </Button>
+        {/* Pricing Cards */}
+        <div className="grid lg:grid-cols-3 gap-10 mb-20">
+          {plans.map((plan, index) => (
+            <Card key={plan.name} className={`relative ${plan.color} transition-all duration-300`}>
+              {plan.recommended && (
+                <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
+                  <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 text-base font-bold shadow-lg">
+                    <Star className="h-5 w-5 mr-2" />
+                    RECOMMENDED
+                  </Badge>
+                </div>
+              )}
               
-              <ul className="space-y-3">
-                {features.slice(0, 8).map((feature, featureIndex) => {
-                  const value = plan.name === 'Basic' ? feature.basic : 
-                               plan.name === 'Advanced' ? feature.advanced : 
-                               feature.premium;
-                  
-                  return (
-                    <li key={featureIndex} className="flex items-center justify-between">
-                      <span className="text-sm text-gray-700">{feature.name}</span>
-                      <FeatureIcon available={value} />
-                    </li>
-                  );
-                })}
-              </ul>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <CardHeader className="text-center pb-8 pt-8">
+                <CardTitle className="text-3xl font-black text-gray-900 mb-4">{plan.name}</CardTitle>
+                <CardDescription className="text-lg font-semibold text-gray-700 mb-6">
+                  {plan.description}
+                </CardDescription>
+                <div className="text-5xl font-black text-gray-900 mb-2">
+                  {plan.price}
+                </div>
+                <span className="text-xl font-bold text-gray-600">/year</span>
+              </CardHeader>
+              
+              <CardContent className="px-8 pb-8">
+                <Button 
+                  className={`w-full mb-8 py-4 text-lg font-bold transition-all duration-300 ${
+                    plan.recommended 
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl' 
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-900 border-2 border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  Get Started
+                </Button>
+                
+                <ul className="space-y-4">
+                  {features.slice(0, 8).map((feature, featureIndex) => {
+                    const value = plan.name === 'Basic' ? feature.basic : 
+                                 plan.name === 'Advanced' ? feature.advanced : 
+                                 feature.premium;
+                    
+                    return (
+                      <li key={featureIndex} className="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span className="text-base font-semibold text-gray-800">{feature.name}</span>
+                        <FeatureIcon available={value} />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-      {/* Detailed Feature Comparison Table */}
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">
-            Complete Feature Comparison
-          </CardTitle>
-          <CardDescription className="text-center">
-            Compare all features across our pricing plans
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-900">
-                    Features
-                  </th>
-                  {plans.map((plan) => (
-                    <th key={plan.name} className="px-6 py-4 text-center text-sm font-medium text-gray-900">
-                      <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-2">
-                          {plan.name}
-                          {plan.recommended && (
-                            <Badge variant="secondary" className="text-xs">
-                              Recommended
-                            </Badge>
+        {/* Detailed Feature Comparison Table */}
+        <Card className="overflow-hidden shadow-2xl border-2 border-gray-200">
+          <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b-2 border-gray-200">
+            <CardTitle className="text-4xl font-black text-center text-gray-900 mb-4">
+              Complete Feature Comparison
+            </CardTitle>
+            <CardDescription className="text-xl font-semibold text-center text-gray-700">
+              Compare all features across our pricing plans
+            </CardDescription>
+          </CardHeader>
+          
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-gray-100 to-gray-200">
+                  <tr>
+                    <th className="px-8 py-6 text-left text-lg font-black text-gray-900 border-r-2 border-gray-300">
+                      Features
+                    </th>
+                    {plans.map((plan) => (
+                      <th key={plan.name} className="px-8 py-6 text-center text-lg font-black text-gray-900 border-r-2 border-gray-300 last:border-r-0">
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="text-2xl">{plan.name}</span>
+                            {plan.recommended && (
+                              <Badge variant="secondary" className="text-sm font-bold bg-blue-100 text-blue-800">
+                                RECOMMENDED
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-2xl font-black text-blue-600">{plan.price}</div>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                
+                <tbody className="divide-y-2 divide-gray-200">
+                  {features.map((feature, index) => (
+                    <tr key={index} className="hover:bg-gray-50 transition-colors duration-200">
+                      <td className="px-8 py-4 text-base font-bold text-gray-900 border-r-2 border-gray-200">
+                        <div>
+                          <div className="font-black">{feature.name}</div>
+                          {feature.description && (
+                            <div className="text-sm font-medium text-gray-600 mt-1">{feature.description}</div>
                           )}
                         </div>
-                        <div className="text-lg font-bold mt-1">{plan.price}</div>
-                      </div>
-                    </th>
+                      </td>
+                      <td className="px-8 py-4 text-center border-r-2 border-gray-200">
+                        <FeatureIcon available={feature.basic} />
+                      </td>
+                      <td className="px-8 py-4 text-center bg-blue-25 border-r-2 border-gray-200">
+                        <FeatureIcon available={feature.advanced} />
+                      </td>
+                      <td className="px-8 py-4 text-center">
+                        <FeatureIcon available={feature.premium} />
+                      </td>
+                    </tr>
                   ))}
-                </tr>
-              </thead>
-              
-              <tbody className="divide-y divide-gray-200">
-                {features.map((feature, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 border-r">
-                      {feature.name}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <FeatureIcon available={feature.basic} />
-                    </td>
-                    <td className="px-6 py-4 text-center bg-blue-50">
-                      <FeatureIcon available={feature.advanced} />
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <FeatureIcon available={feature.premium} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* FAQ Section */}
-      <div className="mt-16 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-8">
-          Frequently Asked Questions
-        </h2>
-        
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Can I upgrade my plan later?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                Yes, you can upgrade your plan at any time. The price difference will be prorated for the remaining period.
-              </p>
-            </CardContent>
-          </Card>
+        {/* FAQ Section */}
+        <div className="mt-20 text-center">
+          <h2 className="text-4xl font-black text-gray-900 mb-12">
+            Frequently Asked Questions
+          </h2>
           
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Is there a free trial available?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                We offer a 30-day free trial for all plans. No credit card required to get started.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">What support is included?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                Basic plan includes email support. Advanced and Premium plans include priority support with faster response times.
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Can I cancel anytime?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                Yes, you can cancel your subscription at any time. Your access will continue until the end of your billing period.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardHeader>
+                <CardTitle className="text-xl font-black text-gray-900">Can I upgrade my plan later?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-semibold text-gray-700">
+                  Yes, you can upgrade your plan at any time. The price difference will be prorated for the remaining period.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardHeader>
+                <CardTitle className="text-xl font-black text-gray-900">Is there a free trial available?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-semibold text-gray-700">
+                  We offer a 30-day free trial for all plans. No credit card required to get started.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardHeader>
+                <CardTitle className="text-xl font-black text-gray-900">What support is included?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-semibold text-gray-700">
+                  Basic plan includes email support. Advanced and Premium plans include priority support with faster response times.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardHeader>
+                <CardTitle className="text-xl font-black text-gray-900">Can I cancel anytime?</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-lg font-semibold text-gray-700">
+                  Yes, you can cancel your subscription at any time. Your access will continue until the end of your billing period.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
