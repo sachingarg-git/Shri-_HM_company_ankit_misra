@@ -4,14 +4,15 @@
 
 ### Download Options
 
-#### Option 1: Complete Package (Recommended - UPDATED)
+#### Option 1: Latest Version (Recommended - TDL Error Fix)
 ```
-📦 File: TallySync-Release-Updated.tar.gz
+📦 File: TallySync-Release-Final.tar.gz
 📏 Size: 67 MB
-📍 Location: windows-app/TallySync-Release-Updated.tar.gz
+📍 Location: windows-app/TallySync-Release-Final.tar.gz
 ✅ Self-contained: सभी dependencies included
 🔧 Requirements: None
-⚡ Features: Real Tally company fetching enabled
+⚡ Features: Real Tally fetching + Manual company addition
+🛠️ TDL Fix: Manual company entry if XML reports don't work
 ```
 
 #### Option 2: Previous Version

@@ -285,14 +285,14 @@ export function createTallySyncRoutes(storage: IStorage) {
       // XML request to get list of companies from Tally
       const companiesXml = `<ENVELOPE>
         <HEADER>
-          <TALLYREQUEST>Import Data</TALLYREQUEST>
+          <TALLYREQUEST>Export Data</TALLYREQUEST>
         </HEADER>
         <BODY>
-          <IMPORTDATA>
+          <EXPORTDATA>
             <REQUESTDESC>
               <REPORTNAME>List of Companies</REPORTNAME>
             </REQUESTDESC>
-          </IMPORTDATA>
+          </EXPORTDATA>
         </BODY>
       </ENVELOPE>`;
 

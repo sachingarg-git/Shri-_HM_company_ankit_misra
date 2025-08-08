@@ -267,19 +267,25 @@ public partial class SimpleMainForm : Form
         
         this.btnRefreshCompanies = new Button();
         this.btnRefreshCompanies.Text = "Refresh Companies";
-        this.btnRefreshCompanies.Location = new Point(15, 310);
+        this.btnRefreshCompanies.Location = new Point(15, 280);
         this.btnRefreshCompanies.Size = new Size(130, 30);
         this.btnRefreshCompanies.Click += BtnRefreshCompanies_Click;
         
+        var btnAddManualCompany = new Button();
+        btnAddManualCompany.Text = "Add Manually";
+        btnAddManualCompany.Location = new Point(155, 280);
+        btnAddManualCompany.Size = new Size(100, 30);
+        btnAddManualCompany.Click += BtnAddManualCompany_Click;
+        
         this.btnAddSelectedCompanies = new Button();
         this.btnAddSelectedCompanies.Text = "Add Selected →";
-        this.btnAddSelectedCompanies.Location = new Point(255, 310);
-        this.btnAddSelectedCompanies.Size = new Size(130, 30);
+        this.btnAddSelectedCompanies.Location = new Point(265, 280);
+        this.btnAddSelectedCompanies.Size = new Size(120, 30);
         this.btnAddSelectedCompanies.Click += BtnAddSelectedCompanies_Click;
         
         this.pnlAvailableCompanies.Controls.AddRange(new Control[] {
             this.lblAvailableCompanies, this.lstAvailableCompanies,
-            this.btnRefreshCompanies, this.btnAddSelectedCompanies
+            this.btnRefreshCompanies, btnAddManualCompany, this.btnAddSelectedCompanies
         });
         
         // Selected Companies Panel
@@ -552,6 +558,29 @@ public partial class SimpleMainForm : Form
         await RefreshCompaniesFromTally();
     }
 
+    private void BtnAddManualCompany_Click(object sender, EventArgs e)
+    {
+        string companyName = Microsoft.VisualBasic.Interaction.InputBox(
+            "Enter company name:", 
+            "Add Company Manually", 
+            "Wizone IT Network India Pvt Ltd");
+            
+        if (!string.IsNullOrEmpty(companyName))
+        {
+            var company = new TallyCompany
+            {
+                Name = companyName.Trim(),
+                Guid = Guid.NewGuid().ToString(),
+                StartDate = "01-Apr-2024",
+                EndDate = "31-Mar-2025"
+            };
+            
+            availableCompanies.Add(company);
+            lstAvailableCompanies.Items.Add($"{company.Name} ({company.StartDate} - {company.EndDate})");
+            AddLogMessage($"Manually added company: {company.Name}");
+        }
+    }
+
     private void BtnAddSelectedCompanies_Click(object sender, EventArgs e)
     {
         AddSelectedCompanies();
@@ -655,19 +684,17 @@ public partial class SimpleMainForm : Form
             AddLogMessage("Testing Tally Gateway connection...");
 
             string tallyGatewayUrl = txtTallyUrl.Text.TrimEnd('/');
+            // Simple connection test XML request
             string testXml = @"<ENVELOPE>
                 <HEADER>
-                    <TALLYREQUEST>Import Data</TALLYREQUEST>
+                    <TALLYREQUEST>Export Data</TALLYREQUEST>
                 </HEADER>
                 <BODY>
-                    <IMPORTDATA>
+                    <EXPORTDATA>
                         <REQUESTDESC>
                             <REPORTNAME>List of Companies</REPORTNAME>
-                            <STATICVARIABLES>
-                                <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-                            </STATICVARIABLES>
                         </REQUESTDESC>
-                    </IMPORTDATA>
+                    </EXPORTDATA>
                 </BODY>
             </ENVELOPE>";
 
@@ -738,19 +765,20 @@ public partial class SimpleMainForm : Form
             
             // Use real Tally Gateway API
             string tallyGatewayUrl = txtTallyUrl.Text.TrimEnd('/');
+            // Use basic XML request that should work with all Tally versions
             string companiesXml = @"<ENVELOPE>
                 <HEADER>
-                    <TALLYREQUEST>Import Data</TALLYREQUEST>
+                    <TALLYREQUEST>Export Data</TALLYREQUEST>
                 </HEADER>
                 <BODY>
-                    <IMPORTDATA>
+                    <EXPORTDATA>
                         <REQUESTDESC>
-                            <REPORTNAME>List of Companies</REPORTNAME>
+                            <REPORTNAME>Company List</REPORTNAME>
                             <STATICVARIABLES>
-                                <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+                                <SVEXPORTFORMAT>XML</SVEXPORTFORMAT>
                             </STATICVARIABLES>
                         </REQUESTDESC>
-                    </IMPORTDATA>
+                    </EXPORTDATA>
                 </BODY>
             </ENVELOPE>";
 

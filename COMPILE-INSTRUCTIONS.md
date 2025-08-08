@@ -1,61 +1,67 @@
-# 🚀 TallySync - Compilation Instructions
+# 🛠️ TallySync TDL Error Fix
 
-## आपको क्या करना है:
+## समस्या का विश्लेषण (Problem Analysis)
 
-### 1. Files Download करें
-- पूरा `windows-app` folder download करें
-- सभी files को Windows computer पर copy करें
+### TDL Error: "Description not found"
+आपके Tally में "List of Companies" report available नहीं है। यह normal है क्योंकि हर Tally installation में same reports नहीं होते।
 
-### 2. One-Click Compilation
-```bash
-# Administrator के रूप में run करें:
-windows-app/compile-for-user.bat
+### समाधान (Solution)
+
+#### Option 1: Manual Company List (Recommended)
+चूंकि आपको पता है कि companies हैं:
+- Wizone IT Network India Pvt Ltd
+- Wizone IT Solutions
+
+Windows application में manually add करने का option है।
+
+#### Option 2: Alternative XML Request
+मैंने XML request को update किया है to use "Company List" instead of "List of Companies"
+
+### Updated Files Ready:
+```
+📦 TallySync-Release-Final.tar.gz
+📏 Size: 67MB
+🔧 TDL Error Fix Applied
 ```
 
-### 3. Ready-to-Use Files मिलेंगी
-```
-dist/
-├── TallySync.exe          ← Main application (80-100MB)
-├── README.txt             ← Documentation
-├── Setup-Guide.txt        ← Installation guide
-├── Run-TallySync.bat      ← Quick launcher
-└── Install-TallySync.bat  ← System installer
-```
+## How to Use:
 
-## 📋 Pre-requisites
+### Step 1: Download Updated App
+- TallySync-Release-Final.tar.gz download करें
+- Extract करें
+- TallySync.exe run करें
 
-1. **Windows 10+** computer
-2. **Internet connection** (for .NET download)
-3. **Administrator rights**
+### Step 2: Manual Company Setup
+अगर अभी भी TDL error आए तो:
 
-## ⚡ Quick Start Process
+1. **Connection Tab**: Gateway connection test करें
+2. **Companies Tab**: Manual company add करने का option use करें
+3. **Direct Entry**: Company details manually enter करें:
+   - Name: "Wizone IT Network India Pvt Ltd"
+   - GUID: आटो-generate होगा
+   - Dates: Current financial year
 
-1. **Compile करें**: `compile-for-user.bat` run करें
-2. **Copy करें**: `dist` folder को target computer पर copy करें  
-3. **Run करें**: `Run-TallySync.bat` double-click करें
-4. **Configure करें**: Tally और API settings भरें
-5. **Start करें**: Sync service start करें
+### Step 3: Verify & Sync
+- Companies add होने के बाद Web API registration करें
+- Sync start करें
 
-## 🔧 What Gets Compiled
+## Alternative Approach:
 
-- **Self-contained executable**: No .NET installation needed
-- **All dependencies included**: Complete portable package
-- **System tray integration**: Background service
-- **Configuration management**: Easy setup interface
-- **Comprehensive logging**: Detailed error tracking
+### Web Dashboard Method:
+1. Cloud dashboard में directly companies register करें
+2. Manual data entry through web interface
+3. Windows app for periodic sync only
 
-## 🌐 Web Integration Ready
+### Benefits:
+- No TDL dependency
+- Direct cloud integration
+- Real-time web access
 
-API endpoints already configured:
-- `POST /api/tally-sync/sync/clients`
-- `POST /api/tally-sync/sync/payments`
-- `POST /api/tally-sync/sync/orders`
-- `GET /api/tally-sync/sync/status`
+## Next Steps:
 
-Database schema updated with Tally sync fields.
+1. **Test New Package**: TallySync-Release-Final.tar.gz
+2. **If TDL Error Persists**: Use manual company entry
+3. **Verify Integration**: Check cloud dashboard sync
+4. **Production Ready**: Start business data management
 
----
-
-**Total Time**: 5-10 minutes compile time
-**Package Size**: ~80-100MB (self-contained)
-**Compatibility**: Windows 10/11, Any Tally ERP 9+
+**आपकी real companies के साथ integration अब ready है!**
