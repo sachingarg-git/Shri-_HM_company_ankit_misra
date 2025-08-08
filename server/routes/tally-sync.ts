@@ -282,17 +282,20 @@ export function createTallySyncRoutes(storage: IStorage) {
     try {
       const tallyUrl = tallyConfig.tallyUrl || 'http://localhost:9000';
       
-      // XML request to get list of companies from Tally
+      // XML request to get list of companies from Tally (FIXED TDL FORMAT)
       const companiesXml = `<ENVELOPE>
         <HEADER>
           <TALLYREQUEST>Export Data</TALLYREQUEST>
         </HEADER>
         <BODY>
-          <EXPORTDATA>
+          <IMPORTDATA>
             <REQUESTDESC>
-              <REPORTNAME>List of Companies</REPORTNAME>
+              <REPORTNAME>Company List</REPORTNAME>
+              <STATICVARIABLES>
+                <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+              </STATICVARIABLES>
             </REQUESTDESC>
-          </EXPORTDATA>
+          </IMPORTDATA>
         </BODY>
       </ENVELOPE>`;
 

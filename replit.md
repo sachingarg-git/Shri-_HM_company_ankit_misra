@@ -58,6 +58,10 @@ The system manages several core entities:
 - **API Endpoints**: `/api/tally-sync/*` for data synchronization
 - **Sync Fields**: tallyGuid and lastSynced added to core entities
 - **Conflict Resolution**: GUID-based record matching and updates
+- **Bridge Architecture**: Windows app acts as bridge between local Tally and cloud server
+- **TDL Fixes**: Corrected XML format from "List of Companies" to "Company List"
+- **Network Solution**: Cloud server cannot access local Tally directly - Windows app required
+- **Authentication Flow**: Real connectivity checks replace fake status indicators
 
 ### Authentication & Authorization
 - Role-based user management system
