@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { 
   Home, CreditCard, Bell, Users, MapPin, BarChart3, 
   CheckSquare, ShoppingCart, File, Receipt, 
-  FileText, TrendingUp, DollarSign,
+  FileText, TrendingUp, DollarSign, Database,
   type LucideIcon
 } from "lucide-react";
 
@@ -53,6 +53,12 @@ const navigation: Navigation = [
       { name: "Purchase Orders", href: "/purchase-orders", icon: FileText },
       { name: "Team Performance", href: "/team-performance", icon: TrendingUp },
       { name: "Pricing Plans", href: "/pricing", icon: DollarSign },
+    ],
+  },
+  {
+    section: "INTEGRATION",
+    items: [
+      { name: "Tally ERP", href: "/tally-integration", icon: Database },
     ],
   },
 ];

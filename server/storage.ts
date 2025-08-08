@@ -99,6 +99,11 @@ export interface IStorage {
       DELTA: number;
     };
   }>;
+
+  // Tally Integration specific methods
+  upsertClient(client: Partial<InsertClient>): Promise<Client>;
+  upsertPayment(payment: Partial<InsertPayment>): Promise<Payment>;
+  upsertOrder(order: Partial<InsertOrder>): Promise<Order>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -423,6 +428,91 @@ export class DatabaseStorage implements IStorage {
       inTransit: inTransitResult.count,
       clientCategories
     };
+  }
+
+  // Tally Integration Methods
+  async upsertClient(clientData: Partial<InsertClient>): Promise<Client> {
+    if (clientData.tallyGuid) {
+      // Check if client exists by Tally GUID
+      const existingClients = await this.getAllClients();
+      const existingClient = existingClients.find(c => c.tallyGuid === clientData.tallyGuid);
+      
+      if (existingClient) {
+        return await this.updateClient(existingClient.id, {
+          ...clientData,
+          lastSynced: new Date()
+        });
+      }
+    }
+    
+    // Create new client
+    return await this.createClient({
+      name: clientData.name || '',
+      category: clientData.category || 'BETA',
+      email: clientData.email || null,
+      phone: clientData.phone || null,
+      address: clientData.address || null,
+      contactPerson: clientData.contactPerson || null,
+      creditLimit: clientData.creditLimit || null,
+      tallyGuid: clientData.tallyGuid || null,
+      lastSynced: new Date()
+    });
+  }
+
+  async upsertPayment(paymentData: Partial<InsertPayment>): Promise<Payment> {
+    if (paymentData.tallyGuid) {
+      // Check if payment exists by Tally GUID
+      const existingPayments = await this.getAllPayments();
+      const existingPayment = existingPayments.find(p => p.tallyGuid === paymentData.tallyGuid);
+      
+      if (existingPayment) {
+        return await this.updatePayment(existingPayment.id, {
+          ...paymentData,
+          lastSynced: new Date()
+        });
+      }
+    }
+    
+    // Create new payment
+    return await this.createPayment({
+      clientId: paymentData.clientId || '',
+      amount: paymentData.amount?.toString() || '0',
+      dueDate: paymentData.dueDate || new Date(),
+      status: paymentData.status || 'PENDING',
+      notes: paymentData.notes || null,
+      voucherNumber: paymentData.voucherNumber || null,
+      voucherType: paymentData.voucherType || null,
+      tallyGuid: paymentData.tallyGuid || null,
+      lastSynced: new Date()
+    });
+  }
+
+  async upsertOrder(orderData: Partial<InsertOrder>): Promise<Order> {
+    if (orderData.tallyGuid) {
+      // Check if order exists by Tally GUID
+      const existingOrders = await this.getAllOrders();
+      const existingOrder = existingOrders.find(o => o.tallyGuid === orderData.tallyGuid);
+      
+      if (existingOrder) {
+        return await this.updateOrder(existingOrder.id, {
+          ...orderData,
+          lastSynced: new Date()
+        });
+      }
+    }
+    
+    // Create new order
+    return await this.createOrder({
+      orderNumber: orderData.orderNumber || `ORD-${Date.now()}`,
+      clientId: orderData.clientId || '',
+      salesPersonId: orderData.salesPersonId || orderData.clientId || '',
+      amount: orderData.amount?.toString() || '0',
+      status: orderData.status || 'PENDING_AGREEMENT',
+      orderDate: orderData.orderDate || new Date(),
+      description: orderData.description || null,
+      tallyGuid: orderData.tallyGuid || null,
+      lastSynced: new Date()
+    });
   }
 }
 

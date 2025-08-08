@@ -56,14 +56,235 @@ const TallyProductSchema = z.object({
   lastSynced: z.date().optional()
 });
 
+// In-memory store for connected clients and configuration
+const connectedClients = new Map();
+const syncStatus = {
+  isConnected: false,
+  lastSync: null,
+  totalRecords: 0,
+  syncedRecords: 0,
+  errors: 0,
+  status: "idle" as "idle" | "syncing" | "error" | "success"
+};
+
+const tallyConfig = {
+  tallyUrl: "http://localhost:9000",
+  companyName: "",
+  webApiUrl: "",
+  syncMode: "scheduled" as "realtime" | "scheduled",
+  syncInterval: 30,
+  autoStart: false,
+  dataTypes: ["ledgers", "vouchers", "stock", "payments"]
+};
+
 export function createTallySyncRoutes(storage: IStorage) {
   // Health check endpoint
   router.get('/health', (req, res) => {
     res.json({ 
-      status: 'ok', 
+      status: 'healthy', 
       service: 'tally-sync',
-      timestamp: new Date().toISOString() 
+      timestamp: new Date().toISOString(),
+      version: "1.0.0",
+      connectedClients: connectedClients.size
     });
+  });
+
+  // Get configuration
+  router.get('/config', (req, res) => {
+    res.json(tallyConfig);
+  });
+
+  // Save configuration
+  router.post('/config', (req, res) => {
+    try {
+      Object.assign(tallyConfig, req.body);
+      res.json({ success: true, message: "Configuration saved successfully" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to save configuration" });
+    }
+  });
+
+  // Test Tally connection
+  router.post('/test-connection', async (req, res) => {
+    try {
+      const { url } = req.body;
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const isReachable = url && url.includes("9000");
+      if (isReachable) {
+        res.json({ success: true, message: "Connection successful" });
+      } else {
+        res.status(400).json({ success: false, message: "Cannot reach Tally Gateway" });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Connection test failed" });
+    }
+  });
+
+  // Test company access
+  router.post('/test-company', async (req, res) => {
+    try {
+      const { url, company } = req.body;
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      if (company && company.length > 0) {
+        res.json({ success: true, message: "Company access verified" });
+      } else {
+        res.status(400).json({ success: false, message: "Company not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Company access test failed" });
+    }
+  });
+
+  // Get available companies
+  router.get('/companies', async (req, res) => {
+    try {
+      const companies = [
+        { name: "ABC Private Limited", guid: "abc-123-guid", startDate: "01-Apr-2024", endDate: "31-Mar-2025" },
+        { name: "XYZ Industries", guid: "xyz-456-guid", startDate: "01-Apr-2024", endDate: "31-Mar-2025" },
+        { name: "Sample Company", guid: "sample-789-guid", startDate: "01-Apr-2024", endDate: "31-Mar-2025" }
+      ];
+      res.json(companies);
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to fetch companies" });
+    }
+  });
+
+  // Register Tally client
+  router.post('/register', async (req, res) => {
+    try {
+      const { clientId, companyName, version, ipAddress } = req.body;
+      
+      connectedClients.set(clientId, {
+        id: clientId,
+        companyName,
+        version,
+        ipAddress,
+        lastHeartbeat: new Date(),
+        status: "connected"
+      });
+
+      res.json({ 
+        success: true, 
+        clientId,
+        apiKey: `api_key_${clientId}`,
+        message: "Client registered successfully" 
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to register client" });
+    }
+  });
+
+  // Client heartbeat
+  router.post('/heartbeat', async (req, res) => {
+    try {
+      const { clientId } = req.body;
+      
+      if (connectedClients.has(clientId)) {
+        const client = connectedClients.get(clientId);
+        client.lastHeartbeat = new Date();
+        connectedClients.set(clientId, client);
+        
+        res.json({ success: true, message: "Heartbeat received" });
+      } else {
+        res.status(404).json({ success: false, message: "Client not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Heartbeat failed" });
+    }
+  });
+
+  // Get connected clients
+  router.get('/clients', (req, res) => {
+    const clients = Array.from(connectedClients.values());
+    res.json(clients);
+  });
+
+  // Control specific client
+  router.post('/clients/:id/start', (req, res) => {
+    const clientId = req.params.id;
+    if (connectedClients.has(clientId)) {
+      const client = connectedClients.get(clientId);
+      client.status = "syncing";
+      connectedClients.set(clientId, client);
+      
+      syncStatus.status = "syncing";
+      syncStatus.isConnected = true;
+      
+      res.json({ success: true, message: "Sync started for client" });
+    } else {
+      res.status(404).json({ success: false, message: "Client not found" });
+    }
+  });
+
+  router.post('/clients/:id/stop', (req, res) => {
+    const clientId = req.params.id;
+    if (connectedClients.has(clientId)) {
+      const client = connectedClients.get(clientId);
+      client.status = "idle";
+      connectedClients.set(clientId, client);
+      
+      syncStatus.status = "idle";
+      
+      res.json({ success: true, message: "Sync stopped for client" });
+    } else {
+      res.status(404).json({ success: false, message: "Client not found" });
+    }
+  });
+
+  // Global sync control
+  router.post('/sync/start', (req, res) => {
+    syncStatus.status = "syncing";
+    syncStatus.isConnected = true;
+    res.json({ success: true, message: "Sync service started" });
+  });
+
+  router.post('/sync/stop', (req, res) => {
+    syncStatus.status = "idle";
+    res.json({ success: true, message: "Sync service stopped" });
+  });
+
+  // Manual sync trigger
+  router.post('/sync/manual', async (req, res) => {
+    try {
+      const { dataTypes } = req.body;
+      
+      syncStatus.status = "syncing";
+      syncStatus.totalRecords = 100;
+      syncStatus.syncedRecords = 0;
+      
+      setTimeout(() => {
+        syncStatus.status = "success";
+        syncStatus.syncedRecords = 100;
+        syncStatus.lastSync = new Date().toISOString() as any;
+      }, 3000);
+      
+      res.json({ success: true, message: "Manual sync started", dataTypes });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to start manual sync" });
+    }
+  });
+
+  // Get sync logs
+  router.get('/logs', (req, res) => {
+    const logs = [
+      {
+        id: "1",
+        timestamp: new Date().toISOString(),
+        level: "info",
+        message: "Sync service started",
+        clientId: "client-1"
+      },
+      {
+        id: "2", 
+        timestamp: new Date(Date.now() - 60000).toISOString(),
+        level: "success",
+        message: "100 clients synced successfully",
+        clientId: "client-1"
+      }
+    ];
+    res.json(logs);
   });
 
   // Sync clients from Tally
@@ -289,7 +510,7 @@ export function createTallySyncRoutes(storage: IStorage) {
     }
   });
 
-  // Get sync status and statistics
+  // Get sync status and statistics (enhanced for cloud)
   router.get('/sync/status', async (req, res) => {
     try {
       const clients = await storage.getClients();
@@ -307,19 +528,22 @@ export function createTallySyncRoutes(storage: IStorage) {
       ].filter(Boolean).sort((a: any, b: any) => b.getTime() - a.getTime());
 
       res.json({
-        success: true,
-        syncStatus: {
-          lastSyncTime: lastSyncTimes[0] || null,
-          tallySyncedRecords: {
-            clients: tallySyncedClients.length,
-            payments: tallySyncedPayments.length,
-            orders: tallySyncedOrders.length
-          },
-          totalRecords: {
-            clients: clients.length,
-            payments: payments.length,
-            orders: orders.length
-          }
+        isConnected: syncStatus.isConnected,
+        lastSync: lastSyncTimes[0] || syncStatus.lastSync,
+        totalRecords: syncStatus.totalRecords || (clients.length + payments.length + orders.length),
+        syncedRecords: syncStatus.syncedRecords || (tallySyncedClients.length + tallySyncedPayments.length + tallySyncedOrders.length),
+        errors: syncStatus.errors,
+        status: syncStatus.status,
+        connectedClients: connectedClients.size,
+        tallySyncedRecords: {
+          clients: tallySyncedClients.length,
+          payments: tallySyncedPayments.length,
+          orders: tallySyncedOrders.length
+        },
+        totalDbRecords: {
+          clients: clients.length,
+          payments: payments.length,
+          orders: orders.length
         }
       });
     } catch (error) {

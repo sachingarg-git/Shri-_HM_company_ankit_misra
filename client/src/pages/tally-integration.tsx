@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   Settings, 
   Database, 
-  Sync, 
+  RotateCcw, 
   CheckCircle, 
   AlertCircle, 
   Clock, 
@@ -298,7 +298,7 @@ export default function TallyIntegration() {
                           {company.name}
                         </SelectItem>
                       )) || (
-                        <SelectItem value="" disabled>
+                        <SelectItem value="no-companies" disabled>
                           Connect to Tally first
                         </SelectItem>
                       )}
@@ -384,7 +384,7 @@ export default function TallyIntegration() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Sync className="h-5 w-5" />
+                <RotateCcw className="h-5 w-5" />
                 Synchronization Settings
               </CardTitle>
               <CardDescription>
