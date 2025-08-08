@@ -1045,7 +1045,7 @@ export function createTallySyncRoutes(storage: IStorage) {
         tallyError: realTallyConnection ? null : tallyError,
         message: realTallyConnection ? 
           "🟢 Real Tally Gateway connection active" : 
-          "🔴 Tally Gateway not reachable - Please start Tally ERP with Gateway enabled on port 9000",
+          "🔴 Tally Gateway not reachable from cloud server - Use Windows app for local Tally connection",
         tallySyncedRecords: {
           clients: tallySyncedClients.length,
           payments: tallySyncedPayments.length,
