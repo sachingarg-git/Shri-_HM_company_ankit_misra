@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("TallySync")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3ce35bc748eecfb241ca3d348bf64eab6a0de6ee")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c120ab48e49b81dbdfec927193714ee6e2c6a0e1")]
 [assembly: System.Reflection.AssemblyProductAttribute("TallySync")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Tally Sync Service")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

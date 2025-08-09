@@ -26,11 +26,11 @@ public class HeartbeatService
         
         isRunning = true;
         
-        // Send heartbeat every 30 seconds
+        // Send heartbeat every 20 seconds (more frequent for stability)
         heartbeatTimer = new System.Threading.Timer(async _ => await SendHeartbeat(clientId), 
                                   null, 
                                   TimeSpan.Zero, 
-                                  TimeSpan.FromSeconds(30));
+                                  TimeSpan.FromSeconds(20));
     }
 
     public void StopHeartbeat()
@@ -43,20 +43,25 @@ public class HeartbeatService
     {
         try
         {
-            var heartbeatData = new { clientId = clientId };
+            var heartbeatData = new { clientId = clientId, timestamp = DateTime.UtcNow };
             var json = JsonConvert.SerializeObject(heartbeatData);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
             var response = await httpClient.PostAsync($"{webApiUrl}/api/tally-sync/heartbeat", content);
             
-            if (!response.IsSuccessStatusCode)
+            if (response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"Heartbeat failed: {response.StatusCode}");
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Heartbeat sent successfully");
+            }
+            else
+            {
+                Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Heartbeat failed: {response.StatusCode}");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Heartbeat error: {ex.Message}");
+            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Heartbeat error: {ex.Message}");
+            // Don't fail completely - retry on next cycle
         }
     }
 
