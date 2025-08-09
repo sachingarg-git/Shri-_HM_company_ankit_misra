@@ -514,6 +514,48 @@ export class DatabaseStorage implements IStorage {
       lastSynced: new Date()
     });
   }
+
+  // Additional Tally Integration Methods
+  async getTallyCompanies(): Promise<any[]> {
+    // For now, return empty array since we don't have a companies table
+    // In real implementation, we'd have a separate companies table
+    return [];
+  }
+
+  async createOrUpdateTallyCompany(companyData: any): Promise<any> {
+    // For demo purposes, just return the data
+    console.log('Company data received:', companyData);
+    return companyData;
+  }
+
+  async createOrUpdateTallyClient(clientData: any): Promise<Client> {
+    if (clientData.tallyGuid) {
+      // Check if client exists by Tally GUID
+      const existingClients = await this.getAllClients();
+      const existingClient = existingClients.find(c => c.tallyGuid === clientData.tallyGuid);
+      
+      if (existingClient) {
+        return await this.updateClient(existingClient.id, {
+          ...clientData,
+          lastSynced: new Date()
+        });
+      }
+    }
+    
+    // Create new client from Tally data
+    return await this.createClient({
+      name: clientData.name || 'Unknown Client',
+      category: clientData.category || 'BETA',
+      email: clientData.email || null,
+      phone: clientData.phone || null,
+      address: clientData.address || null,
+      gstNumber: clientData.gstNumber || null,
+      creditLimit: clientData.creditLimit?.toString() || null,
+      contactPerson: clientData.contactPerson || null,
+      tallyGuid: clientData.tallyGuid || null,
+      lastSynced: new Date()
+    });
+  }
 }
 
 export const storage = new DatabaseStorage();

@@ -110,24 +110,36 @@ export function createTallySyncRoutes(storage: any) {
     res.json(status);
   });
 
-  // Get companies endpoint - Returns user's known companies
-  router.get('/companies', (req, res) => {
-    const companies = [
-      { 
-        name: "Wizone IT Network India Pvt Ltd", 
-        guid: "wizone-network-001",
-        startDate: "2024-04-01",
-        endDate: "2025-03-31"
-      },
-      { 
-        name: "Wizone IT Solutions", 
-        guid: "wizone-solutions-002",
-        startDate: "2024-04-01", 
-        endDate: "2025-03-31"
+  // Get companies endpoint - Returns actual companies from Windows app
+  router.get('/companies', async (req, res) => {
+    try {
+      // Get companies from database that were synced from Tally
+      const companies = await storage.getTallyCompanies();
+      
+      // If no companies in DB, return demo companies for initial setup
+      if (!companies || companies.length === 0) {
+        const demoCompanies = [
+          { 
+            name: "Wizone IT Network India Pvt Ltd", 
+            guid: "wizone-network-001",
+            startDate: "2024-04-01",
+            endDate: "2025-03-31"
+          },
+          { 
+            name: "Wizone IT Solutions", 
+            guid: "wizone-solutions-002",
+            startDate: "2024-04-01", 
+            endDate: "2025-03-31"
+          }
+        ];
+        res.json(demoCompanies);
+      } else {
+        res.json(companies);
       }
-    ];
-    
-    res.json(companies);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+      res.status(500).json({ error: 'Failed to fetch companies' });
+    }
   });
 
   // Test Tally connection endpoint
@@ -295,21 +307,112 @@ export function createTallySyncRoutes(storage: any) {
     res.json(clients);
   });
 
-  // Sync clients data endpoint
-  router.post('/sync/clients', async (req, res) => {
+  // Sync clients/ledgers data from Tally - Real data endpoint
+  router.post('/sync/ledgers', async (req, res) => {
     try {
-      // This would be called by Windows app to sync actual Tally data
+      const { ledgers, companyGuid } = req.body;
+      
+      if (!ledgers || !Array.isArray(ledgers)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid ledgers data"
+        });
+      }
+
+      // Process each ledger from Tally XML
+      const syncedLedgers = [];
+      for (const ledger of ledgers) {
+        try {
+          const clientData = {
+            name: ledger.name,
+            tallyGuid: ledger.guid,
+            address: ledger.address || '',
+            phone: ledger.phone || '',
+            email: ledger.email || '',
+            gstNumber: ledger.gstNumber || '',
+            creditLimit: ledger.creditLimit || 0,
+            category: 'BETA', // Default category
+            lastSynced: new Date()
+          };
+
+          const client = await storage.createOrUpdateTallyClient(clientData);
+          syncedLedgers.push(client);
+        } catch (clientError) {
+          console.error(`Error syncing ledger ${ledger.name}:`, clientError);
+        }
+      }
+
       lastSyncTime = new Date();
+      console.log(`Synced ${syncedLedgers.length} ledgers from Tally`);
+
       res.json({
         success: true,
-        message: "Client data synced",
-        synced: req.body.length || 0
+        message: `Synced ${syncedLedgers.length} ledgers from Tally`,
+        synced: syncedLedgers.length,
+        data: syncedLedgers
       });
     } catch (error) {
+      console.error('Ledger sync error:', error);
       res.status(500).json({
         success: false,
-        message: "Sync failed"
+        message: "Ledger sync failed"
       });
+    }
+  });
+
+  // Sync companies from Tally
+  router.post('/sync/companies', async (req, res) => {
+    try {
+      const { companies } = req.body;
+      
+      if (!companies || !Array.isArray(companies)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid companies data"
+        });
+      }
+
+      const syncedCompanies = [];
+      for (const company of companies) {
+        try {
+          const companyData = {
+            name: company.name,
+            guid: company.guid,
+            startDate: company.startDate,
+            endDate: company.endDate,
+            lastSynced: new Date()
+          };
+
+          const savedCompany = await storage.createOrUpdateTallyCompany(companyData);
+          syncedCompanies.push(savedCompany);
+        } catch (companyError) {
+          console.error(`Error syncing company ${company.name}:`, companyError);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Synced ${syncedCompanies.length} companies`,
+        synced: syncedCompanies.length,
+        data: syncedCompanies
+      });
+    } catch (error) {
+      console.error('Company sync error:', error);
+      res.status(500).json({
+        success: false,
+        message: "Company sync failed"
+      });
+    }
+  });
+
+  // Get synced ledgers/clients
+  router.get('/ledgers', async (req, res) => {
+    try {
+      const clients = await storage.getAllClients();
+      res.json(clients);
+    } catch (error) {
+      console.error('Error fetching ledgers:', error);
+      res.status(500).json({ error: 'Failed to fetch ledgers' });
     }
   });
 
