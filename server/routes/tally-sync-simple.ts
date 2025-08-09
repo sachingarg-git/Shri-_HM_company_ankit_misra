@@ -110,32 +110,43 @@ export function createTallySyncRoutes(storage: any) {
     res.json(status);
   });
 
-  // Get companies endpoint - Returns actual companies from Windows app
+  // Get companies endpoint - Returns ONLY real Tally data (NO FAKE DATA)
   router.get('/companies', async (req, res) => {
     try {
+      // Check if Windows app is actually connected
+      const now = new Date();
+      let isReallyConnected = false;
+      
+      connectedClients.forEach((client, clientId) => {
+        const timeDiff = now.getTime() - client.lastHeartbeat.getTime();
+        if (timeDiff < 60000) { // 1 minute for real connection
+          isReallyConnected = true;
+        }
+      });
+      
+      if (!isReallyConnected) {
+        return res.status(503).json({ 
+          error: "Windows app not connected", 
+          message: "Please start TallySync Windows application and ensure Tally ERP is running",
+          realDataOnly: true
+        });
+      }
+      
       // Get companies from database that were synced from Tally
       const companies = await storage.getTallyCompanies();
       
-      // If no companies in DB, return demo companies for initial setup
+      // NO FAKE DATA - Return empty array if no real data available
       if (!companies || companies.length === 0) {
-        const demoCompanies = [
-          { 
-            name: "Wizone IT Network India Pvt Ltd", 
-            guid: "wizone-network-001",
-            startDate: "2024-04-01",
-            endDate: "2025-03-31"
-          },
-          { 
-            name: "Wizone IT Solutions", 
-            guid: "wizone-solutions-002",
-            startDate: "2024-04-01", 
-            endDate: "2025-03-31"
-          }
-        ];
-        res.json(demoCompanies);
-      } else {
-        res.json(companies);
+        return res.status(404).json({ 
+          error: "No real Tally data found", 
+          message: "No companies have been synced from Tally ERP yet. Please ensure Tally is running and sync data.",
+          realDataOnly: true,
+          companies: []
+        });
       }
+      
+      // Return only real Tally data
+      res.json(companies);
     } catch (error) {
       console.error('Error fetching companies:', error);
       res.status(500).json({ error: 'Failed to fetch companies' });
