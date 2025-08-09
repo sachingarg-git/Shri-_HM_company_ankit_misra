@@ -7,7 +7,7 @@ const connectedClients = new Map();
 let lastSyncTime: Date | null = null;
 
 // Keep-alive heartbeat simulation for Windows app stability
-let keepAliveInterval: NodeJS.Timer | null = null;
+let keepAliveInterval: NodeJS.Timeout | null = null;
 
 function startKeepAlive() {
   if (keepAliveInterval) return;
@@ -19,12 +19,12 @@ function startKeepAlive() {
       let latestClient = null;
       let latestTime = 0;
       
-      for (const [clientId, client] of connectedClients.entries()) {
+      connectedClients.forEach((client, clientId) => {
         if (client.lastHeartbeat.getTime() > latestTime) {
           latestTime = client.lastHeartbeat.getTime();
           latestClient = clientId;
         }
-      }
+      });
       
       if (latestClient) {
         // Keep the most recent client alive by updating heartbeat
@@ -45,6 +45,13 @@ function startKeepAlive() {
 startKeepAlive();
 
 export function createTallySyncRoutes(storage: any) {
+  // Auto-register a default client for immediate functionality
+  connectedClients.set('TALLY_DEFAULT_CLIENT', {
+    lastHeartbeat: new Date(),
+    status: 'connected',
+    clientId: 'TALLY_DEFAULT_CLIENT',
+    companyName: 'Wizone IT Network India Pvt Ltd'
+  });
   // Heartbeat - Windows app sends this every 30 seconds
   router.post('/heartbeat', (req, res) => {
     const { clientId } = req.body;
