@@ -33,6 +33,14 @@ export function createTallySyncRoutes(storage: any) {
     const { clientId } = req.body;
     const id = clientId || 'REAL_WINDOWS_APP';
     
+    console.log(`🔵 HEARTBEAT REQUEST:`, {
+      clientId: id,
+      requestIP: req.ip,
+      userAgent: req.headers['user-agent'],
+      timestamp: new Date().toISOString(),
+      body: req.body
+    });
+    
     // Only accept real heartbeats from Windows app
     connectedClients.set(id, {
       lastHeartbeat: new Date(),
@@ -41,7 +49,12 @@ export function createTallySyncRoutes(storage: any) {
       isReal: true
     });
     
-    console.log(`Real heartbeat received from: ${id}, Total clients: ${connectedClients.size}`);
+    console.log(`✅ ACCEPTED heartbeat from: ${id}, Total clients: ${connectedClients.size}`);
+    console.log(`🔗 Connection details:`, {
+      activeClients: connectedClients.size,
+      clientIP: req.ip,
+      timestamp: new Date().toISOString()
+    });
     
     res.json({ 
       success: true, 
@@ -61,8 +74,8 @@ export function createTallySyncRoutes(storage: any) {
       const timeDiff = now.getTime() - client.lastHeartbeat.getTime();
       console.log(`Real client ${clientId}: Last heartbeat ${Math.floor(timeDiff/1000)}s ago`);
       
-      // Strict 60-second timeout for real connections
-      if (timeDiff < 60000 && client.isReal) {
+      // Extended 2-minute timeout for real connections
+      if (timeDiff < 120000 && client.isReal) {
         isConnected = true;
         activeClients++;
       }
