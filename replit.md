@@ -11,6 +11,8 @@ The system now includes complete Tally ERP integration capabilities through a de
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+User expectation: Complete working solutions, not partial implementations.
+Communication preference: Direct, solution-focused responses with step-by-step instructions.
 
 ## System Architecture
 
