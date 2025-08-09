@@ -280,5 +280,16 @@ export function createTallySyncRoutes(storage: any) {
     });
   });
 
+  // Add test-web-connection endpoint for Windows app
+  router.post('/test-web-connection', (req, res) => {
+    console.log('✅ Windows app web connection test received');
+    res.json({ 
+      success: true, 
+      message: "Web API connection working",
+      timestamp: new Date().toISOString(),
+      serverOnline: true
+    });
+  });
+
   return router;
 }
