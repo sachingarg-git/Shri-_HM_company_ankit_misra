@@ -23,6 +23,7 @@ public partial class SimpleMainForm : Form
     private TextBox txtWebApiUrl;
     private Label lblWebPort;
     private NumericUpDown nudWebPort;
+    private NumericUpDown nudTallyPort;
     private Button btnTestWebConnection;
     private Label lblWebConnectionStatus;
     
@@ -221,8 +222,21 @@ public partial class SimpleMainForm : Form
         
         this.txtTallyUrl = new TextBox();
         this.txtTallyUrl.Location = new Point(15, 75);
-        this.txtTallyUrl.Size = new Size(360, 25);
-        this.txtTallyUrl.Text = "http://localhost:9000";
+        this.txtTallyUrl.Size = new Size(280, 25);
+        this.txtTallyUrl.Text = "http://localhost";
+        
+        // Add Tally Port Configuration
+        var lblTallyPort = new Label();
+        lblTallyPort.Text = "Port:";
+        lblTallyPort.Location = new Point(305, 50);
+        lblTallyPort.Size = new Size(40, 20);
+        
+        this.nudTallyPort = new NumericUpDown();
+        this.nudTallyPort.Location = new Point(305, 75);
+        this.nudTallyPort.Size = new Size(80, 25);
+        this.nudTallyPort.Minimum = 1;
+        this.nudTallyPort.Maximum = 65535;
+        this.nudTallyPort.Value = 9000;
         
         this.btnTestTallyConnection = new Button();
         this.btnTestTallyConnection.Text = "Test Tally";
@@ -238,6 +252,7 @@ public partial class SimpleMainForm : Form
         
         this.pnlTallyGateway.Controls.AddRange(new Control[] {
             lblTallyTitle, this.lblTallyUrl, this.txtTallyUrl,
+            lblTallyPort, this.nudTallyPort,
             this.btnTestTallyConnection, this.lblTallyConnectionStatus
         });
         
@@ -790,8 +805,8 @@ public partial class SimpleMainForm : Form
         {
             AddLogMessage("Refreshing companies from Tally Gateway...");
             
-            // Use real Tally Gateway API
-            string tallyGatewayUrl = txtTallyUrl.Text.TrimEnd('/');
+            // Use real Tally Gateway API with configurable port
+            string tallyGatewayUrl = $"{txtTallyUrl.Text.TrimEnd('/')}:{nudTallyPort.Value}";
             // Use basic XML request that should work with all Tally versions
             string companiesXml = @"<ENVELOPE>
                 <HEADER>

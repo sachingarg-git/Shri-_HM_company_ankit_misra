@@ -4,7 +4,8 @@ namespace TallySync.Models;
 
 public class TallyConfig
 {
-    public string TallyServerUrl { get; set; } = "http://localhost:9000"; // Fixed: Was localhost:5000
+    public string TallyServerUrl { get; set; } = "http://localhost:9000"; // Default Tally Gateway port
+    public int TallyPort { get; set; } = 9000; // Configurable Tally port
     public string CompanyName { get; set; } = "";
     public string WebApiUrl { get; set; } = "";
     public string ApiKey { get; set; } = "";
