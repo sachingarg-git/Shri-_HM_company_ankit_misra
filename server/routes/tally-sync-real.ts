@@ -291,5 +291,48 @@ export function createTallySyncRoutes(storage: any) {
     });
   });
 
+  // Clear all fake data - keep only real Tally records
+  router.post('/clear-fake-data', async (req, res) => {
+    try {
+      console.log('🧹 Clearing all fake data from database...');
+      await storage.clearAllFakeData();
+      
+      res.json({
+        success: true,
+        message: "All fake data cleared successfully - only authentic Tally records remain",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error('❌ Error clearing fake data:', error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to clear fake data",
+        error: error.message
+      });
+    }
+  });
+
+  // Process real Tally data synchronization
+  router.post('/sync-real-data', async (req, res) => {
+    try {
+      console.log('🔄 Starting real Tally data synchronization...');
+      const results = await storage.syncRealTallyData(req.body);
+      
+      res.json({
+        success: true,
+        message: "Real Tally data synchronized successfully",
+        results: results,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error('❌ Error syncing real data:', error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to sync real Tally data",
+        error: error.message
+      });
+    }
+  });
+
   return router;
 }

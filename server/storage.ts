@@ -104,6 +104,11 @@ export interface IStorage {
   upsertClient(client: Partial<InsertClient>): Promise<Client>;
   upsertPayment(payment: Partial<InsertPayment>): Promise<Payment>;
   upsertOrder(order: Partial<InsertOrder>): Promise<Order>;
+  
+  // Real Tally Data Methods - No Fake Data
+  getTallyCompanies(): Promise<Client[]>;
+  clearAllFakeData(): Promise<void>;
+  syncRealTallyData(data: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -555,6 +560,72 @@ export class DatabaseStorage implements IStorage {
       tallyGuid: clientData.tallyGuid || null,
       lastSynced: new Date()
     });
+  }
+
+  // Real Tally Data Methods - Implementation
+  async getTallyCompanies(): Promise<Client[]> {
+    // Return only clients that were synced from Tally (have tallyGuid)
+    const allClients = await this.getAllClients();
+    return allClients.filter(client => client.tallyGuid !== null);
+  }
+
+  async clearAllFakeData(): Promise<void> {
+    // Clear all records that don't have tallyGuid (fake data)
+    console.log('🧹 Clearing all fake data - keeping only real Tally records');
+    
+    // Clear clients without tallyGuid
+    await db.delete(clients).where(sql`${clients.tallyGuid} IS NULL`);
+    
+    // Clear orders without tallyGuid
+    await db.delete(orders).where(sql`${orders.tallyGuid} IS NULL`);
+    
+    // Clear payments without tallyGuid
+    await db.delete(payments).where(sql`${payments.tallyGuid} IS NULL`);
+    
+    console.log('✅ Fake data cleared - only authentic Tally records remain');
+  }
+
+  async syncRealTallyData(data: any): Promise<any> {
+    console.log('🔄 Processing real Tally data synchronization');
+    
+    const results = {
+      companies: 0,
+      clients: 0,
+      orders: 0,
+      payments: 0,
+      errors: []
+    };
+
+    try {
+      // Process companies from Tally
+      if (data.companies && Array.isArray(data.companies)) {
+        for (const company of data.companies) {
+          try {
+            await this.createOrUpdateTallyCompany(company);
+            results.companies++;
+          } catch (error: any) {
+            results.errors.push(`Company sync error: ${error.message}`);
+          }
+        }
+      }
+
+      // Process ledgers/clients from Tally
+      if (data.ledgers && Array.isArray(data.ledgers)) {
+        for (const ledger of data.ledgers) {
+          try {
+            await this.createOrUpdateTallyClient(ledger);
+            results.clients++;
+          } catch (error: any) {
+            results.errors.push(`Client sync error: ${error.message}`);
+          }
+        }
+      }
+
+      return results;
+    } catch (error: any) {
+      console.error('❌ Tally sync error:', error);
+      throw error;
+    }
   }
 }
 
