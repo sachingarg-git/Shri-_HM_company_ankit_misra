@@ -45,13 +45,7 @@ function startKeepAlive() {
 startKeepAlive();
 
 export function createTallySyncRoutes(storage: any) {
-  // Auto-register a default client for immediate functionality
-  connectedClients.set('TALLY_DEFAULT_CLIENT', {
-    lastHeartbeat: new Date(),
-    status: 'connected',
-    clientId: 'TALLY_DEFAULT_CLIENT',
-    companyName: 'Wizone IT Network India Pvt Ltd'
-  });
+  // NO FAKE CLIENTS - Only real Windows app connections allowed
   // Heartbeat - Windows app sends this every 30 seconds
   router.post('/heartbeat', (req, res) => {
     const { clientId } = req.body;
