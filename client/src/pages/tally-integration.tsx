@@ -116,7 +116,11 @@ export default function TallyIntegration() {
   // Test Web API connection
   const testWebApiConnection = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/tally-sync/health');
+      const response = await fetch('/api/tally-sync/test-web-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
       if (!response.ok) throw new Error('API connection failed');
       return response.json();
     },
