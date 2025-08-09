@@ -102,14 +102,23 @@ export default function TallyIntegration() {
       if (!response.ok) throw new Error('Connection failed');
       return response.json();
     },
-    onSuccess: () => {
-      setTestResults(prev => ({ ...prev, tally: true }));
-      toast({ title: "Success", description: "Tally connection successful!" });
-      queryClient.invalidateQueries({ queryKey: ['/api/tally-sync/companies'] });
+    onSuccess: (data) => {
+      if (data.realConnection) {
+        setTestResults(prev => ({ ...prev, tally: true }));
+        toast({ title: "Tally Connected", description: "Windows app is connected and ready for sync!" });
+        queryClient.invalidateQueries({ queryKey: ['/api/tally-sync/companies'] });
+      } else {
+        setTestResults(prev => ({ ...prev, tally: false }));
+        toast({ 
+          title: "Windows App Required", 
+          description: "Start TallySync.exe Windows app to connect to Tally ERP",
+          variant: "default"
+        });
+      }
     },
     onError: () => {
       setTestResults(prev => ({ ...prev, tally: false }));
-      toast({ title: "Error", description: "Failed to connect to Tally ERP", variant: "destructive" });
+      toast({ title: "Connection Error", description: "Server connection failed - check if application is running", variant: "destructive" });
     }
   });
 

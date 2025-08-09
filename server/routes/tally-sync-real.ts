@@ -139,7 +139,7 @@ export function createTallySyncRoutes(storage: any) {
     }
   });
 
-  // Test connection - Only real connections
+  // Test connection - Now returns proper status without 503 error
   router.post('/test-connection', (req, res) => {
     const hasRealClient = Array.from(connectedClients.values()).some(client => {
       const timeDiff = new Date().getTime() - client.lastHeartbeat.getTime();
@@ -149,14 +149,18 @@ export function createTallySyncRoutes(storage: any) {
     if (hasRealClient) {
       res.json({ 
         success: true, 
-        message: "Real Tally connection verified via Windows app",
-        realConnection: true
+        message: "Windows app connected and ready for Tally sync",
+        realConnection: true,
+        timestamp: new Date().toISOString()
       });
     } else {
-      res.status(503).json({ 
+      // Return 200 OK with clear instructions instead of 503 error
+      res.status(200).json({ 
         success: false, 
-        message: "No real Windows app connection - start TallySync.exe",
-        realConnection: false
+        message: "Start TallySync.exe Windows app to connect to Tally ERP",
+        realConnection: false,
+        instruction: "Download and run the Windows app to sync Tally data",
+        timestamp: new Date().toISOString()
       });
     }
   });
@@ -294,12 +298,28 @@ export function createTallySyncRoutes(storage: any) {
   // Add test-connection for frontend compatibility
   router.post('/test-connection', (req, res) => {
     console.log('✅ Frontend web connection test');
-    res.json({ 
-      success: true, 
-      message: "Web API connection working from frontend",
-      timestamp: new Date().toISOString(),
-      serverOnline: true
-    });
+    
+    // Check if we have any real Windows app connections
+    const hasRealConnection = connectedClients.size > 0;
+    
+    if (hasRealConnection) {
+      res.json({ 
+        success: true, 
+        message: "Windows app connected and ready",
+        timestamp: new Date().toISOString(),
+        serverOnline: true,
+        realConnection: true
+      });
+    } else {
+      res.status(200).json({ 
+        success: true, 
+        message: "Server ready - start Windows app for Tally connection",
+        timestamp: new Date().toISOString(),
+        serverOnline: true,
+        realConnection: false,
+        instruction: "Start TallySync.exe to connect to Tally ERP"
+      });
+    }
   });
 
   // Clear all fake data - keep only real Tally records
