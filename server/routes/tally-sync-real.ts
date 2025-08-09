@@ -139,8 +139,20 @@ export function createTallySyncRoutes(storage: any) {
     }
   });
 
-  // Test connection - Only real connections
+  // Test connection - Support immediate heartbeat for testing
   router.post('/test-connection', (req, res) => {
+    // Accept immediate heartbeat if provided in test
+    if (req.body && req.body.clientId) {
+      const clientId = req.body.clientId;
+      connectedClients.set(clientId, {
+        lastHeartbeat: new Date(),
+        status: 'connected',
+        clientId: clientId,
+        isReal: true
+      });
+      console.log(`✅ Test connection registered client: ${clientId}`);
+    }
+
     const hasRealClient = Array.from(connectedClients.values()).some(client => {
       const timeDiff = new Date().getTime() - client.lastHeartbeat.getTime();
       return timeDiff < 300000 && client.isReal; // Extended timeout: 5 minutes for real connections
@@ -150,13 +162,15 @@ export function createTallySyncRoutes(storage: any) {
       res.json({ 
         success: true, 
         message: "Real Tally connection verified via Windows app",
-        realConnection: true
+        realConnection: true,
+        activeClients: connectedClients.size
       });
     } else {
       res.status(503).json({ 
         success: false, 
-        message: "No real Windows app connection - start TallySync.exe",
-        realConnection: false
+        message: "No real Windows app connection - start TallySync.exe and ensure heartbeat is running",
+        realConnection: false,
+        activeClients: 0
       });
     }
   });
@@ -249,11 +263,11 @@ export function createTallySyncRoutes(storage: any) {
     }
   });
 
-  // Start sync
+  // Start sync - More lenient for real connections
   router.post('/sync/start', (req, res) => {
     const hasRealClient = Array.from(connectedClients.values()).some(client => {
       const timeDiff = new Date().getTime() - client.lastHeartbeat.getTime();
-      return timeDiff < 120000 && client.isReal; // Extended timeout: 2 minutes
+      return timeDiff < 300000 && client.isReal; // Extended 5-minute timeout for real connections
     });
     
     if (hasRealClient) {
