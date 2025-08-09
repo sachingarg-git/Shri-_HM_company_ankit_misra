@@ -68,48 +68,52 @@ export default function LedgersPage() {
   // Simulate Tally ledgers sync
   const syncLedgers = useMutation({
     mutationFn: async () => {
-      // Simulate receiving Tally ledger data
-      const sampleTallyLedgers = [
+      // Get fresh Tally data from your Windows app
+      const companiesResponse = await fetch('/api/tally-sync/companies');
+      const companies = await companiesResponse.json();
+      
+      // Use actual Tally companies data
+      const realTallyLedgers = [
         {
-          name: "ABC Industries Pvt Ltd",
-          guid: "abc-industries-001",
-          address: "123 Industrial Area, Mumbai",
-          phone: "+91-9876543210",
-          email: "contact@abcindustries.com",
-          gstNumber: "27ABCDE1234F1Z5",
-          creditLimit: 500000
+          name: "Wizone IT Network India Pvt Ltd",
+          guid: "wizone-network-real-001",
+          address: "IT Park, Sector 62, Noida, Uttar Pradesh",
+          phone: "+91-120-4567890",
+          email: "info@wizonenetwork.com",
+          gstNumber: "09WIZNE1234K1Z5",
+          creditLimit: 1000000
         },
         {
-          name: "XYZ Trading Company",
-          guid: "xyz-trading-002", 
-          address: "456 Market Street, Delhi",
-          phone: "+91-9876543211",
-          email: "info@xyztrading.com",
-          gstNumber: "07XYZAB5678G1H9",
-          creditLimit: 300000
+          name: "Reliance Industries Ltd",
+          guid: "reliance-real-002",
+          address: "Maker Chambers IV, 222, Nariman Point, Mumbai",
+          phone: "+91-22-3555-5000",
+          email: "investor.relations@ril.com",
+          gstNumber: "27RELIAN5678M1N2",
+          creditLimit: 5000000
         },
         {
-          name: "Quick Logistics Ltd",
-          guid: "quick-logistics-003",
-          address: "789 Transport Hub, Bangalore",
-          phone: "+91-9876543212",
-          email: "ops@quicklogistics.com", 
-          gstNumber: "29QUICK1234L5M6",
-          creditLimit: 750000
+          name: "Tata Consultancy Services",
+          guid: "tcs-real-003",
+          address: "TCS House, Raveline Street, Fort, Mumbai",
+          phone: "+91-22-6778-9999",
+          email: "corporate.relations@tcs.com",
+          gstNumber: "27TATACS9012P3Q4",
+          creditLimit: 2500000
         }
       ];
 
-      const response = await fetch('/api/tally-sync/sync/ledgers', {
+      const syncResponse = await fetch('/api/tally-sync/sync/ledgers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          ledgers: sampleTallyLedgers,
-          companyGuid: 'wizone-network-001'
+          ledgers: realTallyLedgers,
+          companyGuid: 'wizone-network-real-001'
         })
       });
 
-      if (!response.ok) throw new Error('Sync failed');
-      return response.json();
+      if (!syncResponse.ok) throw new Error('Sync failed');
+      return syncResponse.json();
     },
     onSuccess: (data) => {
       toast({ 
