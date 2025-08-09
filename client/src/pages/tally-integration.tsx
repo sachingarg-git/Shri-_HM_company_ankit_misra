@@ -306,12 +306,12 @@ export default function TallyIntegration() {
                       <SelectValue placeholder="Select company from Tally" />
                     </SelectTrigger>
                     <SelectContent>
-                      {companies?.map((company) => (
-                        <SelectItem key={company.guid} value={company.name}>
+                      {companies?.map((company, index) => (
+                        <SelectItem key={company.guid || `company-${index}`} value={company.name}>
                           {company.name}
                         </SelectItem>
                       )) || (
-                        <SelectItem value="no-companies" disabled>
+                        <SelectItem key="no-companies" value="no-companies" disabled>
                           Connect to Tally first
                         </SelectItem>
                       )}
