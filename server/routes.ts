@@ -792,8 +792,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { companyId } = req.query;
       const status = await storage.getTallyLastSyncStatus(companyId as string);
-      res.json(status);
+      res.json(status || []);
     } catch (error) {
+      console.error('Sync status error:', error);
       res.status(500).json({ message: "Failed to fetch sync status" });
     }
   });

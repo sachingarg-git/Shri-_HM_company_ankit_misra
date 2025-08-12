@@ -162,68 +162,63 @@ export const salesRates = pgTable("sales_rates", {
 export const tallyCompanies = pgTable("tally_companies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  gstin: text("gstin"),
-  externalId: text("external_id").notNull().unique(), // Tally company identifier
-  apiKey: text("api_key").notNull(), // Hashed API key for this company
-  isActive: boolean("is_active").notNull().default(true),
-  lastSync: timestamp("last_sync"),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  externalId: text("externalid").notNull().unique(), // Tally company identifier
+  apiKey: text("apikey").notNull(), // Hashed API key for this company
+  endpointUrl: text("endpointurl"), // Tally endpoint URL
+  createdAt: timestamp("createdat").notNull().default(sql`now()`),
 });
 
 // Tally Ledgers table
 export const tallyLedgers = pgTable("tally_ledgers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => tallyCompanies.id),
+  companyId: varchar("companyid").notNull().references(() => tallyCompanies.id),
   name: text("name").notNull(),
-  groupName: text("group_name"),
-  closingBalance: decimal("closing_balance", { precision: 15, scale: 2 }),
-  externalId: text("external_id"), // Tally ledger identifier
-  rawData: text("raw_data"), // JSON string of raw Tally data
-  modifiedAt: timestamp("modified_at").notNull().default(sql`now()`),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  externalId: text("externalid"), // Tally ledger identifier
+  ledgerType: text("ledgertype"),
+  parentLedger: text("parentledger"),
+  openingBalance: decimal("openingbalance", { precision: 15, scale: 2 }),
+  closingBalance: decimal("closingbalance", { precision: 15, scale: 2 }),
+  createdAt: timestamp("createdat").notNull().default(sql`now()`),
+  modifiedAt: timestamp("modifiedat").notNull().default(sql`now()`),
 });
 
 // Tally Stock Items table
 export const tallyStockItems = pgTable("tally_stock_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => tallyCompanies.id),
+  companyId: varchar("companyid").notNull().references(() => tallyCompanies.id),
   name: text("name").notNull(),
+  externalId: text("externalid"), // Tally stock item identifier
   unit: text("unit"),
-  openingBalance: decimal("opening_balance", { precision: 15, scale: 3 }),
-  closingBalance: decimal("closing_balance", { precision: 15, scale: 3 }),
-  externalId: text("external_id"), // Tally stock item identifier
-  rawData: text("raw_data"), // JSON string of raw Tally data
-  modifiedAt: timestamp("modified_at").notNull().default(sql`now()`),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  openingQuantity: decimal("openingquantity", { precision: 15, scale: 3 }),
+  closingQuantity: decimal("closingquantity", { precision: 15, scale: 3 }),
+  createdAt: timestamp("createdat").notNull().default(sql`now()`),
+  modifiedAt: timestamp("modifiedat").notNull().default(sql`now()`),
 });
 
 // Tally Vouchers table
 export const tallyVouchers = pgTable("tally_vouchers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => tallyCompanies.id),
-  voucherType: text("voucher_type").notNull(),
-  voucherNumber: text("voucher_number").notNull(),
+  companyId: varchar("companyid").notNull().references(() => tallyCompanies.id),
+  voucherNumber: text("vouchernumber").notNull(),
+  voucherType: text("vouchertype").notNull(),
   date: timestamp("date").notNull(),
-  party: text("party"),
+  partyName: text("partyname"),
   amount: decimal("amount", { precision: 15, scale: 2 }),
-  hash: text("hash").notNull().unique(), // Unique hash for deduplication
-  externalId: text("external_id"), // Tally voucher identifier
-  rawData: text("raw_data"), // JSON string of raw Tally data
-  modifiedAt: timestamp("modified_at").notNull().default(sql`now()`),
-  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  createdAt: timestamp("createdat").notNull().default(sql`now()`),
+  modifiedAt: timestamp("modifiedat").notNull().default(sql`now()`),
 });
 
 // Tally Sync Logs table
 export const tallySyncLogs = pgTable("tally_sync_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").references(() => tallyCompanies.id),
+  companyId: varchar("companyid").references(() => tallyCompanies.id),
   entity: text("entity").notNull(), // Companies, Ledgers, StockItems, Vouchers
-  recordsReceived: integer("records_received").notNull().default(0),
-  recordsAccepted: integer("records_accepted").notNull().default(0),
-  recordsFailed: integer("records_failed").notNull().default(0),
-  errorMessages: text("error_messages"), // JSON array of error messages
-  syncStatus: text("sync_status").notNull().default('SUCCESS'), // SUCCESS, PARTIAL, FAILED
-  receivedAt: timestamp("received_at").notNull().default(sql`now()`),
+  recordsReceived: integer("recordsreceived").notNull().default(0),
+  recordsAccepted: integer("recordsaccepted").notNull().default(0),
+  recordsFailed: integer("recordsfailed").notNull().default(0),
+  errorDetails: text("errordetails"), // JSON array of error messages
+  syncStatus: text("syncstatus").notNull().default('SUCCESS'), // SUCCESS, PARTIAL, FAILED
+  receivedAt: timestamp("receivedat").notNull().default(sql`now()`),
 });
 
 // Relations

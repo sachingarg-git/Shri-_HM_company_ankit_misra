@@ -552,8 +552,12 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(tallyVouchers).where(eq(tallyVouchers.companyId, companyId)).orderBy(desc(tallyVouchers.date));
   }
 
-  async getTallyVoucherByHash(hash: string): Promise<TallyVoucher | undefined> {
-    const [voucher] = await db.select().from(tallyVouchers).where(eq(tallyVouchers.hash, hash));
+  async getTallyVoucherByNumber(companyId: string, voucherNumber: string): Promise<TallyVoucher | undefined> {
+    const [voucher] = await db.select().from(tallyVouchers)
+      .where(and(
+        eq(tallyVouchers.companyId, companyId),
+        eq(tallyVouchers.voucherNumber, voucherNumber)
+      ));
     return voucher || undefined;
   }
 
@@ -563,16 +567,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertTallyVoucher(voucherData: InsertTallyVoucher): Promise<TallyVoucher> {
-    const existing = await this.getTallyVoucherByHash(voucherData.hash);
+    // Try to find existing voucher by company and voucher number
+    const existing = await db.select().from(tallyVouchers)
+      .where(and(
+        eq(tallyVouchers.companyId, voucherData.companyId),
+        eq(tallyVouchers.voucherNumber, voucherData.voucherNumber)
+      ))
+      .limit(1);
 
-    if (existing) {
-      const [updated] = await db.update(tallyVouchers)
+    if (existing.length > 0) {
+      const [voucher] = await db.update(tallyVouchers)
         .set({ ...voucherData, modifiedAt: sql`now()` })
-        .where(eq(tallyVouchers.id, existing.id))
+        .where(eq(tallyVouchers.id, existing[0].id))
         .returning();
-      return updated;
+      return voucher;
     } else {
-      return this.createTallyVoucher(voucherData);
+      const [voucher] = await db.insert(tallyVouchers).values(voucherData).returning();
+      return voucher;
     }
   }
 
