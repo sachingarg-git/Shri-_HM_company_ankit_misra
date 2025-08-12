@@ -23,41 +23,64 @@ namespace TallySync
             try
             {
                 btnConnect.Enabled = false;
-                lblStatus.Text = "Connecting to backend...";
+                lblStatus.Text = "Testing backend connection...";
                 lblStatus.ForeColor = Color.Blue;
 
-                // Test connection by fetching companies
-                var response = await httpClient.GetAsync($"{baseUrl}/companies");
+                // First test basic connectivity
+                var testResponse = await httpClient.GetAsync($"{baseUrl}/test");
                 
-                if (response.IsSuccessStatusCode)
+                if (!testResponse.IsSuccessStatusCode)
                 {
-                    var content = await response.Content.ReadAsStringAsync();
-                    var companies = JsonSerializer.Deserialize<dynamic>(content);
+                    lblStatus.Text = $"Backend test failed: {testResponse.StatusCode}";
+                    lblStatus.ForeColor = Color.Red;
+                    return;
+                }
+
+                lblStatus.Text = "Fetching companies...";
+                
+                // Then fetch companies
+                var companiesResponse = await httpClient.GetAsync($"{baseUrl}/companies");
+                
+                if (companiesResponse.IsSuccessStatusCode)
+                {
+                    var content = await companiesResponse.Content.ReadAsStringAsync();
                     
-                    lblStatus.Text = $"Connected successfully! Found {((object[])companies).Length} companies.";
-                    lblStatus.ForeColor = Color.Green;
+                    if (string.IsNullOrEmpty(content) || content.Trim() == "[]")
+                    {
+                        lblStatus.Text = "Connected successfully! No companies found.";
+                        lblStatus.ForeColor = Color.Green;
+                        listCompanies.Items.Clear();
+                        listCompanies.Items.Add("No companies registered yet");
+                    }
+                    else
+                    {
+                        var companies = JsonSerializer.Deserialize<JsonElement[]>(content);
+                        
+                        lblStatus.Text = $"Connected successfully! Found {companies.Length} companies.";
+                        lblStatus.ForeColor = Color.Green;
+                        
+                        // Display companies in list
+                        listCompanies.Items.Clear();
+                        foreach (var company in companies)
+                        {
+                            var name = company.GetProperty("name").GetString();
+                            var id = company.GetProperty("id").GetString();
+                            listCompanies.Items.Add($"{name} ({id})");
+                        }
+                    }
                     
                     btnSyncData.Enabled = true;
-                    
-                    // Display companies in list
-                    listCompanies.Items.Clear();
-                    foreach (var company in (object[])companies)
-                    {
-                        var companyObj = (JsonElement)company;
-                        var name = companyObj.GetProperty("name").GetString();
-                        var id = companyObj.GetProperty("id").GetString();
-                        listCompanies.Items.Add($"{name} ({id})");
-                    }
                 }
                 else
                 {
-                    lblStatus.Text = $"Connection failed: {response.StatusCode}";
+                    var errorContent = await companiesResponse.Content.ReadAsStringAsync();
+                    lblStatus.Text = $"Companies fetch failed: {companiesResponse.StatusCode} - {errorContent}";
                     lblStatus.ForeColor = Color.Red;
                 }
             }
             catch (Exception ex)
             {
-                lblStatus.Text = $"Error: {ex.Message}";
+                lblStatus.Text = $"Connection error: {ex.Message}";
                 lblStatus.ForeColor = Color.Red;
             }
             finally
@@ -71,10 +94,11 @@ namespace TallySync
             try
             {
                 btnSyncData.Enabled = false;
-                lblStatus.Text = "Syncing data to backend...";
+                lblStatus.Text = "Preparing sync data...";
                 lblStatus.ForeColor = Color.Blue;
 
-                // Create sample Tally data to sync
+                // Create sample Tally data to sync with timestamp for uniqueness
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
                 var syncData = new
                 {
                     apiKey = "test-api-key-123",
@@ -82,30 +106,45 @@ namespace TallySync
                     {
                         new
                         {
-                            name = "Test Company from Desktop",
-                            externalId = "DESKTOP001",
-                            apiKey = "desktop-sync-key"
+                            name = $"TallySync Desktop App - {timestamp}",
+                            externalId = $"DESKTOP_{timestamp}",
+                            apiKey = $"desktop-sync-key-{timestamp}"
                         }
                     }
                 };
 
+                lblStatus.Text = "Sending data to backend...";
+                
                 var json = JsonSerializer.Serialize(syncData);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                 var response = await httpClient.PostAsync($"{baseUrl}/sync/companies", content);
+                var responseContent = await response.Content.ReadAsStringAsync();
                 
                 if (response.IsSuccessStatusCode)
                 {
-                    lblStatus.Text = "Data synced successfully!";
-                    lblStatus.ForeColor = Color.Green;
+                    // Parse the response to get details
+                    var result = JsonSerializer.Deserialize<JsonElement>(responseContent);
+                    var success = result.GetProperty("success").GetBoolean();
                     
-                    // Refresh companies list
-                    btnConnect_Click(sender, e);
+                    if (success)
+                    {
+                        lblStatus.Text = "Sample company data synced successfully!";
+                        lblStatus.ForeColor = Color.Green;
+                        
+                        // Refresh companies list after a short delay
+                        await Task.Delay(500);
+                        btnConnect_Click(sender, e);
+                    }
+                    else
+                    {
+                        lblStatus.Text = "Sync completed with errors. Check response details.";
+                        lblStatus.ForeColor = Color.Orange;
+                    }
                 }
                 else
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    lblStatus.Text = $"Sync failed: {response.StatusCode} - {errorContent}";
+                    lblStatus.Text = $"Sync failed: {response.StatusCode} - {responseContent}";
                     lblStatus.ForeColor = Color.Red;
                 }
             }

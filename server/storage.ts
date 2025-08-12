@@ -599,25 +599,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(tallySyncLogs.receivedAt));
   }
 
-  async getTallyLastSyncStatus(companyId?: string): Promise<any> {
-    let query = db.select({
-      companyId: tallySyncLogs.companyId,
-      entity: tallySyncLogs.entity,
-      lastSync: sql<Date>`MAX(${tallySyncLogs.receivedAt})`,
-      totalReceived: sql<number>`SUM(${tallySyncLogs.recordsReceived})`,
-      totalAccepted: sql<number>`SUM(${tallySyncLogs.recordsAccepted})`,
-      totalFailed: sql<number>`SUM(${tallySyncLogs.recordsFailed})`,
-      lastStatus: tallySyncLogs.syncStatus
-    }).from(tallySyncLogs);
+  async getTallyLastSyncStatus(companyId?: string): Promise<any[]> {
+    let query = db.select().from(tallySyncLogs);
 
     if (companyId) {
       query = query.where(eq(tallySyncLogs.companyId, companyId));
     }
 
-    const results = await query
-      .groupBy(tallySyncLogs.companyId, tallySyncLogs.entity)
-      .orderBy(desc(sql`MAX(${tallySyncLogs.receivedAt})`));
-
+    const results = await query.orderBy(desc(tallySyncLogs.receivedAt)).limit(10);
     return results;
   }
 }

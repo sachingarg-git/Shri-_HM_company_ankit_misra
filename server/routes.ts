@@ -605,6 +605,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint for Windows app connectivity
+  app.get("/api/tally/test", async (req, res) => {
+    res.json({ 
+      status: "ok", 
+      message: "Tally integration backend is running",
+      timestamp: new Date().toISOString(),
+      endpoints: [
+        "GET /api/tally/companies",
+        "POST /api/tally/sync/companies",
+        "GET /api/tally/sync/status"
+      ]
+    });
+  });
+
   // Tally Sync API (for desktop app to send data)
   app.post("/api/tally/sync/companies", async (req, res) => {
     try {
@@ -627,7 +641,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const company = await storage.createTallyCompany(validatedData);
           results.push({ success: true, company });
         } catch (error) {
-          results.push({ success: false, error: error.message, data: companyData });
+          results.push({ success: false, error: error instanceof Error ? error.message : 'Unknown error', data: companyData });
         }
       }
 
@@ -644,7 +658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, results });
     } catch (error) {
-      res.status(500).json({ message: "Failed to sync companies", error: error.message });
+      res.status(500).json({ message: "Failed to sync companies", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -676,7 +690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           results.push({ success: true, ledger });
         } catch (error) {
-          results.push({ success: false, error: error.message, data: ledgerData });
+          results.push({ success: false, error: error instanceof Error ? error.message : 'Unknown error', data: ledgerData });
         }
       }
 
@@ -692,7 +706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, results });
     } catch (error) {
-      res.status(500).json({ message: "Failed to sync ledgers", error: error.message });
+      res.status(500).json({ message: "Failed to sync ledgers", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -723,7 +737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           results.push({ success: true, stockItem });
         } catch (error) {
-          results.push({ success: false, error: error.message, data: stockItemData });
+          results.push({ success: false, error: error instanceof Error ? error.message : 'Unknown error', data: stockItemData });
         }
       }
 
@@ -739,7 +753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, results });
     } catch (error) {
-      res.status(500).json({ message: "Failed to sync stock items", error: error.message });
+      res.status(500).json({ message: "Failed to sync stock items", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -767,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const voucher = await storage.upsertTallyVoucher(validatedData);
           results.push({ success: true, voucher });
         } catch (error) {
-          results.push({ success: false, error: error.message, data: voucherData });
+          results.push({ success: false, error: error instanceof Error ? error.message : 'Unknown error', data: voucherData });
         }
       }
 
@@ -783,7 +797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ success: true, results });
     } catch (error) {
-      res.status(500).json({ message: "Failed to sync vouchers", error: error.message });
+      res.status(500).json({ message: "Failed to sync vouchers", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
