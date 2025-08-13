@@ -1,0 +1,48 @@
+[!TDL Version]
+6.6.0
+
+[Report: POC Export Items]
+Form        : POC Request XML
+Use         : Name Muster
+
+[Collection: POC Export Items]
+Type        : Stock Items
+Remote URL  : @@POCWebURL
+Remote Request : POCExportItems:ASCII
+XML Object Path : IM:1:TallyRequest
+
+[Part: POC Request Data]
+Lines       : POC Request Type, POC Request CoName, POC Request GUID
+Scroll      : Vertical
+
+[Line: POC Request Type]
+Fields      : Name Field
+Local       : Field : Name Field : Set As : "GetIM"
+Local       : Field : Name Field : XMLTag : "TYPE"
+
+[Line: POC Request CoName]
+Fields      : Name Field
+Local       : Field : Name Field : Set As : ##SVCurrentCompany
+Local       : Field : Name Field : XMLTag : "COMPANY NAME"
+
+[Line: POC Request GUID]
+Fields      : Name Field
+Local       : Field : Name Field : Set As : $GUID:Company:##SVCurrentCompany
+Local       : Field : Name Field : XMLTag : "COMPANY GUID"
+
+[Form: POC Request XML]
+Parts       : POC Tally Request
+
+[Part: POC Tally Request]
+Parts       : POC Request Data
+XMLTAG      : "TALLYREQUEST"
+
+[Function: POCExportItems]
+Parameter   : Company Name : Text
+Parameter   : Company GUID : Text
+Parameter   : Request Type : Text
+
+01 : HTTP Post URL : @@POCWebURL
+02 : HTTP Post Data : "<ENVELOPE><HEADER><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Data</TYPE><ID>ExportStockItems</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT></STATICVARIABLES></DESC><DATA><TALLYMESSAGE><STOCKITEM><COMPANYNAME>" + ##Company Name + "</COMPANYNAME><COMPANYGUID>" + ##Company GUID + "</COMPANYGUID><REQUESTTYPE>" + ##Request Type + "</REQUESTTYPE></STOCKITEM></TALLYMESSAGE></DATA></BODY></ENVELOPE>"
+03 : Set : DSP FILE : "POCExportResult.xml"
+04 : Import : Data

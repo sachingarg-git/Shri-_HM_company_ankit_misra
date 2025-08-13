@@ -74,12 +74,29 @@ export class TallyXMLHandler {
           return this.handleCompanyInfoRequest();
         }
         
+        if (header.TYPE === 'Data' && header.ID === 'TestConnection') {
+          return this.handleTestConnection();
+        }
+        
         if (header.TYPE === 'Import' && header.ID === 'ImportData') {
           return await this.handleDataImport(parsedXML.ENVELOPE.BODY);
         }
         
         if (header.TYPE === 'Export' && header.ID === 'ExportData') {
           return await this.handleDataExport(parsedXML.ENVELOPE.BODY);
+        }
+
+        // Handle specific export requests from TDL
+        if (header.TYPE === 'Data' && header.ID === 'ExportStockItems') {
+          return await this.handleStockItemsExport(parsedXML.ENVELOPE.BODY);
+        }
+
+        if (header.TYPE === 'Data' && header.ID === 'ExportLedgers') {
+          return await this.handleLedgersExport(parsedXML.ENVELOPE.BODY);
+        }
+
+        if (header.TYPE === 'Data' && header.ID === 'ExportVouchers') {
+          return await this.handleVouchersExport(parsedXML.ENVELOPE.BODY);
         }
       }
 
@@ -137,6 +154,211 @@ export class TallyXMLHandler {
     };
 
     return this.xmlBuilder.build(response);
+  }
+
+  private handleTestConnection(): string {
+    const response = {
+      ENVELOPE: {
+        HEADER: {
+          VERSION: '1',
+          TALLYREQUEST: 'Export',
+          TYPE: 'Data',
+          ID: 'TestConnectionResponse'
+        },
+        BODY: {
+          DATA: {
+            TALLYMESSAGE: {
+              STATUS: 'Connected',
+              MESSAGE: 'TallySync server is ready and accessible',
+              TIMESTAMP: new Date().toISOString(),
+              SERVERINFO: {
+                NAME: 'TallySync Integration Server',
+                VERSION: '1.0.0',
+                URL: 'https://your-repl-url.repl.co'
+              }
+            }
+          }
+        }
+      }
+    };
+
+    return this.xmlBuilder.build(response);
+  }
+
+  private async handleStockItemsExport(body: any): Promise<string> {
+    try {
+      console.log('Handling Stock Items Export:', JSON.stringify(body, null, 2));
+      
+      // Get all stock items from database 
+      const stockItems = await db.select().from(tallyStockItems);
+      
+      const response = {
+        ENVELOPE: {
+          HEADER: {
+            VERSION: '1',
+            TALLYREQUEST: 'Export', 
+            TYPE: 'Data',
+            ID: 'ExportStockItemsResponse'
+          },
+          BODY: {
+            DESC: {
+              STATICVARIABLES: {
+                SVEXPORTFORMAT: '$$SysName:XML'
+              }
+            },
+            DATA: {
+              TALLYMESSAGE: {
+                '@xmlns:UDF': 'TallyUDF',
+                STOCKITEM: stockItems.map(item => ({
+                  '@NAME': item.name,
+                  '@GUID': item.externalId,
+                  PARENT: item.group,
+                  BASEUNITS: item.unit,
+                  OPENINGBALANCE: item.openingQuantity,
+                  CLOSINGBALANCE: item.closingQuantity,
+                  'NAME.LIST': {
+                    NAME: item.name
+                  }
+                }))
+              }
+            }
+          }
+        }
+      };
+
+      await this.logSyncOperation('stock-export', 'STOCK_EXPORT', 'SUCCESS', stockItems.length);
+      return this.xmlBuilder.build(response);
+
+    } catch (error: any) {
+      console.error('Stock Items Export error:', error);
+      await this.logSyncError('stock-export', 'STOCK_EXPORT', error.message);
+      return this.createErrorResponse(`Stock Items Export failed: ${error.message}`);
+    }
+  }
+
+  private async handleLedgersExport(body: any): Promise<string> {
+    try {
+      console.log('Handling Ledgers Export:', JSON.stringify(body, null, 2));
+      
+      // Get all ledgers from database
+      const ledgers = await db.select().from(tallyLedgers);
+      
+      const response = {
+        ENVELOPE: {
+          HEADER: {
+            VERSION: '1',
+            TALLYREQUEST: 'Export',
+            TYPE: 'Data', 
+            ID: 'ExportLedgersResponse'
+          },
+          BODY: {
+            DESC: {
+              STATICVARIABLES: {
+                SVEXPORTFORMAT: '$$SysName:XML'
+              }
+            },
+            DATA: {
+              TALLYMESSAGE: {
+                '@xmlns:UDF': 'TallyUDF',
+                LEDGER: ledgers.map(ledger => ({
+                  '@NAME': ledger.name,
+                  '@GUID': ledger.externalId,
+                  PARENT: ledger.group,
+                  OPENINGBALANCE: ledger.openingBalance.toString(),
+                  CLOSINGBALANCE: ledger.closingBalance.toString(),
+                  'NAME.LIST': {
+                    NAME: ledger.name
+                  }
+                }))
+              }
+            }
+          }
+        }
+      };
+
+      await this.logSyncOperation('ledger-export', 'LEDGER_EXPORT', 'SUCCESS', ledgers.length);
+      return this.xmlBuilder.build(response);
+
+    } catch (error: any) {
+      console.error('Ledgers Export error:', error);
+      await this.logSyncError('ledger-export', 'LEDGER_EXPORT', error.message);
+      return this.createErrorResponse(`Ledgers Export failed: ${error.message}`);
+    }
+  }
+
+  private async handleVouchersExport(body: any): Promise<string> {
+    try {
+      console.log('Handling Vouchers Export:', JSON.stringify(body, null, 2));
+      
+      // Get all vouchers from database
+      const vouchers = await db.select().from(tallyVouchers);
+      
+      const response = {
+        ENVELOPE: {
+          HEADER: {
+            VERSION: '1',
+            TALLYREQUEST: 'Export',
+            TYPE: 'Data',
+            ID: 'ExportVouchersResponse'
+          },
+          BODY: {
+            DESC: {
+              STATICVARIABLES: {
+                SVEXPORTFORMAT: '$$SysName:XML'
+              }
+            },
+            DATA: {
+              TALLYMESSAGE: {
+                '@xmlns:UDF': 'TallyUDF', 
+                VOUCHER: vouchers.map(voucher => ({
+                  '@NAME': voucher.voucherNumber,
+                  '@GUID': voucher.externalId,
+                  VOUCHERTYPE: voucher.voucherType,
+                  DATE: voucher.date.toISOString().split('T')[0],
+                  AMOUNT: voucher.amount,
+                  NARRATION: voucher.narration,
+                  'VOUCHERNUMBER': voucher.voucherNumber
+                }))
+              }
+            }
+          }
+        }
+      };
+
+      await this.logSyncOperation('voucher-export', 'VOUCHER_EXPORT', 'SUCCESS', vouchers.length);
+      return this.xmlBuilder.build(response);
+
+    } catch (error: any) {
+      console.error('Vouchers Export error:', error);
+      await this.logSyncError('voucher-export', 'VOUCHER_EXPORT', error.message);
+      return this.createErrorResponse(`Vouchers Export failed: ${error.message}`);
+    }
+  }
+
+  private createErrorResponse(message: string): string {
+    const errorResponse = {
+      ENVELOPE: {
+        HEADER: {
+          VERSION: '1',
+          TALLYREQUEST: 'Export',
+          TYPE: 'Data',
+          ID: 'ErrorResponse'
+        },
+        BODY: {
+          DATA: {
+            TALLYMESSAGE: {
+              LINEERROR: {
+                '@ERRORCODE': '1',
+                '@DESCRIPTION': message,
+                '@STATUS': 'Error'
+              }
+            }
+          }
+        }
+      }
+    };
+
+    return this.xmlBuilder.build(errorResponse);
   }
 
   private async handleDataImport(body: any): Promise<string> {

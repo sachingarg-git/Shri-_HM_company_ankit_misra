@@ -1,0 +1,181 @@
+[!TDL Version]
+6.6.0
+
+;; ============================================================================
+;; TallySync Integration TDL - Complete Tally to Web Server Integration
+;; ============================================================================
+
+;; System Variables
+[System: Variable]
+POCWebURL       : "https://95b1-00-1v0xfgt7ngd5p.pike.replit.dev/tally"
+TallySyncURL    : "https://95b1-00-1v0xfgt7ngd5p.pike.replit.dev/tally"
+
+;; ============================================================================
+;; STOCK ITEMS EXPORT
+;; ============================================================================
+
+[Report: TallySync Export StockItems]
+Form            : TallySync Request Form
+Use             : Name Muster
+Title           : "TallySync - Export Stock Items"
+
+[Collection: TallySync Export StockItems]
+Type            : Stock Items
+Remote URL      : @@TallySyncURL  
+Remote Request  : TallySyncExportItems:ASCII
+XML Object Path : IM:1:TallyRequest
+
+[Function: TallySyncExportItems]
+Parameter       : Company Name : Text
+Parameter       : Company GUID : Text  
+Parameter       : Request Type : Text
+
+01 : HTTP Post URL      : @@TallySyncURL
+02 : HTTP Post Data     : "<ENVELOPE><HEADER><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Data</TYPE><ID>ExportStockItems</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT></STATICVARIABLES></DESC><DATA><TALLYMESSAGE><STOCKITEM ACTION=\"Create\"><NAME.LIST><NAME>##Company Name</NAME></NAME.LIST><COMPANYNAME>##Company Name</COMPANYNAME><COMPANYGUID>##Company GUID</COMPANYGUID><REQUESTTYPE>##Request Type</REQUESTTYPE></STOCKITEM></TALLYMESSAGE></DATA></BODY></ENVELOPE>"
+03 : Set                : DSP FILE : "TallySyncStockResult.xml"
+04 : Import             : Data
+
+;; ============================================================================
+;; LEDGERS EXPORT  
+;; ============================================================================
+
+[Report: TallySync Export Ledgers]
+Form            : TallySync Request Form
+Use             : Name Muster
+Title           : "TallySync - Export Ledgers"
+
+[Collection: TallySync Export Ledgers]
+Type            : Ledger
+Remote URL      : @@TallySyncURL
+Remote Request  : TallySyncExportLedgers:ASCII  
+XML Object Path : AC:1:TallyRequest
+
+[Function: TallySyncExportLedgers]
+Parameter       : Company Name : Text
+Parameter       : Company GUID : Text
+Parameter       : Request Type : Text
+
+01 : HTTP Post URL      : @@TallySyncURL
+02 : HTTP Post Data     : "<ENVELOPE><HEADER><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Data</TYPE><ID>ExportLedgers</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT></STATICVARIABLES></DESC><DATA><TALLYMESSAGE><LEDGER ACTION=\"Create\"><NAME.LIST><NAME>##Company Name</NAME></NAME.LIST><COMPANYNAME>##Company Name</COMPANYNAME><COMPANYGUID>##Company GUID</COMPANYGUID><REQUESTTYPE>##Request Type</REQUESTTYPE></LEDGER></TALLYMESSAGE></DATA></BODY></ENVELOPE>"
+03 : Set                : DSP FILE : "TallySyncLedgerResult.xml"  
+04 : Import             : Data
+
+;; ============================================================================
+;; VOUCHERS EXPORT
+;; ============================================================================
+
+[Report: TallySync Export Vouchers]
+Form            : TallySync Request Form
+Use             : Name Muster  
+Title           : "TallySync - Export Vouchers"
+
+[Collection: TallySync Export Vouchers]
+Type            : Voucher
+Filter          : TallySyncVoucherFilter
+Remote URL      : @@TallySyncURL
+Remote Request  : TallySyncExportVouchers:ASCII
+XML Object Path : TR:1:TallyRequest
+
+[System: Filter]
+TallySyncVoucherFilter : $Date >= ##SVFromDate AND $Date <= ##SVToDate
+
+[Function: TallySyncExportVouchers]
+Parameter       : Company Name : Text
+Parameter       : Company GUID : Text
+Parameter       : From Date : Date
+Parameter       : To Date : Date
+
+01 : HTTP Post URL      : @@TallySyncURL  
+02 : HTTP Post Data     : "<ENVELOPE><HEADER><TALLYREQUEST>Export</TALLYREQUEST><TYPE>Data</TYPE><ID>ExportVouchers</ID></HEADER><BODY><DESC><STATICVARIABLES><SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT><SVFROMDATE>##From Date</SVFROMDATE><SVTODATE>##To Date</SVTODATE></STATICVARIABLES></DESC><DATA><TALLYMESSAGE><VOUCHER ACTION=\"Create\"><COMPANYNAME>##Company Name</COMPANYNAME><COMPANYGUID>##Company GUID</COMPANYGUID><FROMDATE>##From Date</FROMDATE><TODATE>##To Date</TODATE></VOUCHER></TALLYMESSAGE></DATA></BODY></ENVELOPE>"
+03 : Set                : DSP FILE : "TallySyncVoucherResult.xml"
+04 : Import             : Data
+
+;; ============================================================================
+;; COMMON FORMS AND PARTS
+;; ============================================================================
+
+[Form: TallySync Request Form]
+Parts           : TallySync Request Part
+Width           : 100% Page
+Height          : 100% Page
+
+[Part: TallySync Request Part]  
+Lines           : TallySync Request Type, TallySync Request Company, TallySync Request GUID
+Scroll          : Vertical
+XMLTag          : "TALLYREQUEST"
+
+[Line: TallySync Request Type]
+Fields          : Name Field
+Local           : Field : Name Field : Set As : "EXPORT"
+Local           : Field : Name Field : XMLTag : "TYPE"
+
+[Line: TallySync Request Company]  
+Fields          : Name Field
+Local           : Field : Name Field : Set As : ##SVCurrentCompany
+Local           : Field : Name Field : XMLTag : "COMPANYNAME"
+
+[Line: TallySync Request GUID]
+Fields          : Name Field  
+Local           : Field : Name Field : Set As : $GUID:Company:##SVCurrentCompany
+Local           : Field : Name Field : XMLTag : "COMPANYGUID"
+
+;; ============================================================================
+;; MENU INTEGRATION
+;; ============================================================================
+
+[#Menu: Gateway of Tally]
+Add             : Item : "TallySync Integration" : Call : TallySyncMenu
+
+[Menu: TallySyncMenu]
+Item            : "Export Stock Items"      : Call : TallySyncExportStockItems
+Item            : "Export Ledgers"          : Call : TallySyncExportLedgers  
+Item            : "Export Vouchers"         : Call : TallySyncExportVouchers
+Item            : "Sync All Data"           : Call : TallySyncExportAll
+Item            : "Test Connection"         : Call : TallySyncTestConnection
+
+;; ============================================================================
+;; ACTION FUNCTIONS  
+;; ============================================================================
+
+[Function: TallySyncExportStockItems]
+001 : Call      : TallySyncExportItems : ##SVCurrentCompany : $GUID:Company:##SVCurrentCompany : "STOCKITEMS"
+002 : New Line
+003 : Display   : "Stock Items exported to TallySync server successfully!"
+
+[Function: TallySyncExportLedgers]  
+001 : Call      : TallySyncExportLedgers : ##SVCurrentCompany : $GUID:Company:##SVCurrentCompany : "LEDGERS"  
+002 : New Line
+003 : Display   : "Ledgers exported to TallySync server successfully!"
+
+[Function: TallySyncExportVouchers]
+001 : Set       : SVFromDate : ##SVFromDate  
+002 : Set       : SVToDate   : ##SVToDate
+003 : Call      : TallySyncExportVouchers : ##SVCurrentCompany : $GUID:Company:##SVCurrentCompany : ##SVFromDate : ##SVToDate
+004 : New Line  
+005 : Display   : "Vouchers exported to TallySync server successfully!"
+
+[Function: TallySyncExportAll]
+001 : Call      : TallySyncExportStockItems
+002 : Call      : TallySyncExportLedgers
+003 : Call      : TallySyncExportVouchers  
+004 : New Line
+005 : Display   : "All data exported to TallySync server successfully!"
+
+[Function: TallySyncTestConnection]
+001 : HTTP Post URL      : @@TallySyncURL
+002 : HTTP Post Data     : "<ENVELOPE><HEADER><TYPE>Data</TYPE><ID>TestConnection</ID></HEADER><BODY><TALLYMESSAGE><TEST>Connection Test</TEST></TALLYMESSAGE></BODY></ENVELOPE>"
+003 : New Line
+004 : Display            : "Connection test completed!"
+
+;; ============================================================================
+;; ERROR HANDLING
+;; ============================================================================
+
+[System: Formula]  
+TallySyncStatus : if ##HTTPResponseCode = 200 then "Success" else "Failed"
+
+[Function: TallySyncErrorHandler]
+Parameter       : Error Message : Text
+001 : New Line
+002 : Display   : "TallySync Error: " + ##Error Message  
+003 : New Line
