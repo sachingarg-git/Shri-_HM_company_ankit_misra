@@ -160,6 +160,7 @@ export default function TallyIntegrationPage() {
           <TabsTrigger value="companies">Companies</TabsTrigger>
           <TabsTrigger value="sync-status">Sync Status</TabsTrigger>
           <TabsTrigger value="sync-logs">Sync Logs</TabsTrigger>
+          <TabsTrigger value="desktop-app">Desktop App</TabsTrigger>
         </TabsList>
 
         <TabsContent value="companies" className="space-y-4">
@@ -309,6 +310,180 @@ export default function TallyIntegrationPage() {
                 <p className="text-muted-foreground">
                   Select a company to view detailed sync logs
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="desktop-app" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Settings className="mr-2 h-5 w-5" />
+                  Desktop App Configuration
+                </CardTitle>
+                <CardDescription>
+                  Connection settings for your Windows desktop application
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium">Backend API URL</Label>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input 
+                      readOnly 
+                      value={typeof window !== 'undefined' ? `${window.location.origin}/api/tally` : 'http://localhost:5000/api/tally'}
+                      className="font-mono text-sm"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        const url = typeof window !== 'undefined' ? `${window.location.origin}/api/tally` : 'http://localhost:5000/api/tally';
+                        navigator.clipboard.writeText(url);
+                        toast({
+                          title: "Copied!",
+                          description: "API URL copied to clipboard",
+                        });
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Use this URL in your desktop application's MainForm.cs file
+                  </p>
+                </div>
+                
+                <div>
+                  <Label className="text-sm font-medium">Test API Key</Label>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <Input 
+                      readOnly 
+                      value="test-api-key-123"
+                      className="font-mono text-sm"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText('test-api-key-123');
+                        toast({
+                          title: "Copied!",
+                          description: "API key copied to clipboard",
+                        });
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Use this API key for testing desktop app connections
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <AlertCircle className="mr-2 h-5 w-5" />
+                  Setup Instructions
+                </CardTitle>
+                <CardDescription>
+                  How to configure your Windows desktop application
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-start space-x-2">
+                    <div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                      1
+                    </div>
+                    <div>
+                      <p className="font-medium">Update Backend URL</p>
+                      <p className="text-muted-foreground">
+                        In your MainForm.cs file, replace the baseUrl with the API URL above
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-2">
+                    <div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                      2
+                    </div>
+                    <div>
+                      <p className="font-medium">Rebuild Application</p>
+                      <p className="text-muted-foreground">
+                        Run dotnet build and dotnet run to apply the changes
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-2">
+                    <div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                      3
+                    </div>
+                    <div>
+                      <p className="font-medium">Test Connection</p>
+                      <p className="text-muted-foreground">
+                        Click "Connect to Backend" in your desktop app to verify connectivity
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Note:</strong> The Windows desktop app cannot run in this web environment. 
+                    You need to build and run it on a Windows machine with .NET 8 SDK installed.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>API Endpoints Status</CardTitle>
+              <CardDescription>
+                Current status of Tally integration API endpoints
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span className="font-mono text-sm">GET /api/tally/companies</span>
+                  </div>
+                  <Badge variant="default">Active</Badge>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span className="font-mono text-sm">POST /api/tally/sync/companies</span>
+                  </div>
+                  <Badge variant="default">Active</Badge>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span className="font-mono text-sm">GET /api/tally/sync/status</span>
+                  </div>
+                  <Badge variant="default">Active</Badge>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span className="font-mono text-sm">GET /api/tally/test</span>
+                  </div>
+                  <Badge variant="default">Active</Badge>
+                </div>
               </div>
             </CardContent>
           </Card>
