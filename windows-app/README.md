@@ -18,9 +18,11 @@ This Windows Forms application connects to the Tally integration backend and dem
 
 ### Building the Application
 
+**Important**: Make sure your web backend is running on `http://localhost:5000` before testing the desktop app.
+
 1. **Using Visual Studio:**
    ```
-   1. Open TallySync.sln in Visual Studio
+   1. Open the TallySync folder in Visual Studio
    2. Build > Build Solution (Ctrl+Shift+B)
    3. Debug > Start Debugging (F5)
    ```
@@ -30,6 +32,15 @@ This Windows Forms application connects to the Tally integration backend and dem
    cd windows-app/TallySync
    dotnet build
    dotnet run
+   ```
+
+3. **If you get build errors:**
+   ```bash
+   # Clean and restore
+   cd windows-app/TallySync
+   dotnet clean
+   dotnet restore
+   dotnet build
    ```
 
 ### Usage Instructions
