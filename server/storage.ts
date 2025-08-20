@@ -93,6 +93,7 @@ export interface IStorage {
   getSalesByStatus(status: string): Promise<Sales[]>;
   createSales(sales: InsertSales): Promise<Sales>;
   updateSales(id: string, sales: Partial<InsertSales>): Promise<Sales>;
+  deleteSales(id: string): Promise<void>;
   signDeliveryChallan(id: string): Promise<Sales>;
 
   // Number Series (Admin controlled)
@@ -459,6 +460,10 @@ export class DatabaseStorage implements IStorage {
     
     const [salesRecord] = await db.update(sales).set(salesData).where(eq(sales.id, id)).returning();
     return salesRecord;
+  }
+
+  async deleteSales(id: string): Promise<void> {
+    await db.delete(sales).where(eq(sales.id, id));
   }
 
   async signDeliveryChallan(id: string): Promise<Sales> {

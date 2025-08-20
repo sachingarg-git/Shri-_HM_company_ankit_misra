@@ -745,6 +745,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/sales/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteSales(req.params.id);
+      res.json({ message: "Sales record deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete sales record" });
+    }
+  });
+
   // Number Series API (Admin only)
   app.get("/api/number-series", requireAdmin, async (req, res) => {
     try {
