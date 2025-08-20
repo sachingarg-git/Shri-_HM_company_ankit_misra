@@ -214,13 +214,17 @@ export default function Sales() {
   const generateNumbers = async () => {
     try {
       const [soResponse, invResponse] = await Promise.all([
-        apiRequest("/api/number-series/next/SALES_ORDER", "POST"),
-        apiRequest("/api/number-series/next/INVOICE", "POST")
+        apiRequest("POST", "/api/number-series/next/SALES_ORDER"),
+        apiRequest("POST", "/api/number-series/next/INVOICE")
       ]);
       
-      form.setValue("salesOrderNumber", soResponse.nextNumber);
-      form.setValue("invoiceNumber", invResponse.nextNumber);
+      const soData = await soResponse.json();
+      const invData = await invResponse.json();
+      
+      form.setValue("salesOrderNumber", soData.nextNumber);
+      form.setValue("invoiceNumber", invData.nextNumber);
     } catch (error) {
+      console.error("Number generation error:", error);
       toast({
         title: "Error",
         description: "Failed to generate numbers. Please try manually.",
@@ -377,9 +381,11 @@ export default function Sales() {
                             size="sm"
                             onClick={async () => {
                               try {
-                                const response = await apiRequest("/api/number-series/next/SALES_ORDER", "POST");
-                                field.onChange(response.nextNumber);
+                                const response = await apiRequest("POST", "/api/number-series/next/SALES_ORDER");
+                                const data = await response.json();
+                                field.onChange(data.nextNumber);
                               } catch (error) {
+                                console.error("Sales order number generation error:", error);
                                 toast({
                                   title: "Error",
                                   description: "Failed to generate sales order number",
@@ -414,9 +420,11 @@ export default function Sales() {
                             size="sm"
                             onClick={async () => {
                               try {
-                                const response = await apiRequest("/api/number-series/next/INVOICE", "POST");
-                                field.onChange(response.nextNumber);
+                                const response = await apiRequest("POST", "/api/number-series/next/INVOICE");
+                                const data = await response.json();
+                                field.onChange(data.nextNumber);
                               } catch (error) {
+                                console.error("Invoice number generation error:", error);
                                 toast({
                                   title: "Error",
                                   description: "Failed to generate invoice number",

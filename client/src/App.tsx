@@ -21,6 +21,7 @@ import Sales from "@/pages/sales";
 import UserManagement from "@/pages/user-management";
 import AuthPage from "@/pages/auth";
 import { useAuth } from "@/hooks/useAuth";
+import Sidebar from "@/components/layout/sidebar";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -38,25 +39,32 @@ function Router() {
   }
 
   return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/credit-payments" component={CreditPayments} />
-      <Route path="/client-management" component={ClientManagement} />
-      <Route path="/client-tracking" component={ClientTracking} />
-      <Route path="/task-management" component={TaskManagement} />
-      <Route path="/order-workflow" component={OrderWorkflow} />
-      <Route path="/credit-agreements" component={CreditAgreements} />
-      <Route path="/eway-bills" component={EwayBills} />
-      <Route path="/sales" component={Sales} />
-      <Route path="/purchase-orders" component={PurchaseOrders} />
-      <Route path="/team-performance" component={TeamPerformance} />
-      <Route path="/sales-rates" component={SalesRates} />
-      <Route path="/pricing" component={Pricing} />
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar />
+      <main className="flex-1 overflow-auto">
+        <div className="p-6">
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/credit-payments" component={CreditPayments} />
+            <Route path="/client-management" component={ClientManagement} />
+            <Route path="/client-tracking" component={ClientTracking} />
+            <Route path="/task-management" component={TaskManagement} />
+            <Route path="/order-workflow" component={OrderWorkflow} />
+            <Route path="/credit-agreements" component={CreditAgreements} />
+            <Route path="/eway-bills" component={EwayBills} />
+            <Route path="/sales" component={Sales} />
+            <Route path="/purchase-orders" component={PurchaseOrders} />
+            <Route path="/team-performance" component={TeamPerformance} />
+            <Route path="/sales-rates" component={SalesRates} />
+            <Route path="/pricing" component={Pricing} />
 
-      <Route path="/user-management" component={UserManagement} />
-      <Route path="/auth" component={AuthPage} />
-      <Route component={NotFound} />
-    </Switch>
+            <Route path="/user-management" component={UserManagement} />
+            <Route path="/auth" component={AuthPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </div>
+      </main>
+    </div>
   );
 }
 
