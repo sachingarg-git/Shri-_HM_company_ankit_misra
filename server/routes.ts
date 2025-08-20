@@ -278,6 +278,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/clients/:id", async (req, res) => {
+    try {
+      await storage.deleteClient(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete client" });
+    }
+  });
+
   // Shipping Addresses routes
   app.get('/api/shipping-addresses/:clientId', async (req, res) => {
     try {

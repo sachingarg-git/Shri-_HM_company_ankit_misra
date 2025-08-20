@@ -29,6 +29,7 @@ export interface IStorage {
   getClientCategoryStats(): Promise<{ ALFA: number; BETA: number; GAMMA: number; DELTA: number; total: number }>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, client: Partial<InsertClient>): Promise<Client>;
+  deleteClient(id: string): Promise<void>;
 
   // Shipping Addresses
   getShippingAddress(id: string): Promise<ShippingAddress | undefined>;
@@ -238,6 +239,10 @@ export class DatabaseStorage implements IStorage {
   async updateClient(id: string, updateClient: Partial<InsertClient>): Promise<Client> {
     const [client] = await db.update(clients).set(updateClient).where(eq(clients.id, id)).returning();
     return client;
+  }
+
+  async deleteClient(id: string): Promise<void> {
+    await db.delete(clients).where(eq(clients.id, id));
   }
 
   // Orders

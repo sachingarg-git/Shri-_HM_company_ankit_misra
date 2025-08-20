@@ -15,7 +15,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, MapPin, FileText, Building, User, CreditCard, Truck, X, Upload, File, Check, Search, Calendar, Filter } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Plus, Edit, MapPin, FileText, Building, User, CreditCard, Truck, X, Upload, File, Check, Search, Calendar, Filter, Download, Trash2, Eye } from "lucide-react";
 import { z } from "zod";
 
 // Extended schema with multi-select communication preferences and shipping addresses
@@ -83,6 +85,7 @@ export default function Clients() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [emailInput, setEmailInput] = useState("");
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<{
     gstCertificate?: File;
     panCopy?: File;
@@ -229,6 +232,60 @@ export default function Clients() {
     setDateFrom("");
     setDateTo("");
   };
+
+  const exportToExcel = () => {
+    import('xlsx').then((XLSX) => {
+      import('file-saver').then((FileSaver) => {
+        const exportData = clients.map((client: Client) => ({
+          'Client Name': client.name,
+          'Category': client.category,
+          'Company Type': client.companyType,
+          'Contact Person': client.contactPersonName || '',
+          'Mobile': client.mobileNumber || '',
+          'Email': client.email || '',
+          'GST Number': client.gstNumber || '',
+          'PAN Number': client.panNumber || '',
+          'MSME Number': client.msmeNumber || '',
+          'Billing Address': `${client.billingAddressLine || ''}, ${client.billingCity || ''}, ${client.billingPincode || ''}`,
+          'Payment Terms (Days)': client.paymentTerms || '',
+          'Credit Limit': client.creditLimit || '',
+          'PO Required': client.poRequired ? 'Yes' : 'No',
+          'Interest Rate %': client.interestPercent || '',
+          'Created Date': client.createdAt ? new Date(client.createdAt).toLocaleDateString() : '',
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Clients');
+        
+        const fileName = `clients_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        FileSaver.saveAs(new Blob([wbout], { type: 'application/octet-stream' }), fileName);
+      });
+    });
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest(`/api/clients/${id}`, "DELETE");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/clients/stats"] });
+      toast({
+        title: "Success",
+        description: "Client deleted successfully",
+      });
+      setClientToDelete(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleFileUpload = (documentType: string, file: File | null) => {
     setUploadedFiles(prev => ({
@@ -1240,8 +1297,17 @@ export default function Clients() {
               />
             </div>
 
-            {/* Clear Filters Button */}
+            {/* Action Buttons */}
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={exportToExcel}
+                className="flex-1"
+                disabled={clients.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export Excel
+              </Button>
               <Button 
                 variant="outline" 
                 onClick={clearFilters}
@@ -1297,11 +1363,16 @@ export default function Clients() {
         </CardContent>
       </Card>
 
-      {/* Client Grid */}
-      <div className="grid gap-6">
-        {!clients || clients.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
+      {/* Client Grid/Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg font-medium">
+            Clients ({clients.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!clients || clients.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
               <Building className="h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No clients found</h3>
               <p className="text-gray-500 text-center mb-4">
@@ -1311,86 +1382,118 @@ export default function Clients() {
                 <Plus className="h-4 w-4 mr-2" />
                 Add First Client
               </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {(clients as Client[]).map((client: Client) => (
-              <Card key={client.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <h3 className="text-xl font-semibold text-gray-900">{client.name}</h3>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client Name</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Compliance</TableHead>
+                    <TableHead>Payment Terms</TableHead>
+                    <TableHead>Credit Limit</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(clients as Client[]).map((client: Client) => (
+                    <TableRow key={client.id} className="hover:bg-gray-50">
+                      <TableCell>
+                        <div className="font-medium">{client.name}</div>
+                        <div className="text-sm text-gray-500">
+                          {client.companyType && companyTypeLabels[client.companyType]}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <Badge className={categoryColors[client.category]}>
                           {categoryLabels[client.category]}
                         </Badge>
-                        {client.companyType && (
-                          <Badge variant="outline">
-                            {companyTypeLabels[client.companyType]}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="font-medium text-gray-600">Contact:</span>
-                          <div className="text-gray-900">
-                            {client.contactPersonName && <div>{client.contactPersonName}</div>}
-                            {client.mobileNumber && <div>{client.mobileNumber}</div>}
-                            {client.email && <div>{client.email}</div>}
-                          </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {client.contactPersonName && <div className="font-medium">{client.contactPersonName}</div>}
+                          {client.mobileNumber && <div>{client.mobileNumber}</div>}
+                          {client.email && <div className="text-gray-500">{client.email}</div>}
                         </div>
-
-                        <div>
-                          <span className="font-medium text-gray-600">Compliance:</span>
-                          <div className="text-gray-900">
-                            {client.gstNumber && <div>GST: {client.gstNumber}</div>}
-                            {client.panNumber && <div>PAN: {client.panNumber}</div>}
-                            {client.msmeNumber && <div>MSME: {client.msmeNumber}</div>}
-                          </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {client.gstNumber && <div>GST: {client.gstNumber}</div>}
+                          {client.panNumber && <div>PAN: {client.panNumber}</div>}
+                          {client.msmeNumber && <div>MSME: {client.msmeNumber}</div>}
                         </div>
-
-                        <div>
-                          <span className="font-medium text-gray-600">Finance:</span>
-                          <div className="text-gray-900">
-                            <div>Payment Terms: {client.paymentTerms} days</div>
-                            {client.creditLimit && <div>Credit Limit: ₹{parseFloat(client.creditLimit).toLocaleString()}</div>}
-                            <div>PO Required: {client.poRequired ? 'Yes' : 'No'}</div>
-                          </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          <div>{client.paymentTerms} days</div>
+                          <div className="text-gray-500">PO: {client.poRequired ? 'Required' : 'Not Required'}</div>
                         </div>
-                      </div>
-
-                      {client.communicationPreferences && client.communicationPreferences.length > 0 && (
-                        <div className="mt-3">
-                          <span className="font-medium text-gray-600 text-sm">Communication: </span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {client.communicationPreferences.map((pref) => (
-                              <Badge key={pref} variant="secondary" className="text-xs">
-                                {communicationOptions.find(opt => opt.value === pref)?.label || pref}
-                              </Badge>
-                            ))}
-                          </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {client.creditLimit ? `₹${parseFloat(client.creditLimit).toLocaleString()}` : '-'}
+                          {client.interestPercent && (
+                            <div className="text-gray-500">{client.interestPercent}% interest</div>
+                          )}
                         </div>
-                      )}
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(client)}
-                      className="ml-4"
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-gray-500">
+                          {client.createdAt ? new Date(client.createdAt).toLocaleDateString() : '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(client)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setClientToDelete(client)}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Client</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{client.name}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setClientToDelete(null)}>
+                                  Cancel
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deleteMutation.mutate(client.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
