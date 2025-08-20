@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, MapPin, FileText, Building, User, CreditCard, Truck, X } from "lucide-react";
+import { Plus, Edit, MapPin, FileText, Building, User, CreditCard, Truck, X, Upload, File, Check } from "lucide-react";
 import { z } from "zod";
 
 // Extended schema with multi-select communication preferences and shipping addresses
@@ -79,6 +79,13 @@ export default function Clients() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [emailInput, setEmailInput] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<{
+    gstCertificate?: File;
+    panCopy?: File;
+    cancelledCheque?: File;
+    agreement?: File;
+    poRateContract?: File;
+  }>({});
   const { toast } = useToast();
 
   const { data: clients = [], isLoading } = useQuery({
@@ -158,10 +165,28 @@ export default function Clients() {
     setEditingClient(client);
     form.reset({
       ...client,
-      incorporationDate: client.incorporationDate ? new Date(client.incorporationDate).toISOString().split('T')[0] : null,
-      communicationPreferences: client.communicationPreferences || [],
+      incorporationDate: client.incorporationDate ? new Date(client.incorporationDate).toISOString().split('T')[0] : "",
+      communicationPreferences: (client.communicationPreferences || []) as any,
       invoicingEmails: client.invoicingEmails || [],
       shippingAddresses: [], // Will load separately
+      // Handle null values for form fields
+      billingAddressLine: client.billingAddressLine || "",
+      billingCity: client.billingCity || "",
+      billingPincode: client.billingPincode || "",
+      billingState: client.billingState || "",
+      billingCountry: client.billingCountry || "India",
+      gstNumber: client.gstNumber || "",
+      panNumber: client.panNumber || "",
+      msmeNumber: client.msmeNumber || "",
+      incorporationCertNumber: client.incorporationCertNumber || "",
+      contactPersonName: client.contactPersonName || "",
+      mobileNumber: client.mobileNumber || "",
+      email: client.email || "",
+      paymentTerms: client.paymentTerms || 30,
+      creditLimit: client.creditLimit || "",
+      companyType: client.companyType || "PVT_LTD",
+      bankInterestApplicable: client.bankInterestApplicable || "FROM_DUE_DATE",
+      poRequired: client.poRequired || false,
     });
     setIsFormOpen(true);
   };
@@ -169,7 +194,85 @@ export default function Clients() {
   const handleAddNew = () => {
     setEditingClient(null);
     form.reset();
+    setUploadedFiles({});
     setIsFormOpen(true);
+  };
+
+  const handleFileUpload = (documentType: string, file: File | null) => {
+    setUploadedFiles(prev => ({
+      ...prev,
+      [documentType]: file || undefined
+    }));
+    
+    // Update the form checkbox based on file upload
+    form.setValue(`${documentType}Uploaded` as any, !!file);
+  };
+
+  const renderFileUpload = (
+    documentType: string,
+    label: string,
+    acceptedTypes: string = ".pdf,.jpg,.jpeg,.png,.doc,.docx"
+  ) => {
+    const file = uploadedFiles[documentType as keyof typeof uploadedFiles];
+    const isUploaded = !!file;
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">{label}</span>
+          {isUploaded && (
+            <div className="flex items-center gap-1 text-green-600">
+              <Check className="h-4 w-4" />
+              <span className="text-xs">Uploaded</span>
+            </div>
+          )}
+        </div>
+        
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors">
+          <input
+            type="file"
+            accept={acceptedTypes}
+            onChange={(e) => {
+              const selectedFile = e.target.files?.[0] || null;
+              handleFileUpload(documentType, selectedFile);
+            }}
+            className="hidden"
+            id={`upload-${documentType}`}
+          />
+          
+          {!isUploaded ? (
+            <label
+              htmlFor={`upload-${documentType}`}
+              className="cursor-pointer flex flex-col items-center gap-2 text-gray-500 hover:text-gray-700"
+            >
+              <Upload className="h-8 w-8" />
+              <span className="text-sm">Click to upload {label}</span>
+              <span className="text-xs text-gray-400">PDF, JPG, PNG, DOC (max 10MB)</span>
+            </label>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <File className="h-5 w-5 text-blue-600" />
+                <span className="text-sm text-gray-700">{file.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">
+                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleFileUpload(documentType, null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   const addShippingAddress = () => {
@@ -217,12 +320,15 @@ export default function Clients() {
               Add Client
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="client-form-description">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold">
                 {editingClient ? "Edit Client" : "Add New Client"}
               </DialogTitle>
             </DialogHeader>
+            <div id="client-form-description" className="sr-only">
+              Form to create or edit client information including company details, contacts, and documents
+            </div>
 
             <Form {...form}>
               <form onSubmit={form.handleSubmit((data) => clientMutation.mutate(data))} className="space-y-6">
@@ -428,7 +534,7 @@ export default function Clients() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Company Type</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value || "PVT_LTD"}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select company type" />
@@ -812,7 +918,7 @@ export default function Clients() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Bank Interest Applicable</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value || "FROM_DUE_DATE"}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select option" />
@@ -835,7 +941,7 @@ export default function Clients() {
                           <FormItem className="flex flex-row items-start space-x-2 space-y-0 mt-2">
                             <FormControl>
                               <Checkbox
-                                checked={field.value}
+                                checked={field.value || false}
                                 onCheckedChange={field.onChange}
                               />
                             </FormControl>
@@ -890,96 +996,12 @@ export default function Clients() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="gstCertificateUploaded"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="text-sm font-normal">
-                              GST Certificate
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="panCopyUploaded"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="text-sm font-normal">
-                              PAN Copy
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="cancelledChequeUploaded"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="text-sm font-normal">
-                              Cancelled Cheque
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="agreementUploaded"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="text-sm font-normal">
-                              Agreement
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="poRateContractUploaded"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-2 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel className="text-sm font-normal">
-                              PO / Rate Contract
-                            </FormLabel>
-                          </FormItem>
-                        )}
-                      />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {renderFileUpload("gstCertificate", "GST Certificate")}
+                      {renderFileUpload("panCopy", "PAN Copy")}
+                      {renderFileUpload("cancelledCheque", "Cancelled Cheque")}
+                      {renderFileUpload("agreement", "Agreement")}
+                      {renderFileUpload("poRateContract", "PO / Rate Contract")}
                     </div>
                   </CardContent>
                 </Card>
@@ -1004,7 +1026,7 @@ export default function Clients() {
 
       {/* Client Grid */}
       <div className="grid gap-6">
-        {clients.length === 0 ? (
+        {!clients || clients.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Building className="h-12 w-12 text-gray-400 mb-4" />
@@ -1020,7 +1042,7 @@ export default function Clients() {
           </Card>
         ) : (
           <div className="grid gap-4">
-            {clients.map((client: Client) => (
+            {(clients as Client[]).map((client: Client) => (
               <Card key={client.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start">
