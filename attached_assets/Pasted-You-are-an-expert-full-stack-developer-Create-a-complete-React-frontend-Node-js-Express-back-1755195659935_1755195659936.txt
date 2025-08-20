@@ -1,0 +1,41 @@
+You are an expert full-stack developer.  
+Create a complete React (frontend) + Node.js/Express (backend) application to upload a JSON file from the browser, validate its records, and insert them into a Microsoft SQL Server database.
+
+Requirements:
+1. **Backend (Node.js + Express)**
+   - Create `/api/import` endpoint that accepts a `.json` file upload (multipart form-data).
+   - Use Multer for file handling.
+   - Parse large JSON files in a streaming fashion (`stream-json` package) to avoid memory overload.
+   - Validate each JSON record with `ajv`:
+        Required fields: `id` (integer), `name` (string), `email` (string), `created_at` (string or null).
+   - Connect to MS SQL Server with `mssql` package (connection settings in `.env`).
+   - Use `mssql.Table` + `bulk()` method to insert rows in batches (default batch size: 2000).
+   - Delete uploaded file after processing.
+   - Return JSON response with `inserted` count and `invalid` count.
+   - Add a `/api/health` endpoint for health check.
+
+2. **Frontend (React)**
+   - Page with file input (accept only `.json`), batch size input (default: 2000), and upload button.
+   - On submit, POST file to `/api/import` with `axios` and show upload progress percentage.
+   - After upload, display results (`inserted` and `invalid` counts).
+   - Show instructions for expected JSON format.
+   - Keep UI clean and responsive (basic inline styles are fine).
+
+3. **Environment**
+   - Create `.env` file with:
+        SQL_SERVER=localhost
+        SQL_DATABASE=your_db
+        SQL_USER=sa
+        SQL_PASSWORD=YourStrong!Pass
+        SQL_TRUST_CERT=true
+        PORT=4000
+   - Install required dependencies: `express`, `multer`, `mssql`, `stream-json`, `ajv`, `dotenv`, `axios`, `react`, `react-dom`.
+
+4. **Extra**
+   - Include a sample SQL `CREATE TABLE` script for a `Customers` table.
+   - Allow future extension for UPSERT (staging table + MERGE).
+   - Ensure the app runs in Replit with both frontend and backend together (monorepo or proxy).
+
+Deliver:
+- Fully working code with all files and folder structure.
+- Instructions in README on how to run in Replit.
