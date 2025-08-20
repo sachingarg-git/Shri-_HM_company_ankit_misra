@@ -1,5 +1,4 @@
-import Sidebar from "@/components/layout/sidebar";
-import TopBar from "@/components/layout/topbar";
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -310,24 +309,14 @@ export default function TaskManagement() {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar />
-        
-        <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-7xl mx-auto space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Task Management</h1>
-                <p className="text-gray-600 dark:text-gray-400">Manage and track your team's tasks</p>
-              </div>
-            </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Task Management</h1>
+        <p className="text-gray-600 mt-1">Manage and track your team's tasks</p>
+      </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {stats.map((stat, index) => (
                 <Card key={index}>
                   <CardContent className="p-6">
@@ -684,9 +673,6 @@ export default function TaskManagement() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </div>
-      </div>
 
       {/* Edit Task Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

@@ -1,5 +1,4 @@
-import Sidebar from "@/components/layout/sidebar";
-import TopBar from "@/components/layout/topbar";
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -114,18 +113,13 @@ export default function ClientManagement() {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Client Management</h1>
+        <p className="text-gray-600 mt-1">Manage client information and categorization</p>
+      </div>
       
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar 
-          title="Client Management" 
-          subtitle="Manage client information and categorization"
-        />
-        
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-          <div className="p-6">
-            {/* Category Stats */}
+      {/* Category Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
               {categoryStats.map((category, index) => (
                 <Card key={index} className="p-6">
@@ -403,9 +397,6 @@ export default function ClientManagement() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </main>
-      </div>
     </div>
   );
 }

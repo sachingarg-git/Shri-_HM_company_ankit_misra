@@ -1,5 +1,4 @@
-import Sidebar from "@/components/layout/sidebar";
-import TopBar from "@/components/layout/topbar";
+
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -76,18 +75,13 @@ export default function CreditPayments() {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Credit Payments</h1>
+        <p className="text-gray-600 mt-1">Manage client payments and credit terms</p>
+      </div>
       
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar 
-          title="Credit Payments" 
-          subtitle="Manage client payments and credit terms"
-        />
-        
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-          <div className="p-6">
-            {/* Stats Cards */}
+      {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               {stats.map((stat, index) => {
                 const Icon = stat.icon;
@@ -222,9 +216,6 @@ export default function CreditPayments() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </main>
-      </div>
     </div>
   );
 }
