@@ -161,9 +161,11 @@ export default function Clients() {
       const { shippingAddresses, ...clientData } = data;
       
       if (editingClient) {
-        return await apiRequest("PUT", `/api/clients/${editingClient.id}`, clientData);
+        const response = await apiRequest("PUT", `/api/clients/${editingClient.id}`, clientData);
+        return await response.json();
       } else {
-        return await apiRequest("POST", "/api/clients", clientData);
+        const response = await apiRequest("POST", "/api/clients", clientData);
+        return await response.json();
       }
     },
     onSuccess: () => {
@@ -268,7 +270,7 @@ export default function Clients() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest(`/api/clients/${id}`, "DELETE");
+      await apiRequest("DELETE", `/api/clients/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
