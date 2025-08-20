@@ -370,7 +370,17 @@ export const insertClientSchema = createInsertSchema(clients).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
-  incorporationDate: z.string().optional().nullable(),
+  incorporationDate: z.union([z.string(), z.date(), z.null()]).optional().nullable().transform(val => {
+    if (!val || val === "") return null;
+    if (typeof val === "string") {
+      try {
+        return new Date(val);
+      } catch {
+        return null;
+      }
+    }
+    return val;
+  }),
 });
 
 export const insertShippingAddressSchema = createInsertSchema(shippingAddresses).omit({

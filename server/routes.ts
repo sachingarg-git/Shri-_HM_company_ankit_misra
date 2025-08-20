@@ -231,9 +231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/clients", async (req, res) => {
     try {
-      console.log("Creating client with data:", req.body);
       const clientData = insertClientSchema.parse(req.body);
-      console.log("Parsed client data:", clientData);
       const client = await storage.createClient(clientData);
       res.status(201).json(client);
     } catch (error: any) {
