@@ -16,6 +16,7 @@ import PurchaseOrders from "@/pages/purchase-orders";
 import TeamPerformance from "@/pages/team-performance";
 import SalesRates from "@/pages/sales-rates";
 import Pricing from "@/pages/pricing";
+import Sales from "@/pages/sales";
 
 import UserManagement from "@/pages/user-management";
 import AuthPage from "@/pages/auth";
@@ -46,6 +47,7 @@ function Router() {
       <Route path="/order-workflow" component={OrderWorkflow} />
       <Route path="/credit-agreements" component={CreditAgreements} />
       <Route path="/eway-bills" component={EwayBills} />
+      <Route path="/sales" component={Sales} />
       <Route path="/purchase-orders" component={PurchaseOrders} />
       <Route path="/team-performance" component={TeamPerformance} />
       <Route path="/sales-rates" component={SalesRates} />

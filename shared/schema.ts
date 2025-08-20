@@ -10,6 +10,7 @@ export const orderStatusEnum = pgEnum('order_status', ['PENDING_AGREEMENT', 'APP
 export const paymentStatusEnum = pgEnum('payment_status', ['PENDING', 'OVERDUE', 'PAID', 'PARTIAL']);
 export const trackingStatusEnum = pgEnum('tracking_status', ['LOADING', 'IN_TRANSIT', 'DELIVERED']);
 export const userRoleEnum = pgEnum('user_role', ['ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'OPERATIONS']);
+export const deliveryStatusEnum = pgEnum('delivery_status', ['RECEIVING', 'OK', 'APPROVED', 'DELIVERED']);
 
 // Users table (Simple authentication without Replit)
 export const users = pgTable("users", {
@@ -393,5 +394,56 @@ export type ClientTracking = typeof clientTracking.$inferSelect;
 
 export type InsertSalesRate = z.infer<typeof insertSalesRateSchema>;
 export type SalesRate = typeof salesRates.$inferSelect;
+
+// Sales table
+export const sales = pgTable("sales", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  date: timestamp("date").notNull().default(sql`now()`),
+  salesOrderNumber: text("sales_order_number").notNull().unique(),
+  invoiceNumber: text("invoice_number").notNull().unique(),
+  vehicleNumber: text("vehicle_number").notNull(),
+  location: text("location").notNull(),
+  transporter: text("transporter").notNull(),
+  grossWeight: decimal("gross_weight", { precision: 10, scale: 2 }).notNull(),
+  tareWeight: decimal("tare_weight", { precision: 10, scale: 2 }).notNull(), // stair weight
+  netWeight: decimal("net_weight", { precision: 10, scale: 2 }).notNull(), // grossWeight - tareWeight
+  entireWeight: decimal("entire_weight", { precision: 10, scale: 2 }).notNull(),
+  drumQuantity: integer("drum_quantity").notNull(),
+  perDrumWeight: decimal("per_drum_weight", { precision: 10, scale: 2 }).notNull(),
+  partyName: text("party_name").notNull(),
+  basicRate: decimal("basic_rate", { precision: 15, scale: 2 }).notNull(),
+  gstPercent: decimal("gst_percent", { precision: 5, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
+  basicRatePurchase: decimal("basic_rate_purchase", { precision: 15, scale: 2 }).notNull(),
+  product: text("product").notNull(),
+  salespersonId: varchar("salesperson_id").notNull().references(() => users.id),
+  deliveryStatus: deliveryStatusEnum("delivery_status").notNull().default('RECEIVING'),
+  deliveryChallanSigned: boolean("delivery_challan_signed").notNull().default(false),
+  deliveryChallanSignedAt: timestamp("delivery_challan_signed_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Sales insert schema
+export const insertSalesSchema = createInsertSchema(sales).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  date: z.string(),
+  deliveryChallanSignedAt: z.string().optional().nullable()
+});
+
+// Sales relations
+export const salesRelations = relations(sales, ({ one }) => ({
+  salesperson: one(users, {
+    fields: [sales.salespersonId],
+    references: [users.id],
+  }),
+}));
+
+// Sales types
+export type InsertSales = z.infer<typeof insertSalesSchema>;
+export type Sales = typeof sales.$inferSelect;
 
 

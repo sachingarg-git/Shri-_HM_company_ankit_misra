@@ -1,11 +1,12 @@
 import { 
   users, clients, orders, payments, tasks, ewayBills, clientTracking, 
-  salesRates, creditAgreements, purchaseOrders,
+  salesRates, creditAgreements, purchaseOrders, sales,
   type User, type InsertUser, type Client, type InsertClient,
   type Order, type InsertOrder, type Payment, type InsertPayment,
   type Task, type InsertTask, type EwayBill, type InsertEwayBill,
   type ClientTracking, type InsertClientTracking, type SalesRate, type InsertSalesRate,
-  type CreditAgreement, type InsertCreditAgreement, type PurchaseOrder, type InsertPurchaseOrder
+  type CreditAgreement, type InsertCreditAgreement, type PurchaseOrder, type InsertPurchaseOrder,
+  type Sales, type InsertSales
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, sql, gte, lte, count } from "drizzle-orm";
@@ -83,7 +84,14 @@ export interface IStorage {
   getSalesRatesByDateRange(clientId: string, startDate: Date, endDate: Date): Promise<SalesRate[]>;
   createSalesRate(salesRate: InsertSalesRate): Promise<SalesRate>;
 
-
+  // Sales
+  getSales(id: string): Promise<Sales | undefined>;
+  getAllSales(): Promise<Sales[]>;
+  getSalesBySalesperson(salespersonId: string): Promise<Sales[]>;
+  getSalesByStatus(status: string): Promise<Sales[]>;
+  createSales(sales: InsertSales): Promise<Sales>;
+  updateSales(id: string, sales: Partial<InsertSales>): Promise<Sales>;
+  signDeliveryChallan(id: string): Promise<Sales>;
 
   // Dashboard Stats
   getDashboardStats(): Promise<{
@@ -281,12 +289,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTask(insertTask: InsertTask): Promise<Task> {
-    const [task] = await db.insert(tasks).values(insertTask).returning();
+    const taskData = {
+      ...insertTask,
+      dueDate: insertTask.dueDate ? new Date(insertTask.dueDate) : null,
+      completedAt: insertTask.completedAt ? new Date(insertTask.completedAt) : null,
+      nextDueDate: insertTask.nextDueDate ? new Date(insertTask.nextDueDate) : null
+    } as any;
+    const [task] = await db.insert(tasks).values(taskData).returning();
     return task;
   }
 
   async updateTask(id: string, updateTask: Partial<InsertTask>): Promise<Task> {
-    const [task] = await db.update(tasks).set(updateTask).where(eq(tasks.id, id)).returning();
+    const taskData = {
+      ...updateTask,
+      dueDate: updateTask.dueDate ? new Date(updateTask.dueDate) : undefined,
+      completedAt: updateTask.completedAt ? new Date(updateTask.completedAt) : undefined,
+      nextDueDate: updateTask.nextDueDate ? new Date(updateTask.nextDueDate) : undefined
+    } as any;
+    
+    // Remove undefined values
+    Object.keys(taskData).forEach(key => (taskData as any)[key] === undefined && delete (taskData as any)[key]);
+    
+    const [task] = await db.update(tasks).set(taskData).where(eq(tasks.id, id)).returning();
     return task;
   }
 
@@ -371,6 +395,61 @@ export class DatabaseStorage implements IStorage {
   async createSalesRate(insertSalesRate: InsertSalesRate): Promise<SalesRate> {
     const [salesRate] = await db.insert(salesRates).values(insertSalesRate).returning();
     return salesRate;
+  }
+
+  // Sales
+  async getSales(id: string): Promise<Sales | undefined> {
+    const [salesRecord] = await db.select().from(sales).where(eq(sales.id, id));
+    return salesRecord || undefined;
+  }
+
+  async getAllSales(): Promise<Sales[]> {
+    return await db.select().from(sales).orderBy(desc(sales.createdAt));
+  }
+
+  async getSalesBySalesperson(salespersonId: string): Promise<Sales[]> {
+    return await db.select().from(sales).where(eq(sales.salespersonId, salespersonId)).orderBy(desc(sales.createdAt));
+  }
+
+  async getSalesByStatus(status: string): Promise<Sales[]> {
+    return await db.select().from(sales).where(eq(sales.deliveryStatus, status as any)).orderBy(desc(sales.createdAt));
+  }
+
+  async createSales(insertSales: InsertSales): Promise<Sales> {
+    const salesData = {
+      ...insertSales,
+      date: insertSales.date ? new Date(insertSales.date) : new Date(),
+      deliveryChallanSignedAt: insertSales.deliveryChallanSignedAt ? new Date(insertSales.deliveryChallanSignedAt) : null
+    } as any;
+    const [salesRecord] = await db.insert(sales).values(salesData).returning();
+    return salesRecord;
+  }
+
+  async updateSales(id: string, updateSales: Partial<InsertSales>): Promise<Sales> {
+    const salesData = {
+      ...updateSales,
+      date: updateSales.date ? new Date(updateSales.date) : undefined,
+      deliveryChallanSignedAt: updateSales.deliveryChallanSignedAt ? new Date(updateSales.deliveryChallanSignedAt) : undefined,
+      updatedAt: new Date()
+    } as any;
+    
+    // Remove undefined values
+    Object.keys(salesData).forEach(key => (salesData as any)[key] === undefined && delete (salesData as any)[key]);
+    
+    const [salesRecord] = await db.update(sales).set(salesData).where(eq(sales.id, id)).returning();
+    return salesRecord;
+  }
+
+  async signDeliveryChallan(id: string): Promise<Sales> {
+    const [salesRecord] = await db.update(sales)
+      .set({ 
+        deliveryChallanSigned: true, 
+        deliveryChallanSignedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(sales.id, id))
+      .returning();
+    return salesRecord;
   }
 
   // Dashboard Stats

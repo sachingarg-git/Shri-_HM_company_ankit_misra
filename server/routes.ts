@@ -6,7 +6,7 @@ import { loginSchema, registerSchema } from "@shared/schema";
 import { 
   insertUserSchema, insertClientSchema, insertOrderSchema, insertPaymentSchema,
   insertTaskSchema, insertEwayBillSchema, insertClientTrackingSchema, insertSalesRateSchema,
-  insertCreditAgreementSchema, insertPurchaseOrderSchema
+  insertCreditAgreementSchema, insertPurchaseOrderSchema, insertSalesSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -651,7 +651,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sales API
+  app.get("/api/sales", requireAuth, async (req, res) => {
+    try {
+      const { salespersonId, status } = req.query;
+      let sales;
+      
+      if (salespersonId) {
+        sales = await storage.getSalesBySalesperson(salespersonId as string);
+      } else if (status) {
+        sales = await storage.getSalesByStatus(status as string);
+      } else {
+        sales = await storage.getAllSales();
+      }
+      
+      res.json(sales);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch sales" });
+    }
+  });
 
+  app.get("/api/sales/:id", requireAuth, async (req, res) => {
+    try {
+      const sales = await storage.getSales(req.params.id);
+      if (!sales) {
+        return res.status(404).json({ message: "Sales record not found" });
+      }
+      res.json(sales);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch sales record" });
+    }
+  });
+
+  app.post("/api/sales", requireAuth, async (req, res) => {
+    try {
+      const salesData = insertSalesSchema.parse(req.body);
+      
+      // Calculate net weight automatically (gross weight - tare weight)
+      const grossWeight = parseFloat(salesData.grossWeight as any);
+      const tareWeight = parseFloat(salesData.tareWeight as any);
+      const netWeight = grossWeight - tareWeight;
+      
+      const finalSalesData = {
+        ...salesData,
+        netWeight: netWeight.toString()
+      };
+      
+      const sales = await storage.createSales(finalSalesData);
+      res.status(201).json(sales);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid sales data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create sales record" });
+    }
+  });
+
+  app.put("/api/sales/:id", requireAuth, async (req, res) => {
+    try {
+      const salesData = insertSalesSchema.partial().parse(req.body);
+      
+      // Recalculate net weight if gross weight or tare weight is being updated
+      if (salesData.grossWeight || salesData.tareWeight) {
+        const existingSales = await storage.getSales(req.params.id);
+        if (!existingSales) {
+          return res.status(404).json({ message: "Sales record not found" });
+        }
+        
+        const grossWeight = parseFloat(salesData.grossWeight as any || existingSales.grossWeight);
+        const tareWeight = parseFloat(salesData.tareWeight as any || existingSales.tareWeight);
+        const netWeight = grossWeight - tareWeight;
+        
+        salesData.netWeight = netWeight.toString();
+      }
+      
+      const sales = await storage.updateSales(req.params.id, salesData);
+      res.json(sales);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid sales data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update sales record" });
+    }
+  });
+
+  app.patch("/api/sales/:id/sign-challan", requireAuth, async (req, res) => {
+    try {
+      const sales = await storage.signDeliveryChallan(req.params.id);
+      res.json(sales);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to sign delivery challan" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
