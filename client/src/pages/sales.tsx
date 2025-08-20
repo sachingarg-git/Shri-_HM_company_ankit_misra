@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, Edit, CheckCircle, Package, Truck, FileCheck, Search, Filter } from "lucide-react";
+import { Plus, Edit, CheckCircle, Package, Truck, FileCheck, Search, Filter, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertSalesSchema, type Sales, type InsertSales, type User } from "@shared/schema";
+import { insertSalesSchema, type Sales, type InsertSales, type User, type Client, type Product, type Transporter, insertTransporterSchema, insertProductSchema } from "@shared/schema";
 
 const statusColors = {
   RECEIVING: "bg-yellow-100 text-yellow-800",
@@ -33,6 +33,8 @@ export default function Sales() {
   const [editingSales, setEditingSales] = useState<Sales | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [isAddTransporterOpen, setIsAddTransporterOpen] = useState(false);
+  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -46,6 +48,21 @@ export default function Sales() {
     queryKey: ["/api/users"],
   });
 
+  // Fetch clients
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
+  // Fetch products
+  const { data: products = [] } = useQuery<Product[]>({
+    queryKey: ["/api/products"],
+  });
+
+  // Fetch transporters
+  const { data: transporters = [] } = useQuery<Transporter[]>({
+    queryKey: ["/api/transporters"],
+  });
+
   const form = useForm<InsertSales>({
     resolver: zodResolver(insertSalesSchema),
     defaultValues: {
@@ -54,21 +71,48 @@ export default function Sales() {
       invoiceNumber: "",
       vehicleNumber: "",
       location: "",
-      transporter: "",
+      transporterId: "",
       grossWeight: "0",
       tareWeight: "0",
       netWeight: "0",
       entireWeight: "0",
       drumQuantity: 0,
       perDrumWeight: "0",
-      partyName: "",
+      clientId: "",
       basicRate: "0",
       gstPercent: "18",
       totalAmount: "0",
       basicRatePurchase: "0",
-      product: "",
+      productId: "",
       salespersonId: "",
       deliveryStatus: "RECEIVING",
+    },
+  });
+
+  // Add transporter form
+  const transporterForm = useForm({
+    resolver: zodResolver(insertTransporterSchema),
+    defaultValues: {
+      name: "",
+      contactPerson: "",
+      phone: "",
+      email: "",
+      address: "",
+      vehicleCapacity: "",
+    },
+  });
+
+  // Add product form
+  const productForm = useForm({
+    resolver: zodResolver(insertProductSchema),
+    defaultValues: {
+      name: "",
+      category: "",
+      description: "",
+      hsn_code: "",
+      unit: "KG",
+      currentPrice: "0",
+      gstRate: "18",
     },
   });
 
@@ -120,6 +164,71 @@ export default function Sales() {
     },
   });
 
+  // Transporter mutation
+  const transporterMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("/api/transporters", "POST", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transporters"] });
+      transporterForm.reset();
+      setIsAddTransporterOpen(false);
+      toast({
+        title: "Transporter added",
+        description: "New transporter has been added successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add transporter",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Product mutation
+  const productMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("/api/products", "POST", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/products"] });
+      productForm.reset();
+      setIsAddProductOpen(false);
+      toast({
+        title: "Product added",
+        description: "New product has been added successfully",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add product",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Generate next sales order and invoice numbers
+  const generateNumbers = async () => {
+    try {
+      const [soResponse, invResponse] = await Promise.all([
+        apiRequest("/api/number-series/next/SALES_ORDER", "POST"),
+        apiRequest("/api/number-series/next/INVOICE", "POST")
+      ]);
+      
+      form.setValue("salesOrderNumber", soResponse.nextNumber);
+      form.setValue("invoiceNumber", invResponse.nextNumber);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate numbers. Please try manually.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const onSubmit = (data: InsertSales) => {
     // Calculate net weight automatically
     const grossWeight = parseFloat(data.grossWeight);
@@ -149,19 +258,19 @@ export default function Sales() {
       invoiceNumber: sales.invoiceNumber,
       vehicleNumber: sales.vehicleNumber,
       location: sales.location,
-      transporter: sales.transporter,
+      transporterId: sales.transporterId,
       grossWeight: sales.grossWeight,
       tareWeight: sales.tareWeight,
       netWeight: sales.netWeight,
       entireWeight: sales.entireWeight,
       drumQuantity: sales.drumQuantity,
       perDrumWeight: sales.perDrumWeight,
-      partyName: sales.partyName,
+      clientId: sales.clientId,
       basicRate: sales.basicRate,
       gstPercent: sales.gstPercent,
       totalAmount: sales.totalAmount,
       basicRatePurchase: sales.basicRatePurchase,
-      product: sales.product,
+      productId: sales.productId,
       salespersonId: sales.salespersonId,
       deliveryStatus: sales.deliveryStatus,
     });
@@ -172,15 +281,35 @@ export default function Sales() {
     setEditingSales(null);
     form.reset();
     setIsDialogOpen(true);
+    // Auto-generate numbers for new sales entries
+    generateNumbers();
+  };
+
+  // Helper functions to get names from IDs
+  const getClientName = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    return client ? client.name : 'Unknown Client';
+  };
+
+  const getProductName = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    return product ? product.name : 'Unknown Product';
+  };
+
+  const getTransporterName = (transporterId: string) => {
+    const transporter = transporters.find(t => t.id === transporterId);
+    return transporter ? transporter.name : 'Unknown Transporter';
   };
 
   // Filter sales based on search and status
   const filteredSales = sales.filter(sale => {
+    const clientName = getClientName(sale.clientId);
+    const productName = getProductName(sale.productId);
     const matchesSearch = 
       sale.salesOrderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sale.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.partyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sale.product.toLowerCase().includes(searchTerm.toLowerCase());
+      clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      productName.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === "ALL" || sale.deliveryStatus === statusFilter;
     
@@ -238,9 +367,30 @@ export default function Sales() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Sales Order Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="SO-2024-001" {...field} />
-                        </FormControl>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Input placeholder="SO-2024-001" {...field} />
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const response = await apiRequest("/api/number-series/next/SALES_ORDER", "POST");
+                                field.onChange(response.nextNumber);
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to generate sales order number",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            Generate
+                          </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -254,9 +404,30 @@ export default function Sales() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Invoice Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="INV-2024-001" {...field} />
-                        </FormControl>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Input placeholder="INV-2024-001" {...field} />
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const response = await apiRequest("/api/number-series/next/INVOICE", "POST");
+                                field.onChange(response.nextNumber);
+                              } catch (error) {
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to generate invoice number",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            Generate
+                          </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -292,13 +463,34 @@ export default function Sales() {
                   />
                   <FormField
                     control={form.control}
-                    name="transporter"
+                    name="transporterId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Transporter</FormLabel>
-                        <FormControl>
-                          <Input placeholder="ABC Logistics" {...field} />
-                        </FormControl>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select transporter" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {transporters.map((transporter) => (
+                                  <SelectItem key={transporter.id} value={transporter.id}>
+                                    {transporter.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsAddTransporterOpen(true)}
+                          >
+                            <UserPlus className="h-4 w-4" />
+                          </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -403,12 +595,23 @@ export default function Sales() {
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
-                    name="partyName"
+                    name="clientId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Party Name</FormLabel>
+                        <FormLabel>Client</FormLabel>
                         <FormControl>
-                          <Input placeholder="XYZ Industries" {...field} />
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select client" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {clients.map((client) => (
+                                <SelectItem key={client.id} value={client.id}>
+                                  {client.name} ({client.category})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -416,13 +619,34 @@ export default function Sales() {
                   />
                   <FormField
                     control={form.control}
-                    name="product"
+                    name="productId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Product</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Chemical XYZ" {...field} />
-                        </FormControl>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select product" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {products.map((product) => (
+                                  <SelectItem key={product.id} value={product.id}>
+                                    {product.name} - ₹{product.currentPrice}/{product.unit}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsAddProductOpen(true)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -572,7 +796,7 @@ export default function Sales() {
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search by order number, invoice, party name, or product..."
+            placeholder="Search by order number, invoice, client name, or product..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -616,12 +840,12 @@ export default function Sales() {
               <CardContent className="space-y-3">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-500">Party</p>
-                    <p className="font-medium">{sale.partyName}</p>
+                    <p className="text-gray-500">Client</p>
+                    <p className="font-medium">{getClientName(sale.clientId)}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Product</p>
-                    <p className="font-medium">{sale.product}</p>
+                    <p className="font-medium">{getProductName(sale.productId)}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">Vehicle</p>
@@ -698,6 +922,247 @@ export default function Sales() {
           )}
         </div>
       )}
+
+      {/* Add Transporter Dialog */}
+      <Dialog open={isAddTransporterOpen} onOpenChange={setIsAddTransporterOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New Transporter</DialogTitle>
+            <DialogDescription>
+              Add a new transporter to the system
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...transporterForm}>
+            <form onSubmit={transporterForm.handleSubmit((data) => transporterMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={transporterForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Transporter Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ABC Logistics" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={transporterForm.control}
+                name="contactPerson"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Person</FormLabel>
+                    <FormControl>
+                      <Input placeholder="John Doe" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={transporterForm.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+91-9876543210" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={transporterForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="contact@abc.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={transporterForm.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Mumbai, Maharashtra" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={transporterForm.control}
+                name="vehicleCapacity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Vehicle Capacity</FormLabel>
+                    <FormControl>
+                      <Input placeholder="10 Tonnes" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddTransporterOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={transporterMutation.isPending}>
+                  {transporterMutation.isPending ? "Adding..." : "Add Transporter"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Product Dialog */}
+      <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Add New Product</DialogTitle>
+            <DialogDescription>
+              Add a new product to the system
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...productForm}>
+            <form onSubmit={productForm.handleSubmit((data) => productMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={productForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Product Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Chemical XYZ" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={productForm.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Chemicals" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={productForm.control}
+                  name="unit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit</FormLabel>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="KG">KG</SelectItem>
+                            <SelectItem value="LTR">LTR</SelectItem>
+                            <SelectItem value="PCS">PCS</SelectItem>
+                            <SelectItem value="MT">MT</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={productForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Product description" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={productForm.control}
+                  name="currentPrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Current Price (₹)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="150.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={productForm.control}
+                  name="gstRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>GST Rate (%)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" placeholder="18.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={productForm.control}
+                name="hsn_code"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>HSN Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="2801" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddProductOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={productMutation.isPending}>
+                  {productMutation.isPending ? "Adding..." : "Add Product"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,12 +1,14 @@
 import { 
   users, clients, orders, payments, tasks, ewayBills, clientTracking, 
-  salesRates, creditAgreements, purchaseOrders, sales,
+  salesRates, creditAgreements, purchaseOrders, sales, numberSeries,
+  transporters, products,
   type User, type InsertUser, type Client, type InsertClient,
   type Order, type InsertOrder, type Payment, type InsertPayment,
   type Task, type InsertTask, type EwayBill, type InsertEwayBill,
   type ClientTracking, type InsertClientTracking, type SalesRate, type InsertSalesRate,
   type CreditAgreement, type InsertCreditAgreement, type PurchaseOrder, type InsertPurchaseOrder,
-  type Sales, type InsertSales
+  type Sales, type InsertSales, type NumberSeries, type InsertNumberSeries,
+  type Transporter, type InsertTransporter, type Product, type InsertProduct
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, sql, gte, lte, count } from "drizzle-orm";
@@ -92,6 +94,25 @@ export interface IStorage {
   createSales(sales: InsertSales): Promise<Sales>;
   updateSales(id: string, sales: Partial<InsertSales>): Promise<Sales>;
   signDeliveryChallan(id: string): Promise<Sales>;
+
+  // Number Series (Admin controlled)
+  getNumberSeries(seriesType: string): Promise<NumberSeries | undefined>;
+  getAllNumberSeries(): Promise<NumberSeries[]>;
+  createNumberSeries(series: InsertNumberSeries): Promise<NumberSeries>;
+  updateNumberSeries(id: string, series: Partial<InsertNumberSeries>): Promise<NumberSeries>;
+  getNextNumber(seriesType: string): Promise<string>;
+
+  // Transporters
+  getTransporter(id: string): Promise<Transporter | undefined>;
+  getAllTransporters(): Promise<Transporter[]>;
+  createTransporter(transporter: InsertTransporter): Promise<Transporter>;
+  updateTransporter(id: string, transporter: Partial<InsertTransporter>): Promise<Transporter>;
+
+  // Products  
+  getProduct(id: string): Promise<Product | undefined>;
+  getAllProducts(): Promise<Product[]>;
+  createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: string, product: Partial<InsertProduct>): Promise<Product>;
 
   // Dashboard Stats
   getDashboardStats(): Promise<{
@@ -450,6 +471,102 @@ export class DatabaseStorage implements IStorage {
       .where(eq(sales.id, id))
       .returning();
     return salesRecord;
+  }
+
+  // Number Series (Admin controlled)
+  async getNumberSeries(seriesType: string): Promise<NumberSeries | undefined> {
+    const [series] = await db.select().from(numberSeries)
+      .where(and(eq(numberSeries.seriesType, seriesType), eq(numberSeries.isActive, true)));
+    return series || undefined;
+  }
+
+  async getAllNumberSeries(): Promise<NumberSeries[]> {
+    return await db.select().from(numberSeries).orderBy(desc(numberSeries.createdAt));
+  }
+
+  async createNumberSeries(insertSeries: InsertNumberSeries): Promise<NumberSeries> {
+    const [series] = await db.insert(numberSeries).values(insertSeries).returning();
+    return series;
+  }
+
+  async updateNumberSeries(id: string, updateSeries: Partial<InsertNumberSeries>): Promise<NumberSeries> {
+    const [series] = await db.update(numberSeries)
+      .set({ ...updateSeries, updatedAt: new Date() })
+      .where(eq(numberSeries.id, id))
+      .returning();
+    return series;
+  }
+
+  async getNextNumber(seriesType: string): Promise<string> {
+    const series = await this.getNumberSeries(seriesType);
+    if (!series) {
+      throw new Error(`Number series not found for type: ${seriesType}`);
+    }
+
+    // Generate the next number with padding
+    const nextNumber = series.currentNumber;
+    const paddedNumber = nextNumber.toString().padStart(series.numberLength, '0');
+    const fullNumber = `${series.prefix}-${paddedNumber}`;
+
+    // Update the current number for next time
+    await db.update(numberSeries)
+      .set({ 
+        currentNumber: nextNumber + 1,
+        updatedAt: new Date()
+      })
+      .where(eq(numberSeries.id, series.id));
+
+    return fullNumber;
+  }
+
+  // Transporters
+  async getTransporter(id: string): Promise<Transporter | undefined> {
+    const [transporter] = await db.select().from(transporters).where(eq(transporters.id, id));
+    return transporter || undefined;
+  }
+
+  async getAllTransporters(): Promise<Transporter[]> {
+    return await db.select().from(transporters)
+      .where(eq(transporters.isActive, true))
+      .orderBy(asc(transporters.name));
+  }
+
+  async createTransporter(insertTransporter: InsertTransporter): Promise<Transporter> {
+    const [transporter] = await db.insert(transporters).values(insertTransporter).returning();
+    return transporter;
+  }
+
+  async updateTransporter(id: string, updateTransporter: Partial<InsertTransporter>): Promise<Transporter> {
+    const [transporter] = await db.update(transporters)
+      .set(updateTransporter)
+      .where(eq(transporters.id, id))
+      .returning();
+    return transporter;
+  }
+
+  // Products
+  async getProduct(id: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product || undefined;
+  }
+
+  async getAllProducts(): Promise<Product[]> {
+    return await db.select().from(products)
+      .where(eq(products.isActive, true))
+      .orderBy(asc(products.name));
+  }
+
+  async createProduct(insertProduct: InsertProduct): Promise<Product> {
+    const [product] = await db.insert(products).values(insertProduct).returning();
+    return product;
+  }
+
+  async updateProduct(id: string, updateProduct: Partial<InsertProduct>): Promise<Product> {
+    const [product] = await db.update(products)
+      .set(updateProduct)
+      .where(eq(products.id, id))
+      .returning();
+    return product;
   }
 
   // Dashboard Stats

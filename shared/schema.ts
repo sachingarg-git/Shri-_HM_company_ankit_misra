@@ -403,19 +403,19 @@ export const sales = pgTable("sales", {
   invoiceNumber: text("invoice_number").notNull().unique(),
   vehicleNumber: text("vehicle_number").notNull(),
   location: text("location").notNull(),
-  transporter: text("transporter").notNull(),
+  transporterId: varchar("transporter_id").notNull().references(() => transporters.id),
   grossWeight: decimal("gross_weight", { precision: 10, scale: 2 }).notNull(),
   tareWeight: decimal("tare_weight", { precision: 10, scale: 2 }).notNull(), // stair weight
   netWeight: decimal("net_weight", { precision: 10, scale: 2 }).notNull(), // grossWeight - tareWeight
   entireWeight: decimal("entire_weight", { precision: 10, scale: 2 }).notNull(),
   drumQuantity: integer("drum_quantity").notNull(),
   perDrumWeight: decimal("per_drum_weight", { precision: 10, scale: 2 }).notNull(),
-  partyName: text("party_name").notNull(),
+  clientId: varchar("client_id").notNull().references(() => clients.id),
   basicRate: decimal("basic_rate", { precision: 15, scale: 2 }).notNull(),
   gstPercent: decimal("gst_percent", { precision: 5, scale: 2 }).notNull(),
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   basicRatePurchase: decimal("basic_rate_purchase", { precision: 15, scale: 2 }).notNull(),
-  product: text("product").notNull(),
+  productId: varchar("product_id").notNull().references(() => products.id),
   salespersonId: varchar("salesperson_id").notNull().references(() => users.id),
   deliveryStatus: deliveryStatusEnum("delivery_status").notNull().default('RECEIVING'),
   deliveryChallanSigned: boolean("delivery_challan_signed").notNull().default(false),
@@ -440,10 +440,87 @@ export const salesRelations = relations(sales, ({ one }) => ({
     fields: [sales.salespersonId],
     references: [users.id],
   }),
+  client: one(clients, {
+    fields: [sales.clientId],
+    references: [clients.id],
+  }),
+  product: one(products, {
+    fields: [sales.productId],
+    references: [products.id],
+  }),
+  transporter: one(transporters, {
+    fields: [sales.transporterId],
+    references: [transporters.id],
+  }),
 }));
 
 // Sales types
 export type InsertSales = z.infer<typeof insertSalesSchema>;
 export type Sales = typeof sales.$inferSelect;
 
+// Number Series table (Admin controlled)
+export const numberSeries = pgTable("number_series", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  seriesType: text("series_type").notNull(), // 'SALES_ORDER' or 'INVOICE'
+  prefix: text("prefix").notNull(), // e.g., 'SO', 'INV', 'ABC'
+  currentNumber: integer("current_number").notNull().default(1),
+  numberLength: integer("number_length").notNull().default(4), // padding zeros
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Transporters table
+export const transporters = pgTable("transporters", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  contactPerson: text("contact_person"),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
+  vehicleCapacity: text("vehicle_capacity"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// Products table
+export const products = pgTable("products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  category: text("category"),
+  description: text("description"),
+  hsn_code: text("hsn_code"), // HSN/SAC code for GST
+  unit: text("unit").notNull().default('KG'), // KG, LTR, PCS, etc.
+  currentPrice: decimal("current_price", { precision: 15, scale: 2 }),
+  gstRate: decimal("gst_rate", { precision: 5, scale: 2 }).notNull().default('18.00'),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// Insert schemas
+export const insertNumberSeriesSchema = createInsertSchema(numberSeries).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTransporterSchema = createInsertSchema(transporters).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types
+export type InsertNumberSeries = z.infer<typeof insertNumberSeriesSchema>;
+export type NumberSeries = typeof numberSeries.$inferSelect;
+
+export type InsertTransporter = z.infer<typeof insertTransporterSchema>;
+export type Transporter = typeof transporters.$inferSelect;
+
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type Product = typeof products.$inferSelect;
 

@@ -6,7 +6,8 @@ import { loginSchema, registerSchema } from "@shared/schema";
 import { 
   insertUserSchema, insertClientSchema, insertOrderSchema, insertPaymentSchema,
   insertTaskSchema, insertEwayBillSchema, insertClientTrackingSchema, insertSalesRateSchema,
-  insertCreditAgreementSchema, insertPurchaseOrderSchema, insertSalesSchema
+  insertCreditAgreementSchema, insertPurchaseOrderSchema, insertSalesSchema,
+  insertNumberSeriesSchema, insertTransporterSchema, insertProductSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -741,6 +742,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(sales);
     } catch (error) {
       res.status(500).json({ message: "Failed to sign delivery challan" });
+    }
+  });
+
+  // Number Series API (Admin only)
+  app.get("/api/number-series", requireAdmin, async (req, res) => {
+    try {
+      const series = await storage.getAllNumberSeries();
+      res.json(series);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch number series" });
+    }
+  });
+
+  app.post("/api/number-series", requireAdmin, async (req, res) => {
+    try {
+      const seriesData = insertNumberSeriesSchema.parse(req.body);
+      const series = await storage.createNumberSeries(seriesData);
+      res.status(201).json(series);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid number series data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create number series" });
+    }
+  });
+
+  app.put("/api/number-series/:id", requireAdmin, async (req, res) => {
+    try {
+      const seriesData = insertNumberSeriesSchema.partial().parse(req.body);
+      const series = await storage.updateNumberSeries(req.params.id, seriesData);
+      res.json(series);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid number series data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update number series" });
+    }
+  });
+
+  app.post("/api/number-series/next/:seriesType", requireAuth, async (req, res) => {
+    try {
+      const nextNumber = await storage.getNextNumber(req.params.seriesType);
+      res.json({ nextNumber });
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  // Transporters API
+  app.get("/api/transporters", requireAuth, async (req, res) => {
+    try {
+      const transporters = await storage.getAllTransporters();
+      res.json(transporters);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch transporters" });
+    }
+  });
+
+  app.post("/api/transporters", requireAuth, async (req, res) => {
+    try {
+      const transporterData = insertTransporterSchema.parse(req.body);
+      const transporter = await storage.createTransporter(transporterData);
+      res.status(201).json(transporter);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid transporter data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create transporter" });
+    }
+  });
+
+  app.put("/api/transporters/:id", requireAuth, async (req, res) => {
+    try {
+      const transporterData = insertTransporterSchema.partial().parse(req.body);
+      const transporter = await storage.updateTransporter(req.params.id, transporterData);
+      res.json(transporter);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid transporter data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update transporter" });
+    }
+  });
+
+  // Products API
+  app.get("/api/products", requireAuth, async (req, res) => {
+    try {
+      const products = await storage.getAllProducts();
+      res.json(products);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch products" });
+    }
+  });
+
+  app.post("/api/products", requireAuth, async (req, res) => {
+    try {
+      const productData = insertProductSchema.parse(req.body);
+      const product = await storage.createProduct(productData);
+      res.status(201).json(product);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid product data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create product" });
+    }
+  });
+
+  app.put("/api/products/:id", requireAuth, async (req, res) => {
+    try {
+      const productData = insertProductSchema.partial().parse(req.body);
+      const product = await storage.updateProduct(req.params.id, productData);
+      res.json(product);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid product data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update product" });
     }
   });
 
