@@ -40,10 +40,10 @@ const extendedClientSchema = insertClientSchema.extend({
 type ExtendedClient = z.infer<typeof extendedClientSchema>;
 
 const categoryColors = {
-  ALFA: "bg-red-100 text-red-800 border-red-200",
-  BETA: "bg-orange-100 text-orange-800 border-orange-200", 
-  GAMMA: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  DELTA: "bg-green-100 text-green-800 border-green-200",
+  ALFA: "bg-green-100 text-green-800 border-green-200",
+  BETA: "bg-yellow-100 text-yellow-800 border-yellow-200", 
+  GAMMA: "bg-orange-100 text-orange-800 border-orange-200",
+  DELTA: "bg-red-100 text-red-800 border-red-200",
 };
 
 const categoryLabels = {
@@ -1091,47 +1091,47 @@ export default function Clients() {
           </CardContent>
         </Card>
 
-        {/* Alfa Category Card */}
-        <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
+        {/* Alfa Category Card - Green */}
+        <Card className="bg-gradient-to-r from-green-200 to-green-300 text-green-800 border border-green-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">Alfa</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{clientStats.ALFA}</div>
-            <p className="text-red-100 text-sm">Priority clients</p>
+            <p className="text-green-600 text-sm">Priority clients</p>
           </CardContent>
         </Card>
 
-        {/* Beta Category Card */}
-        <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
+        {/* Beta Category Card - Butter Yellow */}
+        <Card className="bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">Beta</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{clientStats.BETA}</div>
-            <p className="text-orange-100 text-sm">Regular clients</p>
+            <p className="text-yellow-600 text-sm">Regular clients</p>
           </CardContent>
         </Card>
 
-        {/* Gamma Category Card */}
-        <Card className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
+        {/* Gamma Category Card - Orange */}
+        <Card className="bg-gradient-to-r from-orange-200 to-orange-300 text-orange-800 border border-orange-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">Gamma</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{clientStats.GAMMA}</div>
-            <p className="text-yellow-100 text-sm">Standard clients</p>
+            <p className="text-orange-600 text-sm">Standard clients</p>
           </CardContent>
         </Card>
 
-        {/* Delta Category Card */}
-        <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white">
+        {/* Delta Category Card - Red */}
+        <Card className="bg-gradient-to-r from-red-200 to-red-300 text-red-800 border border-red-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">Delta</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{clientStats.DELTA}</div>
-            <p className="text-green-100 text-sm">New clients</p>
+            <p className="text-red-600 text-sm">New clients</p>
           </CardContent>
         </Card>
       </div>
