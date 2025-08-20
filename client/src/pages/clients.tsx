@@ -15,7 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Edit, MapPin, FileText, Building, User, CreditCard, Truck, X, Upload, File, Check } from "lucide-react";
+import { Plus, Edit, MapPin, FileText, Building, User, CreditCard, Truck, X, Upload, File, Check, Search, Calendar, Filter } from "lucide-react";
 import { z } from "zod";
 
 // Extended schema with multi-select communication preferences and shipping addresses
@@ -78,6 +78,10 @@ const unloadingFacilityOptions = [
 export default function Clients() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [emailInput, setEmailInput] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<{
     gstCertificate?: File;
@@ -89,7 +93,18 @@ export default function Clients() {
   const { toast } = useToast();
 
   const { data: clients = [], isLoading } = useQuery({
-    queryKey: ["/api/clients"],
+    queryKey: ["/api/clients", selectedCategory, searchTerm, dateFrom, dateTo],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedCategory) params.append('category', selectedCategory);
+      if (searchTerm) params.append('search', searchTerm);
+      if (dateFrom) params.append('dateFrom', dateFrom);
+      if (dateTo) params.append('dateTo', dateTo);
+      
+      const response = await fetch(`/api/clients?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch clients');
+      return response.json();
+    },
   });
 
   const { data: clientStats = { ALFA: 0, BETA: 0, GAMMA: 0, DELTA: 0, total: 0 } } = useQuery({
@@ -202,6 +217,17 @@ export default function Clients() {
     form.reset();
     setUploadedFiles({});
     setIsFormOpen(true);
+  };
+
+  const handleCategoryFilter = (category: string | null) => {
+    setSelectedCategory(category);
+  };
+
+  const clearFilters = () => {
+    setSelectedCategory(null);
+    setSearchTerm("");
+    setDateFrom("");
+    setDateTo("");
   };
 
   const handleFileUpload = (documentType: string, file: File | null) => {
@@ -1081,7 +1107,14 @@ export default function Clients() {
       {/* Client Category Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         {/* Total Clients Card */}
-        <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+        <Card 
+          className={`cursor-pointer transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${
+            selectedCategory === null 
+              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white ring-2 ring-blue-400" 
+              : "bg-gradient-to-r from-blue-500 to-blue-600 text-white opacity-70"
+          }`}
+          onClick={() => handleCategoryFilter(null)}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">Total Clients</CardTitle>
           </CardHeader>
@@ -1092,7 +1125,14 @@ export default function Clients() {
         </Card>
 
         {/* Alfa Category Card - Green */}
-        <Card className="bg-gradient-to-r from-green-200 to-green-300 text-green-800 border border-green-200">
+        <Card 
+          className={`cursor-pointer transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${
+            selectedCategory === 'ALFA' 
+              ? "bg-gradient-to-r from-green-200 to-green-300 text-green-800 border border-green-200 ring-2 ring-green-400" 
+              : "bg-gradient-to-r from-green-200 to-green-300 text-green-800 border border-green-200 opacity-70"
+          }`}
+          onClick={() => handleCategoryFilter('ALFA')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">Alfa</CardTitle>
           </CardHeader>
@@ -1103,7 +1143,14 @@ export default function Clients() {
         </Card>
 
         {/* Beta Category Card - Butter Yellow */}
-        <Card className="bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-200">
+        <Card 
+          className={`cursor-pointer transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${
+            selectedCategory === 'BETA' 
+              ? "bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-200 ring-2 ring-yellow-400" 
+              : "bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-200 opacity-70"
+          }`}
+          onClick={() => handleCategoryFilter('BETA')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">Beta</CardTitle>
           </CardHeader>
@@ -1114,7 +1161,14 @@ export default function Clients() {
         </Card>
 
         {/* Gamma Category Card - Orange */}
-        <Card className="bg-gradient-to-r from-orange-200 to-orange-300 text-orange-800 border border-orange-200">
+        <Card 
+          className={`cursor-pointer transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${
+            selectedCategory === 'GAMMA' 
+              ? "bg-gradient-to-r from-orange-200 to-orange-300 text-orange-800 border border-orange-200 ring-2 ring-orange-400" 
+              : "bg-gradient-to-r from-orange-200 to-orange-300 text-orange-800 border border-orange-200 opacity-70"
+          }`}
+          onClick={() => handleCategoryFilter('GAMMA')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">Gamma</CardTitle>
           </CardHeader>
@@ -1125,7 +1179,14 @@ export default function Clients() {
         </Card>
 
         {/* Delta Category Card - Red */}
-        <Card className="bg-gradient-to-r from-red-200 to-red-300 text-red-800 border border-red-200">
+        <Card 
+          className={`cursor-pointer transition-all duration-200 hover:shadow-lg transform hover:scale-105 ${
+            selectedCategory === 'DELTA' 
+              ? "bg-gradient-to-r from-red-200 to-red-300 text-red-800 border border-red-200 ring-2 ring-red-400" 
+              : "bg-gradient-to-r from-red-200 to-red-300 text-red-800 border border-red-200 opacity-70"
+          }`}
+          onClick={() => handleCategoryFilter('DELTA')}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-medium">Delta</CardTitle>
           </CardHeader>
@@ -1135,6 +1196,106 @@ export default function Clients() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Search and Filter Section */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg font-medium flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Search & Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search clients..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Date From */}
+            <div>
+              <Input
+                type="date"
+                placeholder="From Date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* Date To */}
+            <div>
+              <Input
+                type="date"
+                placeholder="To Date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full"
+              />
+            </div>
+
+            {/* Clear Filters Button */}
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={clearFilters}
+                className="flex-1"
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+
+          {/* Active Filters Display */}
+          {(selectedCategory || searchTerm || dateFrom || dateTo) && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="text-sm text-gray-600">Active filters:</span>
+              {selectedCategory && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Category: {categoryLabels[selectedCategory as keyof typeof categoryLabels]}
+                  <X 
+                    className="h-3 w-3 cursor-pointer" 
+                    onClick={() => setSelectedCategory(null)}
+                  />
+                </Badge>
+              )}
+              {searchTerm && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Search: {searchTerm}
+                  <X 
+                    className="h-3 w-3 cursor-pointer" 
+                    onClick={() => setSearchTerm("")}
+                  />
+                </Badge>
+              )}
+              {dateFrom && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  From: {dateFrom}
+                  <X 
+                    className="h-3 w-3 cursor-pointer" 
+                    onClick={() => setDateFrom("")}
+                  />
+                </Badge>
+              )}
+              {dateTo && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  To: {dateTo}
+                  <X 
+                    className="h-3 w-3 cursor-pointer" 
+                    onClick={() => setDateTo("")}
+                  />
+                </Badge>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Client Grid */}
       <div className="grid gap-6">

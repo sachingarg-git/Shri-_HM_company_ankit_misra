@@ -12,7 +12,7 @@ import {
   type ShippingAddress, type InsertShippingAddress
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, asc, sql, gte, lte, count } from "drizzle-orm";
+import { eq, and, desc, asc, sql, gte, lte, count, or, ilike } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -25,6 +25,7 @@ export interface IStorage {
   getClient(id: string): Promise<Client | undefined>;
   getAllClients(): Promise<Client[]>;
   getClientsByCategory(category: string): Promise<Client[]>;
+  getFilteredClients(filters: { category?: string; search?: string; dateFrom?: string; dateTo?: string }): Promise<Client[]>;
   getClientCategoryStats(): Promise<{ ALFA: number; BETA: number; GAMMA: number; DELTA: number; total: number }>;
   createClient(client: InsertClient): Promise<Client>;
   updateClient(id: string, client: Partial<InsertClient>): Promise<Client>;
@@ -172,6 +173,43 @@ export class DatabaseStorage implements IStorage {
 
   async getClientsByCategory(category: string): Promise<Client[]> {
     return await db.select().from(clients).where(eq(clients.category, category as any)).orderBy(asc(clients.name));
+  }
+
+  async getFilteredClients(filters: { category?: string; search?: string; dateFrom?: string; dateTo?: string }): Promise<Client[]> {
+    let query = db.select().from(clients);
+    const conditions = [];
+
+    // Category filter
+    if (filters.category) {
+      conditions.push(eq(clients.category, filters.category as any));
+    }
+
+    // Search filter (search in name, email, or mobile number)
+    if (filters.search) {
+      const searchTerm = `%${filters.search.toLowerCase()}%`;
+      conditions.push(
+        sql`(LOWER(${clients.name}) LIKE ${searchTerm} OR 
+             LOWER(${clients.email}) LIKE ${searchTerm} OR 
+             LOWER(${clients.mobileNumber}) LIKE ${searchTerm})`
+      );
+    }
+
+    // Date range filter (based on createdAt)
+    if (filters.dateFrom) {
+      conditions.push(gte(clients.createdAt, new Date(filters.dateFrom)));
+    }
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999); // Include the full day
+      conditions.push(lte(clients.createdAt, toDate));
+    }
+
+    // Apply conditions
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    return await query.orderBy(asc(clients.name));
   }
 
   async getClientCategoryStats(): Promise<{ ALFA: number; BETA: number; GAMMA: number; DELTA: number; total: number }> {

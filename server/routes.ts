@@ -204,13 +204,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Clients API
   app.get("/api/clients", async (req, res) => {
     try {
-      const { category } = req.query;
-      let clients;
-      if (category) {
-        clients = await storage.getClientsByCategory(category as string);
-      } else {
-        clients = await storage.getAllClients();
-      }
+      const { category, search, dateFrom, dateTo } = req.query;
+      const clients = await storage.getFilteredClients({
+        category: category as string,
+        search: search as string,
+        dateFrom: dateFrom as string,
+        dateTo: dateTo as string,
+      });
       res.json(clients);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch clients" });
