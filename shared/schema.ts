@@ -168,70 +168,7 @@ export const salesRates = pgTable("sales_rates", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
-// Tally Integration Tables
 
-// Tally Companies table
-export const tallyCompanies = pgTable("tally_companies", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  externalId: text("externalid").notNull().unique(), // Tally company identifier
-  apiKey: text("apikey").notNull(), // Hashed API key for this company
-  endpointUrl: text("endpointurl"), // Tally endpoint URL
-  createdAt: timestamp("createdat").notNull().default(sql`now()`),
-});
-
-// Tally Ledgers table
-export const tallyLedgers = pgTable("tally_ledgers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("companyid").notNull().references(() => tallyCompanies.id),
-  name: text("name").notNull(),
-  externalId: text("externalid"), // Tally ledger identifier
-  ledgerType: text("ledgertype"),
-  parentLedger: text("parentledger"),
-  openingBalance: decimal("openingbalance", { precision: 15, scale: 2 }),
-  closingBalance: decimal("closingbalance", { precision: 15, scale: 2 }),
-  createdAt: timestamp("createdat").notNull().default(sql`now()`),
-  modifiedAt: timestamp("modifiedat").notNull().default(sql`now()`),
-});
-
-// Tally Stock Items table
-export const tallyStockItems = pgTable("tally_stock_items", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("companyid").notNull().references(() => tallyCompanies.id),
-  name: text("name").notNull(),
-  externalId: text("externalid"), // Tally stock item identifier
-  unit: text("unit"),
-  openingQuantity: decimal("openingquantity", { precision: 15, scale: 3 }),
-  closingQuantity: decimal("closingquantity", { precision: 15, scale: 3 }),
-  createdAt: timestamp("createdat").notNull().default(sql`now()`),
-  modifiedAt: timestamp("modifiedat").notNull().default(sql`now()`),
-});
-
-// Tally Vouchers table
-export const tallyVouchers = pgTable("tally_vouchers", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("companyid").notNull().references(() => tallyCompanies.id),
-  voucherNumber: text("vouchernumber").notNull(),
-  voucherType: text("vouchertype").notNull(),
-  date: timestamp("date").notNull(),
-  partyName: text("partyname"),
-  amount: decimal("amount", { precision: 15, scale: 2 }),
-  createdAt: timestamp("createdat").notNull().default(sql`now()`),
-  modifiedAt: timestamp("modifiedat").notNull().default(sql`now()`),
-});
-
-// Tally Sync Logs table
-export const tallySyncLogs = pgTable("tally_sync_logs", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("companyid").references(() => tallyCompanies.id),
-  entity: text("entity").notNull(), // Companies, Ledgers, StockItems, Vouchers
-  recordsReceived: integer("recordsreceived").notNull().default(0),
-  recordsAccepted: integer("recordsaccepted").notNull().default(0),
-  recordsFailed: integer("recordsfailed").notNull().default(0),
-  errorDetails: text("errordetails"), // JSON array of error messages
-  syncStatus: text("syncstatus").notNull().default('SUCCESS'), // SUCCESS, PARTIAL, FAILED
-  receivedAt: timestamp("receivedat").notNull().default(sql`now()`),
-});
 
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
@@ -420,31 +357,8 @@ export const insertSalesRateSchema = createInsertSchema(salesRates).omit({
   createdAt: true,
 });
 
-// Tally Insert Schemas
-export const insertTallyCompanySchema = createInsertSchema(tallyCompanies).omit({
-  id: true,
-  createdAt: true,
-});
 
-export const insertTallyLedgerSchema = createInsertSchema(tallyLedgers).omit({
-  id: true,
-  createdAt: true,
-});
 
-export const insertTallyStockItemSchema = createInsertSchema(tallyStockItems).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertTallyVoucherSchema = createInsertSchema(tallyVouchers).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertTallySyncLogSchema = createInsertSchema(tallySyncLogs).omit({
-  id: true,
-  receivedAt: true,
-});
 
 // Types
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -480,18 +394,4 @@ export type ClientTracking = typeof clientTracking.$inferSelect;
 export type InsertSalesRate = z.infer<typeof insertSalesRateSchema>;
 export type SalesRate = typeof salesRates.$inferSelect;
 
-// Tally Types
-export type InsertTallyCompany = z.infer<typeof insertTallyCompanySchema>;
-export type TallyCompany = typeof tallyCompanies.$inferSelect;
 
-export type InsertTallyLedger = z.infer<typeof insertTallyLedgerSchema>;
-export type TallyLedger = typeof tallyLedgers.$inferSelect;
-
-export type InsertTallyStockItem = z.infer<typeof insertTallyStockItemSchema>;
-export type TallyStockItem = typeof tallyStockItems.$inferSelect;
-
-export type InsertTallyVoucher = z.infer<typeof insertTallyVoucherSchema>;
-export type TallyVoucher = typeof tallyVouchers.$inferSelect;
-
-export type InsertTallySyncLog = z.infer<typeof insertTallySyncLogSchema>;
-export type TallySyncLog = typeof tallySyncLogs.$inferSelect;

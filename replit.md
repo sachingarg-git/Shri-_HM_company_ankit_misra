@@ -4,9 +4,9 @@
 
 This is a full-stack business management system built with React (frontend) and Express.js (backend). The application provides comprehensive tools for managing clients, orders, payments, tasks, and sales operations. It features a modern dashboard interface with real-time data visualization and workflow management capabilities for business operations.
 
-**Latest Addition (August 20, 2025)**: Complete User Management System with role-based authentication successfully implemented. Admin users can now create, edit, and manage system users with different roles (ADMIN, SALES_MANAGER, SALES_EXECUTIVE, OPERATIONS). Authentication middleware properly validates sessions and role permissions for secure access control.
+**Latest Addition (August 20, 2025)**: Project cleaned up and focused on web-based business management system only. All desktop application files and Tally integration components have been completely removed from the codebase. The application now operates as a pure web-based business management solution.
 
-**Previous Addition (August 13, 2025)**: Complete Tally Integration System with Windows desktop application for seamless accounting data synchronization.
+**Previous Addition (August 20, 2025)**: Complete User Management System with role-based authentication successfully implemented. Admin users can now create, edit, and manage system users with different roles (ADMIN, SALES_MANAGER, SALES_EXECUTIVE, OPERATIONS). Authentication middleware properly validates sessions and role permissions for secure access control.
 
 ## User Preferences
 
@@ -49,12 +49,7 @@ The system manages several core entities:
 - Sales rate tracking for performance metrics
 - Client tracking for shipment status updates
 
-### Tally Integration Data Models (Added August 12, 2025)
-- Tally Companies with API key authentication and external ID mapping
-- Tally Ledgers with group hierarchy and balance tracking
-- Tally Stock Items with quantity management and unit tracking
-- Tally Vouchers with comprehensive transaction recording
-- Tally Sync Logs for monitoring data transfer operations
+
 
 ### Authentication & Authorization
 - Role-based user management system
@@ -100,30 +95,3 @@ The system manages several core entities:
 - **Runtime Error Overlay**: Development error handling and display
 - **Cartographer**: Replit-specific development tooling
 
-## Tally Integration System (Added August 12, 2025)
-
-### Architecture Overview
-- **Desktop Application**: .NET 8 Windows Forms application for local Tally connectivity
-- **Web Backend**: Express.js API endpoints for receiving and managing Tally data
-- **Database Integration**: PostgreSQL tables optimized for Tally data structures
-- **Real-time Sync**: Bi-directional data synchronization between Tally and business system
-
-### Windows Desktop Application
-- **Technology**: .NET 8 Windows Forms with HttpClient for API communication
-- **Location**: `/windows-app/TallySync/` directory with complete project structure
-- **Features**: Backend connectivity testing, company management, data synchronization
-- **API Integration**: Connects to `localhost:5000/api/tally` endpoints
-
-### Tally API Endpoints
-- `GET /api/tally/companies` - Retrieve all registered Tally companies
-- `POST /api/tally/companies` - Register new Tally company
-- `POST /api/tally/sync/companies` - Sync company data from desktop app
-- `POST /api/tally/sync/ledgers` - Sync ledger data from Tally
-- `POST /api/tally/sync/stock-items` - Sync inventory data from Tally
-- `POST /api/tally/sync/vouchers` - Sync transaction vouchers from Tally
-- `GET /api/tally/sync/status` - Get synchronization status and logs
-
-### Security & Authentication
-- API key-based authentication for desktop app connections
-- Company-specific data isolation and access control
-- Secure HTTPS communication (configurable for production)

@@ -54,12 +54,7 @@ const navigation: NavigationEntry[] = [
       { name: "Pricing Plans", href: "/pricing", icon: DollarSign },
     ],
   },
-  {
-    section: "INTEGRATIONS",
-    items: [
-      { name: "Tally Integration", href: "/tally-integration", icon: Database },
-    ],
-  },
+
   {
     section: "SYSTEM",
     items: [
