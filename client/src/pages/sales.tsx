@@ -37,6 +37,9 @@ export default function Sales() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [isTransporterDialogOpen, setIsTransporterDialogOpen] = useState(false);
+  const [newTransporterName, setNewTransporterName] = useState("");
+  const [newTransporterContactNumber, setNewTransporterContactNumber] = useState("");
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -60,6 +63,30 @@ export default function Sales() {
 
   const { data: transporters = [] } = useQuery<Transporter[]>({
     queryKey: ["/api/transporters"],
+  });
+
+  // Create Transporter Mutation
+  const createTransporterMutation = useMutation({
+    mutationFn: async (data: { name: string; contactNumber: string }) => {
+      return await apiRequest("POST", "/api/transporters", data);
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transporters"] });
+      setIsTransporterDialogOpen(false);
+      setNewTransporterName("");
+      setNewTransporterContactNumber("");
+      toast({
+        title: "Success",
+        description: "Transporter created successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   // Form Setup
@@ -711,30 +738,42 @@ export default function Sales() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={form.control}
-                        name="transporterId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Transporter</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select transporter" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {transporters.map((transporter) => (
-                                  <SelectItem key={transporter.id} value={transporter.id}>
-                                    {transporter.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <div className="space-y-2">
+                        <FormField
+                          control={form.control}
+                          name="transporterId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Transporter</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select transporter" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {transporters.map((transporter) => (
+                                    <SelectItem key={transporter.id} value={transporter.id}>
+                                      {transporter.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsTransporterDialogOpen(true)}
+                          className="w-full text-blue-600 border-blue-300 hover:bg-blue-50"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add New Transporter
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -857,6 +896,63 @@ export default function Sales() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add New Transporter Dialog */}
+      <Dialog open={isTransporterDialogOpen} onOpenChange={setIsTransporterDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Transporter</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Transporter Name *</label>
+              <Input
+                value={newTransporterName}
+                onChange={(e) => setNewTransporterName(e.target.value)}
+                placeholder="Enter transporter name"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Contact Number</label>
+              <Input
+                value={newTransporterContactNumber}
+                onChange={(e) => setNewTransporterContactNumber(e.target.value)}
+                placeholder="Enter contact number"
+                className="mt-1"
+              />
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsTransporterDialogOpen(false);
+                  setNewTransporterName("");
+                  setNewTransporterContactNumber("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (newTransporterName.trim()) {
+                    createTransporterMutation.mutate({
+                      name: newTransporterName.trim(),
+                      contactNumber: newTransporterContactNumber.trim()
+                    });
+                  }
+                }}
+                disabled={!newTransporterName.trim() || createTransporterMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {createTransporterMutation.isPending ? "Creating..." : "Create Transporter"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
