@@ -91,7 +91,8 @@ export default function Clients() {
   const [uploadedFiles, setUploadedFiles] = useState<{
     gstCertificate?: File;
     panCopy?: File;
-    cancelledCheque?: File;
+    securityCheque?: File;
+    aadharCard?: File;
     agreement?: File;
     poRateContract?: File;
   }>({});
@@ -145,7 +146,8 @@ export default function Clients() {
       invoicingEmails: [],
       gstCertificateUploaded: false,
       panCopyUploaded: false,
-      cancelledChequeUploaded: false,
+      securityChequeUploaded: false,
+      aadharCardUploaded: false,
       agreementUploaded: false,
       poRateContractUploaded: false,
       shippingAddresses: [],
@@ -1142,7 +1144,8 @@ export default function Clients() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {renderFileUpload("gstCertificate", "GST Certificate")}
                       {renderFileUpload("panCopy", "PAN Copy")}
-                      {renderFileUpload("cancelledCheque", "Cancelled Cheque")}
+                      {renderFileUpload("securityCheque", "Security Cheque")}
+                      {renderFileUpload("aadharCard", "Aadhar Card")}
                       {renderFileUpload("agreement", "Agreement")}
                       {renderFileUpload("poRateContract", "PO / Rate Contract")}
                     </div>

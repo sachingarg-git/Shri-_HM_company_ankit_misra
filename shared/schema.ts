@@ -78,7 +78,8 @@ export const clients = pgTable("clients", {
   // Documents Upload Status
   gstCertificateUploaded: boolean("gst_certificate_uploaded").default(false),
   panCopyUploaded: boolean("pan_copy_uploaded").default(false),
-  cancelledChequeUploaded: boolean("cancelled_cheque_uploaded").default(false),
+  securityChequeUploaded: boolean("security_cheque_uploaded").default(false),
+  aadharCardUploaded: boolean("aadhar_card_uploaded").default(false),
   agreementUploaded: boolean("agreement_uploaded").default(false),
   poRateContractUploaded: boolean("po_rate_contract_uploaded").default(false),
   
