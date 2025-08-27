@@ -161,36 +161,42 @@ export interface IStorage {
   getCompanyProfile(): Promise<CompanyProfile | null>;
   createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile>;
   updateCompanyProfile(id: string, profile: Partial<InsertCompanyProfile>): Promise<CompanyProfile>;
+  deleteCompanyProfile(id: string): Promise<void>;
   
   // Branches
   getBranch(id: string): Promise<Branch | undefined>;
   getAllBranches(): Promise<Branch[]>;
   createBranch(branch: InsertBranch): Promise<Branch>;
   updateBranch(id: string, branch: Partial<InsertBranch>): Promise<Branch>;
+  deleteBranch(id: string): Promise<void>;
   
   // Product Master
   getProductMaster(id: string): Promise<ProductMaster | undefined>;
   getAllProductMaster(): Promise<ProductMaster[]>;
   createProductMaster(product: InsertProductMaster): Promise<ProductMaster>;
   updateProductMaster(id: string, product: Partial<InsertProductMaster>): Promise<ProductMaster>;
+  deleteProductMaster(id: string): Promise<void>;
   
   // Suppliers
   getSupplier(id: string): Promise<Supplier | undefined>;
   getAllSuppliers(): Promise<Supplier[]>;
   createSupplier(supplier: InsertSupplier): Promise<Supplier>;
   updateSupplier(id: string, supplier: Partial<InsertSupplier>): Promise<Supplier>;
+  deleteSupplier(id: string): Promise<void>;
   
   // Banks
   getBank(id: string): Promise<Bank | undefined>;
   getAllBanks(): Promise<Bank[]>;
   createBank(bank: InsertBank): Promise<Bank>;
   updateBank(id: string, bank: Partial<InsertBank>): Promise<Bank>;
+  deleteBank(id: string): Promise<void>;
   
   // Vehicles
   getVehicle(id: string): Promise<Vehicle | undefined>;
   getAllVehicles(): Promise<Vehicle[]>;
   createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
   updateVehicle(id: string, vehicle: Partial<InsertVehicle>): Promise<Vehicle>;
+  deleteVehicle(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -860,6 +866,10 @@ export class DatabaseStorage implements IStorage {
     return profile;
   }
 
+  async deleteCompanyProfile(id: string): Promise<void> {
+    await db.delete(companyProfile).where(eq(companyProfile.id, id));
+  }
+
   // Branches
   async getBranch(id: string): Promise<Branch | undefined> {
     const [branch] = await db.select().from(branches).where(eq(branches.id, id));
@@ -888,6 +898,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(branches.id, id))
       .returning();
     return branch;
+  }
+
+  async deleteBranch(id: string): Promise<void> {
+    await db.delete(branches).where(eq(branches.id, id));
   }
 
   // Product Master
@@ -920,6 +934,10 @@ export class DatabaseStorage implements IStorage {
     return product;
   }
 
+  async deleteProductMaster(id: string): Promise<void> {
+    await db.delete(productMaster).where(eq(productMaster.id, id));
+  }
+
   // Suppliers
   async getSupplier(id: string): Promise<Supplier | undefined> {
     const [supplier] = await db.select().from(suppliers).where(eq(suppliers.id, id));
@@ -948,6 +966,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(suppliers.id, id))
       .returning();
     return supplier;
+  }
+
+  async deleteSupplier(id: string): Promise<void> {
+    await db.delete(suppliers).where(eq(suppliers.id, id));
   }
 
   // Banks
@@ -980,6 +1002,10 @@ export class DatabaseStorage implements IStorage {
     return bank;
   }
 
+  async deleteBank(id: string): Promise<void> {
+    await db.delete(banks).where(eq(banks.id, id));
+  }
+
   // Vehicles
   async getVehicle(id: string): Promise<Vehicle | undefined> {
     const [vehicle] = await db.select().from(vehicles).where(eq(vehicles.id, id));
@@ -1008,6 +1034,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(vehicles.id, id))
       .returning();
     return vehicle;
+  }
+
+  async deleteVehicle(id: string): Promise<void> {
+    await db.delete(vehicles).where(eq(vehicles.id, id));
   }
 }
 

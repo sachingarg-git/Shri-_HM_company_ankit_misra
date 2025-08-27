@@ -1082,7 +1082,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== MASTER DATA API ENDPOINTS ====================
   
   // Company Profile API
-  app.get("/api/company-profile", requireAuth, async (req, res) => {
+  app.get("/api/company-profile", async (req, res) => {
     try {
       const companyProfile = await storage.getCompanyProfile();
       res.json(companyProfile);
@@ -1092,7 +1092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/company-profile", requireAuth, async (req, res) => {
+  app.post("/api/company-profile", async (req, res) => {
     try {
       const validatedData = insertCompanyProfileSchema.parse(req.body);
       const companyProfile = await storage.createCompanyProfile(validatedData);
@@ -1106,7 +1106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/company-profile/:id", requireAuth, async (req, res) => {
+  app.put("/api/company-profile/:id", async (req, res) => {
     try {
       const validatedData = insertCompanyProfileSchema.parse(req.body);
       const companyProfile = await storage.updateCompanyProfile(req.params.id, validatedData);
@@ -1117,6 +1117,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid company profile data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update company profile" });
+    }
+  });
+
+  app.delete("/api/company-profile/:id", async (req, res) => {
+    try {
+      await storage.deleteCompanyProfile(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Company profile deletion error:", error);
+      res.status(500).json({ message: "Failed to delete company profile" });
     }
   });
 
@@ -1156,6 +1166,212 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid branch data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update branch" });
+    }
+  });
+
+  app.delete("/api/branches/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteBranch(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Branch deletion error:", error);
+      res.status(500).json({ message: "Failed to delete branch" });
+    }
+  });
+
+  // Product Master API
+  app.get("/api/product-master", requireAuth, async (req, res) => {
+    try {
+      const products = await storage.getAllProductMaster();
+      res.json(products);
+    } catch (error) {
+      console.error("Product master fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch product master" });
+    }
+  });
+
+  app.post("/api/product-master", requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertProductMasterSchema.parse(req.body);
+      const product = await storage.createProductMaster(validatedData);
+      res.status(201).json(product);
+    } catch (error) {
+      console.error("Product master creation error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid product master data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create product master" });
+    }
+  });
+
+  app.put("/api/product-master/:id", requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertProductMasterSchema.parse(req.body);
+      const product = await storage.updateProductMaster(req.params.id, validatedData);
+      res.json(product);
+    } catch (error) {
+      console.error("Product master update error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid product master data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update product master" });
+    }
+  });
+
+  app.delete("/api/product-master/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteProductMaster(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Product master deletion error:", error);
+      res.status(500).json({ message: "Failed to delete product master" });
+    }
+  });
+
+  // Suppliers API
+  app.get("/api/suppliers", requireAuth, async (req, res) => {
+    try {
+      const suppliers = await storage.getAllSuppliers();
+      res.json(suppliers);
+    } catch (error) {
+      console.error("Suppliers fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch suppliers" });
+    }
+  });
+
+  app.post("/api/suppliers", requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertSupplierSchema.parse(req.body);
+      const supplier = await storage.createSupplier(validatedData);
+      res.status(201).json(supplier);
+    } catch (error) {
+      console.error("Supplier creation error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid supplier data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create supplier" });
+    }
+  });
+
+  app.put("/api/suppliers/:id", requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertSupplierSchema.parse(req.body);
+      const supplier = await storage.updateSupplier(req.params.id, validatedData);
+      res.json(supplier);
+    } catch (error) {
+      console.error("Supplier update error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid supplier data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update supplier" });
+    }
+  });
+
+  app.delete("/api/suppliers/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteSupplier(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Supplier deletion error:", error);
+      res.status(500).json({ message: "Failed to delete supplier" });
+    }
+  });
+
+  // Banks API
+  app.get("/api/banks", requireAuth, async (req, res) => {
+    try {
+      const banks = await storage.getAllBanks();
+      res.json(banks);
+    } catch (error) {
+      console.error("Banks fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch banks" });
+    }
+  });
+
+  app.post("/api/banks", requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertBankSchema.parse(req.body);
+      const bank = await storage.createBank(validatedData);
+      res.status(201).json(bank);
+    } catch (error) {
+      console.error("Bank creation error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid bank data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create bank" });
+    }
+  });
+
+  app.put("/api/banks/:id", requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertBankSchema.parse(req.body);
+      const bank = await storage.updateBank(req.params.id, validatedData);
+      res.json(bank);
+    } catch (error) {
+      console.error("Bank update error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid bank data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update bank" });
+    }
+  });
+
+  app.delete("/api/banks/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteBank(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Bank deletion error:", error);
+      res.status(500).json({ message: "Failed to delete bank" });
+    }
+  });
+
+  // Vehicles API
+  app.get("/api/vehicles", requireAuth, async (req, res) => {
+    try {
+      const vehicles = await storage.getAllVehicles();
+      res.json(vehicles);
+    } catch (error) {
+      console.error("Vehicles fetch error:", error);
+      res.status(500).json({ message: "Failed to fetch vehicles" });
+    }
+  });
+
+  app.post("/api/vehicles", requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertVehicleSchema.parse(req.body);
+      const vehicle = await storage.createVehicle(validatedData);
+      res.status(201).json(vehicle);
+    } catch (error) {
+      console.error("Vehicle creation error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid vehicle data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create vehicle" });
+    }
+  });
+
+  app.put("/api/vehicles/:id", requireAuth, async (req, res) => {
+    try {
+      const validatedData = insertVehicleSchema.parse(req.body);
+      const vehicle = await storage.updateVehicle(req.params.id, validatedData);
+      res.json(vehicle);
+    } catch (error) {
+      console.error("Vehicle update error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid vehicle data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update vehicle" });
+    }
+  });
+
+  app.delete("/api/vehicles/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteVehicle(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Vehicle deletion error:", error);
+      res.status(500).json({ message: "Failed to delete vehicle" });
     }
   });
 
