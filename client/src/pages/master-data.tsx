@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, Edit, Building, Factory, Package, Truck, Building2, CreditCard } from "lucide-react";
 import { CompanyProfileForm } from "@/components/CompanyProfileForm";
+import { ProductMasterForm } from "@/components/ProductMasterForm";
 import type { 
   CompanyProfile, 
   Branch,
@@ -75,6 +76,10 @@ export default function MasterDataPage() {
 
         <TabsContent value="branches">
           <BranchesSection />
+        </TabsContent>
+
+        <TabsContent value="products">
+          <ProductMasterForm />
         </TabsContent>
 
         <TabsContent value="products">

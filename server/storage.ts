@@ -1042,3 +1042,42 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+// Initialize bitumen products data
+export async function initializeBitumenProducts() {
+  const bitumenProducts = [
+    { productCode: 'VG30-NE', name: 'BITUMEN VG-30 NON EMBOSSED (NE)', hsnCode: '27132000', productFamily: 'VG_BITUMEN', grade: 'VG-30', packaging: 'BULK', unit: 'MT' },
+    { productCode: 'VG40', name: 'BITUMEN VG-40', hsnCode: '27132000', productFamily: 'VG_BITUMEN', grade: 'VG-40', packaging: 'BULK', unit: 'MT' },
+    { productCode: 'JEY-60/70', name: 'BITUMEN JEY EMBOSSED 60/70', hsnCode: '27132000', productFamily: 'VG_BITUMEN', grade: '60/70', packaging: 'EMBOSSED', unit: 'MT' },
+    { productCode: 'VG30-WAT', name: 'BITUMEN VG-30 WATANIYA EMBOSSED', hsnCode: '27132000', productFamily: 'VG_BITUMEN', grade: 'VG-30', packaging: 'EMBOSSED', unit: 'MT' },
+    { productCode: 'VG30-PAR', name: 'BITUMEN VG-30 PARSARGAR EMBOSSED', hsnCode: '27132000', productFamily: 'VG_BITUMEN', grade: 'VG-30', packaging: 'EMBOSSED', unit: 'MT' },
+    { productCode: 'VG10', name: 'BITUMEN VG-10', hsnCode: '27132000', productFamily: 'VG_BITUMEN', grade: 'VG-10', packaging: 'BULK', unit: 'MT' },
+    { productCode: 'PEN-10/20', name: 'BITUMEN 10/20', hsnCode: '27132000', productFamily: 'VG_BITUMEN', grade: '10/20', packaging: 'BULK', unit: 'MT' },
+    { productCode: 'PEN-30/40', name: 'BITUMEN 30/40', hsnCode: '27132000', productFamily: 'VG_BITUMEN', grade: '30/40', packaging: 'BULK', unit: 'MT' },
+    { productCode: 'BULK-VG30', name: 'BULK BITUMEN VG-30', hsnCode: '27132000', productFamily: 'BULK', grade: 'VG-30', packaging: 'BULK', unit: 'MT' },
+    { productCode: 'BULK-VG40', name: 'BULK BITUMEN VG-40', hsnCode: '27132000', productFamily: 'BULK', grade: 'VG-40', packaging: 'BULK', unit: 'MT' },
+    { productCode: 'EMU-RS1', name: 'BITUMEN EMULSION RS-1', hsnCode: '27150000', productFamily: 'EMULSION', grade: 'RS-1', packaging: 'BULK', unit: 'KL' },
+    { productCode: 'EMU-SS1', name: 'BITUMEN EMULSION SS-1', hsnCode: '27150000', productFamily: 'EMULSION', grade: 'SS-1', packaging: 'BULK', unit: 'KL' },
+    { productCode: 'EMU-MS', name: 'BITUMEN EMULSION MS', hsnCode: '27150000', productFamily: 'EMULSION', grade: 'MS', packaging: 'BULK', unit: 'KL' },
+    { productCode: 'EMU-COLD', name: 'BITUMEN EMULSION COLDMIX(ALL IN ONE)', hsnCode: '27150000', productFamily: 'EMULSION', grade: 'COLDMIX', packaging: 'BULK', unit: 'KL' },
+    { productCode: 'FUEL-OIL', name: 'FUEL OIL', hsnCode: '27101950', productFamily: 'ACCESSORIES', grade: 'STANDARD', packaging: 'BULK', unit: 'KL' },
+    { productCode: 'PVC-TANK', name: 'PVC TANK', hsnCode: '392310', productFamily: 'ACCESSORIES', grade: 'STANDARD', packaging: 'UNIT', unit: 'UNIT' }
+  ];
+
+  for (const product of bitumenProducts) {
+    try {
+      await storage.createProductMaster({
+        ...product,
+        description: `${product.name} - HSN: ${product.hsnCode}`,
+        taxRate: product.hsnCode === '27132000' || product.hsnCode === '27150000' ? '5.00' : '18.00',
+        densityFactor: product.unit === 'KL' ? '0.95' : null,
+        drumsPerMT: product.packaging === 'EMBOSSED' ? 5 : null,
+        minOrderQuantity: '1.00',
+        isActive: true
+      });
+    } catch (error) {
+      // Product might already exist, skip
+      console.log(`Product ${product.productCode} might already exist:`, error.message);
+    }
+  }
+}
