@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Filter, CheckSquare, RotateCcw, Calendar, User, Edit3, Trash2, UserCheck, MessageCircle, Clock, ChevronDown, ChevronUp, History } from "lucide-react";
+import { Search, Plus, Filter, CheckSquare, RotateCcw, Calendar, User, Edit3, Trash2, UserCheck, MessageCircle, Clock, ChevronDown, ChevronUp, History, X } from "lucide-react";
 import { useState } from "react";
 import { format, parseISO } from 'date-fns';
 
@@ -441,14 +441,7 @@ Thanks!`;
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Task Management</h1>
-        <p className="text-gray-600 mt-1">
-          Manage and track your team's tasks
-          {allFollowUps && (allFollowUps as any[]).length > 0 && (
-            <span className="ml-2 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
-              {(allFollowUps as any[]).length} follow-ups loaded
-            </span>
-          )}
-        </p>
+        <p className="text-gray-600 mt-1">Manage and track your team's tasks</p>
       </div>
 
       {/* Stats Cards */}
@@ -790,28 +783,22 @@ Thanks!`;
                                   </p>
                                   <p className="text-sm text-gray-500 dark:text-gray-400">{task.description}</p>
                                   {getTaskFollowUps(task.id).length > 0 && (
-                                    <div className="flex items-center mt-1">
+                                    <div 
+                                      className="flex items-center mt-1 cursor-pointer hover:bg-blue-50 p-1 rounded" 
+                                      onClick={() => toggleTaskExpansion(task.id)}
+                                      title="Click to view follow-up history"
+                                    >
                                       <History size={12} className="text-blue-500 mr-1" />
                                       <span className="text-xs text-blue-600">
                                         {getTaskFollowUps(task.id).length} follow-up{getTaskFollowUps(task.id).length !== 1 ? 's' : ''}
                                       </span>
+                                      {expandedTasks.has(task.id) ? 
+                                        <ChevronUp size={12} className="ml-1 text-blue-500" /> : 
+                                        <ChevronDown size={12} className="ml-1 text-blue-500" />
+                                      }
                                     </div>
                                   )}
                                 </div>
-                                {getTaskFollowUps(task.id).length > 0 && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => toggleTaskExpansion(task.id)}
-                                    className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
-                                    title="View Follow-up History"
-                                  >
-                                    {expandedTasks.has(task.id) ? 
-                                      <ChevronUp size={14} /> : 
-                                      <ChevronDown size={14} />
-                                    }
-                                  </Button>
-                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -954,6 +941,73 @@ Thanks!`;
                     </tbody>
                   </table>
                 </div>
+
+                {/* Follow-up History Section */}
+                {Array.from(expandedTasks).map(taskId => {
+                  const task = filteredTasks.find((t: any) => t.id === taskId);
+                  if (!task) return null;
+                  
+                  return (
+                    <div key={`followups-${taskId}`} className="mt-4 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                      <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
+                            <History size={16} className="text-blue-500 mr-2" />
+                            Follow-up History for "{task.title}"
+                          </h4>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleTaskExpansion(taskId)}
+                            className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                          >
+                            <X size={14} />
+                          </Button>
+                        </div>
+                        {getTaskFollowUps(taskId).length === 0 ? (
+                          <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                            No follow-ups yet.
+                          </p>
+                        ) : (
+                          <div className="space-y-3">
+                            {getTaskFollowUps(taskId).map((followUp: any) => {
+                              const followUpUser = (users as any[])?.find((u: any) => u.id === followUp.assignedUserId);
+                              return (
+                                <div key={followUp.id} className="border-l-4 border-blue-200 pl-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-r-md">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center space-x-2">
+                                      <Badge className={
+                                        followUp.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                        followUp.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                        'bg-yellow-100 text-yellow-800'
+                                      }>
+                                        {followUp.status}
+                                      </Badge>
+                                      <span className="text-xs text-gray-500">
+                                        {format(parseISO(followUp.followUpDate), 'MMM dd, yyyy HH:mm')}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs text-gray-600">
+                                      by {followUpUser ? `${followUpUser.firstName} ${followUpUser.lastName}`.trim() || followUpUser.username : 'Unknown'}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
+                                    {followUp.remarks}
+                                  </p>
+                                  {followUp.nextFollowUpDate && (
+                                    <p className="text-xs text-blue-600">
+                                      Next follow-up: {format(parseISO(followUp.nextFollowUpDate), 'MMM dd, yyyy HH:mm')}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
 
