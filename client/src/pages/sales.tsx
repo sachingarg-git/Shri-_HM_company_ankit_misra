@@ -11,7 +11,7 @@ import { format } from "date-fns";
 // UI Components
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -553,6 +553,9 @@ export default function Sales() {
             <DialogTitle>
               {editingSales ? 'Edit Sales Record' : 'Create New Sales Record'}
             </DialogTitle>
+            <DialogDescription>
+              {editingSales ? 'Update the sales record information below.' : 'Fill in the details to create a new sales record.'}
+            </DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
@@ -582,7 +585,7 @@ export default function Sales() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Status</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue />
@@ -637,7 +640,7 @@ export default function Sales() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Client</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select client" />
@@ -661,7 +664,7 @@ export default function Sales() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Product</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select product" />
@@ -685,7 +688,7 @@ export default function Sales() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Sales Person</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select sales person" />
@@ -745,7 +748,7 @@ export default function Sales() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Transporter</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select transporter" />
@@ -904,6 +907,9 @@ export default function Sales() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add New Transporter</DialogTitle>
+            <DialogDescription>
+              Add a new transporter to use in your sales records.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
