@@ -43,7 +43,6 @@ const navigation: NavigationEntry[] = [
     section: "OPERATIONS",
     items: [
       { name: "Task Management", href: "/task-management", icon: CheckSquare },
-      { name: "Follow-ups", href: "/follow-ups", icon: Clock },
       { name: "Order Workflow", href: "/order-workflow", icon: ShoppingCart },
       { name: "Credit Agreements", href: "/credit-agreements", icon: File },
       { name: "E-Way Bills", href: "/eway-bills", icon: Receipt },

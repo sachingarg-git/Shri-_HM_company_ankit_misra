@@ -52,7 +52,6 @@ function Router() {
             <Route path="/client-management" component={Clients} />
             <Route path="/client-tracking" component={ClientTracking} />
             <Route path="/task-management" component={TaskManagement} />
-            <Route path="/follow-ups" component={FollowUps} />
             <Route path="/order-workflow" component={OrderWorkflow} />
             <Route path="/credit-agreements" component={CreditAgreements} />
             <Route path="/eway-bills" component={EwayBills} />

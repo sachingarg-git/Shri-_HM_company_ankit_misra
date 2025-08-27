@@ -13,8 +13,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Plus, Filter, CheckSquare, RotateCcw, Calendar, User, Edit3, Trash2, UserCheck, MessageCircle, Clock } from "lucide-react";
+import { Search, Plus, Filter, CheckSquare, RotateCcw, Calendar, User, Edit3, Trash2, UserCheck, MessageCircle, Clock, ChevronDown, ChevronUp, History } from "lucide-react";
 import { useState } from "react";
+import { format, parseISO } from 'date-fns';
 
 export default function TaskManagement() {
   const { toast } = useToast();
@@ -26,6 +27,7 @@ export default function TaskManagement() {
   const [editingTask, setEditingTask] = useState<any>(null);
   const [transferringTask, setTransferringTask] = useState<any>(null);
   const [followUpTask, setFollowUpTask] = useState<any>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
 
   // Fetch data
   const { data: allTasks = [], isLoading } = useQuery({
@@ -50,6 +52,11 @@ export default function TaskManagement() {
 
   const { data: orders = [] } = useQuery({
     queryKey: ['/api/orders'],
+  });
+
+  // Fetch follow-ups data
+  const { data: allFollowUps = [] } = useQuery({
+    queryKey: ['/api/follow-ups'],
   });
 
   // Form schemas
@@ -304,6 +311,23 @@ Thanks!`;
       title: "WhatsApp Opened", 
       description: `Message template opened for ${user.firstName}` 
     });
+  };
+
+  // Toggle task expansion to show/hide follow-up history
+  const toggleTaskExpansion = (taskId: string) => {
+    const newExpandedTasks = new Set(expandedTasks);
+    if (newExpandedTasks.has(taskId)) {
+      newExpandedTasks.delete(taskId);
+    } else {
+      newExpandedTasks.add(taskId);
+    }
+    setExpandedTasks(newExpandedTasks);
+  };
+
+  // Get follow-ups for a specific task
+  const getTaskFollowUps = (taskId: string) => {
+    return (allFollowUps as any[]).filter((followUp: any) => followUp.taskId === taskId)
+      .sort((a: any, b: any) => new Date(b.followUpDate).getTime() - new Date(a.followUpDate).getTime());
   };
 
   const toggleTaskCompletion = (taskId: string, isCompleted: boolean) => {
@@ -751,11 +775,35 @@ Thanks!`;
                               />
                             </td>
                             <td className="px-6 py-4">
-                              <div>
-                                <p className={`font-medium ${task.isCompleted ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
-                                  {task.title}
-                                </p>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">{task.description}</p>
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <p className={`font-medium ${task.isCompleted ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
+                                    {task.title}
+                                  </p>
+                                  <p className="text-sm text-gray-500 dark:text-gray-400">{task.description}</p>
+                                  {getTaskFollowUps(task.id).length > 0 && (
+                                    <div className="flex items-center mt-1">
+                                      <History size={12} className="text-blue-500 mr-1" />
+                                      <span className="text-xs text-blue-600">
+                                        {getTaskFollowUps(task.id).length} follow-up{getTaskFollowUps(task.id).length !== 1 ? 's' : ''}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                {getTaskFollowUps(task.id).length > 0 && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleTaskExpansion(task.id)}
+                                    className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
+                                    title="View Follow-up History"
+                                  >
+                                    {expandedTasks.has(task.id) ? 
+                                      <ChevronUp size={14} /> : 
+                                      <ChevronDown size={14} />
+                                    }
+                                  </Button>
+                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4">
