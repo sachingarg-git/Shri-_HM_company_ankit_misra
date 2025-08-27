@@ -1094,29 +1094,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/company-profile", async (req, res) => {
     try {
+      console.log("Received create request with body:", req.body);
       const validatedData = insertCompanyProfileSchema.parse(req.body);
+      console.log("Validated data:", validatedData);
       const companyProfile = await storage.createCompanyProfile(validatedData);
       res.status(201).json(companyProfile);
     } catch (error) {
       console.error("Company profile creation error:", error);
       if (error instanceof z.ZodError) {
+        console.error("Validation errors:", error.errors);
         return res.status(400).json({ message: "Invalid company profile data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create company profile" });
+      res.status(500).json({ message: "Failed to create company profile", error: error.message });
     }
   });
 
   app.put("/api/company-profile/:id", async (req, res) => {
     try {
+      console.log("Received update request for ID:", req.params.id);
+      console.log("Request body:", req.body);
       const validatedData = insertCompanyProfileSchema.parse(req.body);
+      console.log("Validated data:", validatedData);
       const companyProfile = await storage.updateCompanyProfile(req.params.id, validatedData);
       res.json(companyProfile);
     } catch (error) {
       console.error("Company profile update error:", error);
       if (error instanceof z.ZodError) {
+        console.error("Validation errors:", error.errors);
         return res.status(400).json({ message: "Invalid company profile data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to update company profile" });
+      res.status(500).json({ message: "Failed to update company profile", error: error.message });
     }
   });
 
