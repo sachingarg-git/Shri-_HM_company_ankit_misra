@@ -3,6 +3,8 @@ import {
   salesRates, creditAgreements, purchaseOrders, sales, numberSeries,
   transporters, products, shippingAddresses, followUps,
   companyProfile, branches, productMaster, suppliers, banks, vehicles,
+  leads, opportunities, quotations, quotationItems, salesOrders, salesOrderItems,
+  deliveryPlans, dispatches, deliveryChallans,
   type User, type InsertUser, type Client, type InsertClient,
   type Order, type InsertOrder, type Payment, type InsertPayment,
   type Task, type InsertTask, type EwayBill, type InsertEwayBill,
@@ -13,7 +15,12 @@ import {
   type ShippingAddress, type InsertShippingAddress, type FollowUp, type InsertFollowUp,
   type CompanyProfile, type InsertCompanyProfile, type Branch, type InsertBranch,
   type ProductMaster, type InsertProductMaster, type Supplier, type InsertSupplier,
-  type Bank, type InsertBank, type Vehicle, type InsertVehicle
+  type Bank, type InsertBank, type Vehicle, type InsertVehicle,
+  type Lead, type InsertLead, type Opportunity, type InsertOpportunity,
+  type Quotation, type InsertQuotation, type QuotationItem, type InsertQuotationItem,
+  type SalesOrder, type InsertSalesOrder, type SalesOrderItem, type InsertSalesOrderItem,
+  type DeliveryPlan, type InsertDeliveryPlan, type Dispatch, type InsertDispatch,
+  type DeliveryChallan, type InsertDeliveryChallan
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, sql, gte, lte, count, or, ilike } from "drizzle-orm";
@@ -197,6 +204,71 @@ export interface IStorage {
   createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
   updateVehicle(id: string, vehicle: Partial<InsertVehicle>): Promise<Vehicle>;
   deleteVehicle(id: string): Promise<void>;
+
+  // ==================== SALES OPERATIONS ====================
+  
+  // Leads
+  getLead(id: string): Promise<Lead | undefined>;
+  getAllLeads(): Promise<Lead[]>;
+  getLeadsByStatus(status: string): Promise<Lead[]>;
+  createLead(lead: InsertLead): Promise<Lead>;
+  updateLead(id: string, lead: Partial<InsertLead>): Promise<Lead>;
+  deleteLead(id: string): Promise<void>;
+  
+  // Opportunities
+  getOpportunity(id: string): Promise<Opportunity | undefined>;
+  getAllOpportunities(): Promise<Opportunity[]>;
+  getOpportunitiesByLead(leadId: string): Promise<Opportunity[]>;
+  createOpportunity(opportunity: InsertOpportunity): Promise<Opportunity>;
+  updateOpportunity(id: string, opportunity: Partial<InsertOpportunity>): Promise<Opportunity>;
+  
+  // Quotations
+  getQuotation(id: string): Promise<Quotation | undefined>;
+  getAllQuotations(): Promise<Quotation[]>;
+  getQuotationsByOpportunity(opportunityId: string): Promise<Quotation[]>;
+  createQuotation(quotation: InsertQuotation): Promise<Quotation>;
+  updateQuotation(id: string, quotation: Partial<InsertQuotation>): Promise<Quotation>;
+  
+  // Quotation Items
+  getQuotationItem(id: string): Promise<QuotationItem | undefined>;
+  getQuotationItemsByQuotation(quotationId: string): Promise<QuotationItem[]>;
+  createQuotationItem(item: InsertQuotationItem): Promise<QuotationItem>;
+  updateQuotationItem(id: string, item: Partial<InsertQuotationItem>): Promise<QuotationItem>;
+  deleteQuotationItem(id: string): Promise<void>;
+  
+  // Sales Orders
+  getSalesOrder(id: string): Promise<SalesOrder | undefined>;
+  getAllSalesOrders(): Promise<SalesOrder[]>;
+  getSalesOrdersByQuotation(quotationId: string): Promise<SalesOrder[]>;
+  createSalesOrder(salesOrder: InsertSalesOrder): Promise<SalesOrder>;
+  updateSalesOrder(id: string, salesOrder: Partial<InsertSalesOrder>): Promise<SalesOrder>;
+  
+  // Sales Order Items
+  getSalesOrderItem(id: string): Promise<SalesOrderItem | undefined>;
+  getSalesOrderItemsByOrder(salesOrderId: string): Promise<SalesOrderItem[]>;
+  createSalesOrderItem(item: InsertSalesOrderItem): Promise<SalesOrderItem>;
+  updateSalesOrderItem(id: string, item: Partial<InsertSalesOrderItem>): Promise<SalesOrderItem>;
+  deleteSalesOrderItem(id: string): Promise<void>;
+  
+  // Delivery Plans
+  getDeliveryPlan(id: string): Promise<DeliveryPlan | undefined>;
+  getAllDeliveryPlans(): Promise<DeliveryPlan[]>;
+  getDeliveryPlansBySalesOrder(salesOrderId: string): Promise<DeliveryPlan[]>;
+  createDeliveryPlan(plan: InsertDeliveryPlan): Promise<DeliveryPlan>;
+  updateDeliveryPlan(id: string, plan: Partial<InsertDeliveryPlan>): Promise<DeliveryPlan>;
+  
+  // Dispatches
+  getDispatch(id: string): Promise<Dispatch | undefined>;
+  getAllDispatches(): Promise<Dispatch[]>;
+  getDispatchesByDeliveryPlan(deliveryPlanId: string): Promise<Dispatch[]>;
+  createDispatch(dispatch: InsertDispatch): Promise<Dispatch>;
+  updateDispatch(id: string, dispatch: Partial<InsertDispatch>): Promise<Dispatch>;
+  
+  // Delivery Challans
+  getDeliveryChallan(id: string): Promise<DeliveryChallan | undefined>;
+  getDeliveryChallansbyDispatch(dispatchId: string): Promise<DeliveryChallan[]>;
+  createDeliveryChallan(challan: InsertDeliveryChallan): Promise<DeliveryChallan>;
+  updateDeliveryChallan(id: string, challan: Partial<InsertDeliveryChallan>): Promise<DeliveryChallan>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1038,6 +1110,341 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVehicle(id: string): Promise<void> {
     await db.delete(vehicles).where(eq(vehicles.id, id));
+  }
+
+  // ==================== SALES OPERATIONS IMPLEMENTATIONS ====================
+  
+  // Leads
+  async getLead(id: string): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+    return lead || undefined;
+  }
+
+  async getAllLeads(): Promise<Lead[]> {
+    return await db
+      .select()
+      .from(leads)
+      .orderBy(desc(leads.createdAt));
+  }
+
+  async getLeadsByStatus(status: string): Promise<Lead[]> {
+    return await db
+      .select()
+      .from(leads)
+      .where(eq(leads.leadStatus, status))
+      .orderBy(desc(leads.createdAt));
+  }
+
+  async createLead(leadData: InsertLead): Promise<Lead> {
+    const [lead] = await db
+      .insert(leads)
+      .values(leadData)
+      .returning();
+    return lead;
+  }
+
+  async updateLead(id: string, leadData: Partial<InsertLead>): Promise<Lead> {
+    const [lead] = await db
+      .update(leads)
+      .set({ ...leadData, updatedAt: new Date() })
+      .where(eq(leads.id, id))
+      .returning();
+    return lead;
+  }
+
+  async deleteLead(id: string): Promise<void> {
+    await db.delete(leads).where(eq(leads.id, id));
+  }
+  
+  // Opportunities
+  async getOpportunity(id: string): Promise<Opportunity | undefined> {
+    const [opportunity] = await db.select().from(opportunities).where(eq(opportunities.id, id));
+    return opportunity || undefined;
+  }
+
+  async getAllOpportunities(): Promise<Opportunity[]> {
+    return await db
+      .select()
+      .from(opportunities)
+      .orderBy(desc(opportunities.createdAt));
+  }
+
+  async getOpportunitiesByLead(leadId: string): Promise<Opportunity[]> {
+    return await db
+      .select()
+      .from(opportunities)
+      .where(eq(opportunities.leadId, leadId))
+      .orderBy(desc(opportunities.createdAt));
+  }
+
+  async createOpportunity(opportunityData: InsertOpportunity): Promise<Opportunity> {
+    const [opportunity] = await db
+      .insert(opportunities)
+      .values(opportunityData)
+      .returning();
+    return opportunity;
+  }
+
+  async updateOpportunity(id: string, opportunityData: Partial<InsertOpportunity>): Promise<Opportunity> {
+    const [opportunity] = await db
+      .update(opportunities)
+      .set({ ...opportunityData, updatedAt: new Date() })
+      .where(eq(opportunities.id, id))
+      .returning();
+    return opportunity;
+  }
+  
+  // Quotations
+  async getQuotation(id: string): Promise<Quotation | undefined> {
+    const [quotation] = await db.select().from(quotations).where(eq(quotations.id, id));
+    return quotation || undefined;
+  }
+
+  async getAllQuotations(): Promise<Quotation[]> {
+    return await db
+      .select()
+      .from(quotations)
+      .orderBy(desc(quotations.createdAt));
+  }
+
+  async getQuotationsByOpportunity(opportunityId: string): Promise<Quotation[]> {
+    return await db
+      .select()
+      .from(quotations)
+      .where(eq(quotations.opportunityId, opportunityId))
+      .orderBy(desc(quotations.createdAt));
+  }
+
+  async createQuotation(quotationData: InsertQuotation): Promise<Quotation> {
+    const [quotation] = await db
+      .insert(quotations)
+      .values(quotationData)
+      .returning();
+    return quotation;
+  }
+
+  async updateQuotation(id: string, quotationData: Partial<InsertQuotation>): Promise<Quotation> {
+    const [quotation] = await db
+      .update(quotations)
+      .set({ ...quotationData, updatedAt: new Date() })
+      .where(eq(quotations.id, id))
+      .returning();
+    return quotation;
+  }
+  
+  // Quotation Items
+  async getQuotationItem(id: string): Promise<QuotationItem | undefined> {
+    const [item] = await db.select().from(quotationItems).where(eq(quotationItems.id, id));
+    return item || undefined;
+  }
+
+  async getQuotationItemsByQuotation(quotationId: string): Promise<QuotationItem[]> {
+    return await db
+      .select()
+      .from(quotationItems)
+      .where(eq(quotationItems.quotationId, quotationId))
+      .orderBy(asc(quotationItems.createdAt));
+  }
+
+  async createQuotationItem(itemData: InsertQuotationItem): Promise<QuotationItem> {
+    const [item] = await db
+      .insert(quotationItems)
+      .values(itemData)
+      .returning();
+    return item;
+  }
+
+  async updateQuotationItem(id: string, itemData: Partial<InsertQuotationItem>): Promise<QuotationItem> {
+    const [item] = await db
+      .update(quotationItems)
+      .set(itemData)
+      .where(eq(quotationItems.id, id))
+      .returning();
+    return item;
+  }
+
+  async deleteQuotationItem(id: string): Promise<void> {
+    await db.delete(quotationItems).where(eq(quotationItems.id, id));
+  }
+  
+  // Sales Orders
+  async getSalesOrder(id: string): Promise<SalesOrder | undefined> {
+    const [salesOrder] = await db.select().from(salesOrders).where(eq(salesOrders.id, id));
+    return salesOrder || undefined;
+  }
+
+  async getAllSalesOrders(): Promise<SalesOrder[]> {
+    return await db
+      .select()
+      .from(salesOrders)
+      .orderBy(desc(salesOrders.createdAt));
+  }
+
+  async getSalesOrdersByQuotation(quotationId: string): Promise<SalesOrder[]> {
+    return await db
+      .select()
+      .from(salesOrders)
+      .where(eq(salesOrders.quotationId, quotationId))
+      .orderBy(desc(salesOrders.createdAt));
+  }
+
+  async createSalesOrder(salesOrderData: InsertSalesOrder): Promise<SalesOrder> {
+    const [salesOrder] = await db
+      .insert(salesOrders)
+      .values(salesOrderData)
+      .returning();
+    return salesOrder;
+  }
+
+  async updateSalesOrder(id: string, salesOrderData: Partial<InsertSalesOrder>): Promise<SalesOrder> {
+    const [salesOrder] = await db
+      .update(salesOrders)
+      .set({ ...salesOrderData, updatedAt: new Date() })
+      .where(eq(salesOrders.id, id))
+      .returning();
+    return salesOrder;
+  }
+  
+  // Sales Order Items
+  async getSalesOrderItem(id: string): Promise<SalesOrderItem | undefined> {
+    const [item] = await db.select().from(salesOrderItems).where(eq(salesOrderItems.id, id));
+    return item || undefined;
+  }
+
+  async getSalesOrderItemsByOrder(salesOrderId: string): Promise<SalesOrderItem[]> {
+    return await db
+      .select()
+      .from(salesOrderItems)
+      .where(eq(salesOrderItems.salesOrderId, salesOrderId))
+      .orderBy(asc(salesOrderItems.createdAt));
+  }
+
+  async createSalesOrderItem(itemData: InsertSalesOrderItem): Promise<SalesOrderItem> {
+    const [item] = await db
+      .insert(salesOrderItems)
+      .values(itemData)
+      .returning();
+    return item;
+  }
+
+  async updateSalesOrderItem(id: string, itemData: Partial<InsertSalesOrderItem>): Promise<SalesOrderItem> {
+    const [item] = await db
+      .update(salesOrderItems)
+      .set(itemData)
+      .where(eq(salesOrderItems.id, id))
+      .returning();
+    return item;
+  }
+
+  async deleteSalesOrderItem(id: string): Promise<void> {
+    await db.delete(salesOrderItems).where(eq(salesOrderItems.id, id));
+  }
+  
+  // Delivery Plans
+  async getDeliveryPlan(id: string): Promise<DeliveryPlan | undefined> {
+    const [plan] = await db.select().from(deliveryPlans).where(eq(deliveryPlans.id, id));
+    return plan || undefined;
+  }
+
+  async getAllDeliveryPlans(): Promise<DeliveryPlan[]> {
+    return await db
+      .select()
+      .from(deliveryPlans)
+      .orderBy(desc(deliveryPlans.createdAt));
+  }
+
+  async getDeliveryPlansBySalesOrder(salesOrderId: string): Promise<DeliveryPlan[]> {
+    return await db
+      .select()
+      .from(deliveryPlans)
+      .where(eq(deliveryPlans.salesOrderId, salesOrderId))
+      .orderBy(desc(deliveryPlans.createdAt));
+  }
+
+  async createDeliveryPlan(planData: InsertDeliveryPlan): Promise<DeliveryPlan> {
+    const [plan] = await db
+      .insert(deliveryPlans)
+      .values(planData)
+      .returning();
+    return plan;
+  }
+
+  async updateDeliveryPlan(id: string, planData: Partial<InsertDeliveryPlan>): Promise<DeliveryPlan> {
+    const [plan] = await db
+      .update(deliveryPlans)
+      .set({ ...planData, updatedAt: new Date() })
+      .where(eq(deliveryPlans.id, id))
+      .returning();
+    return plan;
+  }
+  
+  // Dispatches
+  async getDispatch(id: string): Promise<Dispatch | undefined> {
+    const [dispatch] = await db.select().from(dispatches).where(eq(dispatches.id, id));
+    return dispatch || undefined;
+  }
+
+  async getAllDispatches(): Promise<Dispatch[]> {
+    return await db
+      .select()
+      .from(dispatches)
+      .orderBy(desc(dispatches.createdAt));
+  }
+
+  async getDispatchesByDeliveryPlan(deliveryPlanId: string): Promise<Dispatch[]> {
+    return await db
+      .select()
+      .from(dispatches)
+      .where(eq(dispatches.deliveryPlanId, deliveryPlanId))
+      .orderBy(desc(dispatches.createdAt));
+  }
+
+  async createDispatch(dispatchData: InsertDispatch): Promise<Dispatch> {
+    const [dispatch] = await db
+      .insert(dispatches)
+      .values(dispatchData)
+      .returning();
+    return dispatch;
+  }
+
+  async updateDispatch(id: string, dispatchData: Partial<InsertDispatch>): Promise<Dispatch> {
+    const [dispatch] = await db
+      .update(dispatches)
+      .set({ ...dispatchData, updatedAt: new Date() })
+      .where(eq(dispatches.id, id))
+      .returning();
+    return dispatch;
+  }
+  
+  // Delivery Challans
+  async getDeliveryChallan(id: string): Promise<DeliveryChallan | undefined> {
+    const [challan] = await db.select().from(deliveryChallans).where(eq(deliveryChallans.id, id));
+    return challan || undefined;
+  }
+
+  async getDeliveryChallansbyDispatch(dispatchId: string): Promise<DeliveryChallan[]> {
+    return await db
+      .select()
+      .from(deliveryChallans)
+      .where(eq(deliveryChallans.dispatchId, dispatchId))
+      .orderBy(asc(deliveryChallans.createdAt));
+  }
+
+  async createDeliveryChallan(challanData: InsertDeliveryChallan): Promise<DeliveryChallan> {
+    const [challan] = await db
+      .insert(deliveryChallans)
+      .values(challanData)
+      .returning();
+    return challan;
+  }
+
+  async updateDeliveryChallan(id: string, challanData: Partial<InsertDeliveryChallan>): Promise<DeliveryChallan> {
+    const [challan] = await db
+      .update(deliveryChallans)
+      .set(challanData)
+      .where(eq(deliveryChallans.id, id))
+      .returning();
+    return challan;
   }
 }
 

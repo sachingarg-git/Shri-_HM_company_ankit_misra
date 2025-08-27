@@ -19,6 +19,17 @@ export const trackingStatusEnum = pgEnum('tracking_status', ['LOADING', 'IN_TRAN
 export const userRoleEnum = pgEnum('user_role', ['ADMIN', 'MANAGER', 'ACCOUNTANT', 'EMPLOYEE', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'OPERATIONS']);
 export const deliveryStatusEnum = pgEnum('delivery_status', ['RECEIVING', 'OK', 'APPROVED', 'DELIVERED']);
 
+// Sales Operations Enums
+export const leadStatusEnum = pgEnum('lead_status', ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST']);
+export const leadSourceEnum = pgEnum('lead_source', ['WEBSITE', 'PHONE', 'EMAIL', 'REFERRAL', 'TRADE_SHOW', 'ADVERTISEMENT', 'COLD_CALL', 'OTHERS']);
+export const opportunityStageEnum = pgEnum('opportunity_stage', ['QUALIFICATION', 'NEEDS_ANALYSIS', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST']);
+export const quotationStatusEnum = pgEnum('quotation_status', ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'SENT', 'REVISED', 'ACCEPTED', 'REJECTED', 'EXPIRED']);
+export const salesOrderStatusEnum = pgEnum('sales_order_status', ['DRAFT', 'PENDING_CREDIT_CHECK', 'APPROVED', 'IN_PRODUCTION', 'READY_TO_SHIP', 'SHIPPED', 'DELIVERED', 'COMPLETED', 'CANCELLED']);
+export const deliveryPlanStatusEnum = pgEnum('delivery_plan_status', ['PLANNED', 'SCHEDULED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']);
+export const dispatchStatusEnum = pgEnum('dispatch_status', ['PENDING', 'LOADING', 'IN_TRANSIT', 'DELIVERED', 'RETURNED']);
+export const creditCheckStatusEnum = pgEnum('credit_check_status', ['PENDING', 'APPROVED', 'REJECTED', 'REQUIRES_GUARANTEE']);
+export const approvalStatusEnum = pgEnum('approval_status', ['PENDING', 'APPROVED', 'REJECTED', 'REQUIRES_REVISION']);
+
 // Users table (Enhanced for ERP system)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -867,6 +878,196 @@ export const plantAddresses = pgTable("plant_addresses", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
+// ==================== SALES OPERATIONS TABLES ====================
+
+// Leads & CRM
+export const leads = pgTable("leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadNumber: text("lead_number").notNull().unique(),
+  companyName: text("company_name").notNull(),
+  contactPersonName: text("contact_person_name").notNull(),
+  mobileNumber: text("mobile_number"),
+  email: text("email"),
+  leadSource: leadSourceEnum("lead_source").notNull(),
+  leadStatus: leadStatusEnum("lead_status").notNull().default('NEW'),
+  interestedProducts: text("interested_products").array(),
+  estimatedValue: decimal("estimated_value", { precision: 15, scale: 2 }),
+  expectedCloseDate: timestamp("expected_close_date"),
+  notes: text("notes"),
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  clientId: varchar("client_id").references(() => clients.id), // Converted to client when qualified
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Opportunities (from qualified leads)
+export const opportunities = pgTable("opportunities", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  opportunityNumber: text("opportunity_number").notNull().unique(),
+  leadId: varchar("lead_id").references(() => leads.id),
+  clientId: varchar("client_id").notNull().references(() => clients.id),
+  stage: opportunityStageEnum("stage").notNull().default('QUALIFICATION'),
+  estimatedValue: decimal("estimated_value", { precision: 15, scale: 2 }).notNull(),
+  probability: integer("probability").notNull().default(50), // Percentage
+  expectedCloseDate: timestamp("expected_close_date").notNull(),
+  products: text("products").array(), // Array of product IDs/names
+  requirements: text("requirements"),
+  competitorInfo: text("competitor_info"),
+  assignedToUserId: varchar("assigned_to_user_id").notNull().references(() => users.id),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Quotations with Multi-level Approvals
+export const quotations = pgTable("quotations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quotationNumber: text("quotation_number").notNull().unique(),
+  opportunityId: varchar("opportunity_id").references(() => opportunities.id),
+  clientId: varchar("client_id").notNull().references(() => clients.id),
+  quotationDate: timestamp("quotation_date").notNull().default(sql`now()`),
+  validUntil: timestamp("valid_until").notNull(),
+  status: quotationStatusEnum("status").notNull().default('DRAFT'),
+  totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
+  discountPercentage: decimal("discount_percentage", { precision: 5, scale: 2 }).default('0'),
+  discountAmount: decimal("discount_amount", { precision: 15, scale: 2 }).default('0'),
+  taxAmount: decimal("tax_amount", { precision: 15, scale: 2 }).default('0'),
+  grandTotal: decimal("grand_total", { precision: 15, scale: 2 }).notNull(),
+  paymentTerms: text("payment_terms"),
+  deliveryTerms: text("delivery_terms"),
+  specialInstructions: text("special_instructions"),
+  preparedByUserId: varchar("prepared_by_user_id").notNull().references(() => users.id),
+  approvedByUserId: varchar("approved_by_user_id").references(() => users.id),
+  approvalStatus: approvalStatusEnum("approval_status").notNull().default('PENDING'),
+  approvalComments: text("approval_comments"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Quotation Line Items
+export const quotationItems = pgTable("quotation_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  quotationId: varchar("quotation_id").notNull().references(() => quotations.id),
+  productId: varchar("product_id").notNull().references(() => productMaster.id),
+  description: text("description"),
+  quantity: decimal("quantity", { precision: 15, scale: 3 }).notNull(),
+  unit: text("unit").notNull(),
+  unitPrice: decimal("unit_price", { precision: 15, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 15, scale: 2 }).notNull(),
+  taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default('0'),
+  taxAmount: decimal("tax_amount", { precision: 15, scale: 2 }).default('0'),
+  deliveryDate: timestamp("delivery_date"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// Sales Orders with Credit Checks
+export const salesOrders = pgTable("sales_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orderNumber: text("order_number").notNull().unique(),
+  quotationId: varchar("quotation_id").references(() => quotations.id),
+  clientId: varchar("client_id").notNull().references(() => clients.id),
+  orderDate: timestamp("order_date").notNull().default(sql`now()`),
+  expectedDeliveryDate: timestamp("expected_delivery_date").notNull(),
+  status: salesOrderStatusEnum("status").notNull().default('DRAFT'),
+  totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
+  advanceReceived: decimal("advance_received", { precision: 15, scale: 2 }).default('0'),
+  creditCheckStatus: creditCheckStatusEnum("credit_check_status").notNull().default('PENDING'),
+  creditLimit: decimal("credit_limit", { precision: 15, scale: 2 }),
+  paymentTerms: text("payment_terms"),
+  deliveryAddress: text("delivery_address"),
+  specialInstructions: text("special_instructions"),
+  salesPersonId: varchar("sales_person_id").notNull().references(() => users.id),
+  approvedByUserId: varchar("approved_by_user_id").references(() => users.id),
+  branchId: varchar("branch_id").references(() => branches.id),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Sales Order Line Items
+export const salesOrderItems = pgTable("sales_order_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  salesOrderId: varchar("sales_order_id").notNull().references(() => salesOrders.id),
+  productId: varchar("product_id").notNull().references(() => productMaster.id),
+  description: text("description"),
+  quantity: decimal("quantity", { precision: 15, scale: 3 }).notNull(),
+  unit: text("unit").notNull(),
+  unitPrice: decimal("unit_price", { precision: 15, scale: 2 }).notNull(),
+  totalPrice: decimal("total_price", { precision: 15, scale: 2 }).notNull(),
+  allocatedQuantity: decimal("allocated_quantity", { precision: 15, scale: 3 }).default('0'),
+  deliveredQuantity: decimal("delivered_quantity", { precision: 15, scale: 3 }).default('0'),
+  deliveryDate: timestamp("delivery_date"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// Delivery Planning with Route Optimization
+export const deliveryPlans = pgTable("delivery_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  planNumber: text("plan_number").notNull().unique(),
+  salesOrderId: varchar("sales_order_id").notNull().references(() => salesOrders.id),
+  vehicleId: varchar("vehicle_id").references(() => vehicles.id),
+  driverId: varchar("driver_id").references(() => users.id),
+  plannedDate: timestamp("planned_date").notNull(),
+  estimatedDepartureTime: timestamp("estimated_departure_time"),
+  estimatedArrivalTime: timestamp("estimated_arrival_time"),
+  actualDepartureTime: timestamp("actual_departure_time"),
+  actualArrivalTime: timestamp("actual_arrival_time"),
+  status: deliveryPlanStatusEnum("status").notNull().default('PLANNED'),
+  route: text("route"), // JSON string for route waypoints
+  estimatedDistance: decimal("estimated_distance", { precision: 10, scale: 2 }),
+  estimatedFuelCost: decimal("estimated_fuel_cost", { precision: 15, scale: 2 }),
+  loadingPoint: text("loading_point"),
+  deliveryPoint: text("delivery_point"),
+  specialInstructions: text("special_instructions"),
+  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Dispatch Management with Real-time Tracking
+export const dispatches = pgTable("dispatches", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  dispatchNumber: text("dispatch_number").notNull().unique(),
+  deliveryPlanId: varchar("delivery_plan_id").notNull().references(() => deliveryPlans.id),
+  salesOrderId: varchar("sales_order_id").notNull().references(() => salesOrders.id),
+  vehicleId: varchar("vehicle_id").notNull().references(() => vehicles.id),
+  driverId: varchar("driver_id").notNull().references(() => users.id),
+  status: dispatchStatusEnum("status").notNull().default('PENDING'),
+  dispatchDate: timestamp("dispatch_date").notNull().default(sql`now()`),
+  loadingStartTime: timestamp("loading_start_time"),
+  loadingEndTime: timestamp("loading_end_time"),
+  departureTime: timestamp("departure_time"),
+  arrivalTime: timestamp("arrival_time"),
+  deliveryCompletionTime: timestamp("delivery_completion_time"),
+  currentLocation: text("current_location"), // JSON lat/lng
+  deliveryChallanNumber: text("delivery_challan_number"),
+  ewayBillNumber: text("eway_bill_number"),
+  vehicleNumber: text("vehicle_number").notNull(),
+  driverMobile: text("driver_mobile"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Delivery Challans
+export const deliveryChallans = pgTable("delivery_challans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  challanNumber: text("challan_number").notNull().unique(),
+  dispatchId: varchar("dispatch_id").notNull().references(() => dispatches.id),
+  salesOrderId: varchar("sales_order_id").notNull().references(() => salesOrders.id),
+  challanDate: timestamp("challan_date").notNull().default(sql`now()`),
+  customerName: text("customer_name").notNull(),
+  customerAddress: text("customer_address").notNull(),
+  vehicleNumber: text("vehicle_number").notNull(),
+  driverName: text("driver_name").notNull(),
+  totalQuantity: decimal("total_quantity", { precision: 15, scale: 3 }).notNull(),
+  totalValue: decimal("total_value", { precision: 15, scale: 2 }).notNull(),
+  remarks: text("remarks"),
+  receivedByName: text("received_by_name"),
+  receivedBySignature: text("received_by_signature"), // Base64 image or file path
+  deliveryDate: timestamp("delivery_date"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
 // Insert schemas for new tables
 export const insertCompanyProfileSchema = createInsertSchema(companyProfile).omit({
   id: true,
@@ -939,4 +1140,84 @@ export type GodownAddress = typeof godownAddresses.$inferSelect;
 
 export type InsertPlantAddress = z.infer<typeof insertPlantAddressSchema>;
 export type PlantAddress = typeof plantAddresses.$inferSelect;
+
+// Sales Operations Insert Schemas
+export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQuotationSchema = createInsertSchema(quotations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertQuotationItemSchema = createInsertSchema(quotationItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertSalesOrderSchema = createInsertSchema(salesOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSalesOrderItemSchema = createInsertSchema(salesOrderItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertDeliveryPlanSchema = createInsertSchema(deliveryPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDispatchSchema = createInsertSchema(dispatches).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDeliveryChallanSchema = createInsertSchema(deliveryChallans).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Sales Operations Types
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+export type Lead = typeof leads.$inferSelect;
+
+export type InsertOpportunity = z.infer<typeof insertOpportunitySchema>;
+export type Opportunity = typeof opportunities.$inferSelect;
+
+export type InsertQuotation = z.infer<typeof insertQuotationSchema>;
+export type Quotation = typeof quotations.$inferSelect;
+
+export type InsertQuotationItem = z.infer<typeof insertQuotationItemSchema>;
+export type QuotationItem = typeof quotationItems.$inferSelect;
+
+export type InsertSalesOrder = z.infer<typeof insertSalesOrderSchema>;
+export type SalesOrder = typeof salesOrders.$inferSelect;
+
+export type InsertSalesOrderItem = z.infer<typeof insertSalesOrderItemSchema>;
+export type SalesOrderItem = typeof salesOrderItems.$inferSelect;
+
+export type InsertDeliveryPlan = z.infer<typeof insertDeliveryPlanSchema>;
+export type DeliveryPlan = typeof deliveryPlans.$inferSelect;
+
+export type InsertDispatch = z.infer<typeof insertDispatchSchema>;
+export type Dispatch = typeof dispatches.$inferSelect;
+
+export type InsertDeliveryChallan = z.infer<typeof insertDeliveryChallanSchema>;
+export type DeliveryChallan = typeof deliveryChallans.$inferSelect;
 
