@@ -315,12 +315,12 @@ Thanks!`;
 
   // Toggle task expansion to show/hide follow-up history
   const toggleTaskExpansion = (taskId: string) => {
-    const newExpandedTasks = new Set(expandedTasks);
-    if (newExpandedTasks.has(taskId)) {
-      newExpandedTasks.delete(taskId);
-    } else {
+    const newExpandedTasks = new Set<string>();
+    if (!expandedTasks.has(taskId)) {
+      // Open only the clicked task, close all others
       newExpandedTasks.add(taskId);
     }
+    // If clicking the same task that's already open, it will close (empty set)
     setExpandedTasks(newExpandedTasks);
   };
 
@@ -942,74 +942,75 @@ Thanks!`;
                   </table>
                 </div>
 
-                {/* Follow-up History Section */}
-                {Array.from(expandedTasks).map(taskId => {
-                  const task = filteredTasks.find((t: any) => t.id === taskId);
-                  if (!task) return null;
-                  
-                  return (
-                    <div key={`followups-${taskId}`} className="mt-4 bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                      <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center justify-between mb-3">
-                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center">
-                            <History size={16} className="text-blue-500 mr-2" />
-                            Follow-up History for "{task.title}"
-                          </h4>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleTaskExpansion(taskId)}
-                            className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600"
-                          >
-                            <X size={14} />
-                          </Button>
-                        </div>
-                        {getTaskFollowUps(taskId).length === 0 ? (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                            No follow-ups yet.
-                          </p>
-                        ) : (
-                          <div className="space-y-3">
-                            {getTaskFollowUps(taskId).map((followUp: any) => {
-                              const followUpUser = (users as any[])?.find((u: any) => u.id === followUp.assignedUserId);
-                              return (
-                                <div key={followUp.id} className="border-l-4 border-blue-200 pl-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-r-md">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <div className="flex items-center space-x-2">
-                                      <Badge className={
-                                        followUp.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
-                                        followUp.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                                        'bg-yellow-100 text-yellow-800'
-                                      }>
-                                        {followUp.status}
-                                      </Badge>
-                                      <span className="text-xs text-gray-500">
-                                        {format(parseISO(followUp.followUpDate), 'MMM dd, yyyy HH:mm')}
-                                      </span>
-                                    </div>
-                                    <span className="text-xs text-gray-600">
-                                      by {followUpUser ? `${followUpUser.firstName} ${followUpUser.lastName}`.trim() || followUpUser.username : 'Unknown'}
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">
-                                    {followUp.remarks}
-                                  </p>
-                                  {followUp.nextFollowUpDate && (
-                                    <p className="text-xs text-blue-600">
-                                      Next follow-up: {format(parseISO(followUp.nextFollowUpDate), 'MMM dd, yyyy HH:mm')}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
               </CardContent>
             </Card>
+
+            {/* Follow-up History Section - Shows below table when task is expanded */}
+            {Array.from(expandedTasks).map(taskId => {
+              const task = filteredTasks.find((t: any) => t.id === taskId);
+              if (!task) return null;
+              
+              return (
+                <Card key={`followups-${taskId}`} className="mt-4">
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                        <History size={20} className="text-blue-500 mr-3" />
+                        Follow-up History for "{task.title}"
+                      </h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleTaskExpansion(taskId)}
+                        className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                      >
+                        <X size={16} />
+                      </Button>
+                    </div>
+                    {getTaskFollowUps(taskId).length === 0 ? (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                        No follow-ups yet for this task.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {getTaskFollowUps(taskId).map((followUp: any) => {
+                          const followUpUser = (users as any[])?.find((u: any) => u.id === followUp.assignedUserId);
+                          return (
+                            <div key={followUp.id} className="border-l-4 border-blue-200 pl-4 py-3 bg-blue-50 dark:bg-blue-900/20 rounded-r-md">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <Badge className={
+                                    followUp.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                                    followUp.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                                    'bg-yellow-100 text-yellow-800'
+                                  }>
+                                    {followUp.status}
+                                  </Badge>
+                                  <span className="text-sm text-gray-600">
+                                    {format(parseISO(followUp.followUpDate), 'MMM dd, yyyy HH:mm')}
+                                  </span>
+                                </div>
+                                <span className="text-sm text-gray-600">
+                                  by {followUpUser ? (followUpUser.firstName + ' ' + followUpUser.lastName).trim() || followUpUser.username : 'Unknown'}
+                                </span>
+                              </div>
+                              <p className="text-gray-700 dark:text-gray-300 mb-2">
+                                {followUp.remarks}
+                              </p>
+                              {followUp.nextFollowUpDate && (
+                                <p className="text-sm text-blue-600">
+                                  Next follow-up: {format(parseISO(followUp.nextFollowUpDate), 'MMM dd, yyyy HH:mm')}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
 
       {/* Edit Task Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
