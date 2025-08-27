@@ -23,6 +23,8 @@ import { format, parseISO, isToday, isTomorrow, isThisWeek, isThisMonth, isPast 
 
 export default function FollowUpHub() {
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
 
   // Fetch follow-ups and tasks
   const { data: followUps = [], isLoading: followUpsLoading } = useQuery({
@@ -117,6 +119,54 @@ export default function FollowUpHub() {
     return user ? `${user.firstName} ${user.lastName}`.trim() || user.username : 'Unknown User';
   };
 
+  // Get filtered follow-ups by category
+  const getFollowUpsByCategory = (category: string) => {
+    return (followUps as any[]).filter((followUp: any) => {
+      if (followUp.status === 'COMPLETED' || followUp.status === 'CANCELLED') return false;
+      
+      const followUpDate = parseISO(followUp.followUpDate);
+      
+      switch (category) {
+        case 'overdue':
+          return isPast(followUpDate) && !isToday(followUpDate);
+        case 'today':
+          return isToday(followUpDate);
+        case 'tomorrow':
+          return isTomorrow(followUpDate);
+        case 'thisWeek':
+          return isThisWeek(followUpDate) && !isToday(followUpDate) && !isTomorrow(followUpDate);
+        case 'thisMonth':
+          return isThisMonth(followUpDate) && !isThisWeek(followUpDate);
+        default:
+          return false;
+      }
+    });
+  };
+
+  // Handle card click
+  const handleCardClick = (category: string) => {
+    setSelectedCategory(category);
+    setIsCategoryDialogOpen(true);
+  };
+
+  // Get category title
+  const getCategoryTitle = (category: string) => {
+    switch (category) {
+      case 'overdue':
+        return 'Overdue Follow-ups';
+      case 'today':
+        return 'Today\'s Follow-ups';
+      case 'tomorrow':
+        return 'Tomorrow\'s Follow-ups';
+      case 'thisWeek':
+        return 'This Week\'s Follow-ups';
+      case 'thisMonth':
+        return 'This Month\'s Follow-ups';
+      default:
+        return 'Follow-ups';
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -192,7 +242,7 @@ export default function FollowUpHub() {
       <div>
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Follow-up Schedule</h2>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <Card className="border-red-200 bg-red-50 dark:bg-red-900/20">
+          <Card className="border-red-200 bg-red-50 dark:bg-red-900/20 cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleCardClick('overdue')}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -207,7 +257,7 @@ export default function FollowUpHub() {
             </CardContent>
           </Card>
 
-          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20">
+          <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleCardClick('today')}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -222,7 +272,7 @@ export default function FollowUpHub() {
             </CardContent>
           </Card>
 
-          <Card className="border-green-200 bg-green-50 dark:bg-green-900/20">
+          <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleCardClick('tomorrow')}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -237,7 +287,7 @@ export default function FollowUpHub() {
             </CardContent>
           </Card>
 
-          <Card className="border-purple-200 bg-purple-50 dark:bg-purple-900/20">
+          <Card className="border-purple-200 bg-purple-50 dark:bg-purple-900/20 cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleCardClick('thisWeek')}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -252,7 +302,7 @@ export default function FollowUpHub() {
             </CardContent>
           </Card>
 
-          <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
+          <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleCardClick('thisMonth')}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -344,6 +394,57 @@ export default function FollowUpHub() {
           </Card>
         </div>
       </div>
+
+      {/* Category Detail Dialog */}
+      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Target size={20} className="mr-2 text-purple-500" />
+              {selectedCategory ? getCategoryTitle(selectedCategory) : 'Follow-ups'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {selectedCategory && getFollowUpsByCategory(selectedCategory).length === 0 ? (
+              <p className="text-center text-gray-500 py-8">No follow-ups in this category.</p>
+            ) : (
+              selectedCategory && getFollowUpsByCategory(selectedCategory).map((followUp: any) => (
+                <div key={followUp.id} className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Badge className={
+                        followUp.status === 'COMPLETED' ? 'bg-green-100 text-green-800' :
+                        followUp.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }>
+                        {followUp.status}
+                      </Badge>
+                      <span className="text-sm text-gray-600">
+                        {format(parseISO(followUp.followUpDate), 'MMM dd, yyyy HH:mm')}
+                      </span>
+                      <Badge variant="outline">{followUp.contactMethod}</Badge>
+                    </div>
+                    <span className="text-sm text-gray-600">
+                      by {getUserName(followUp.assignedUserId)}
+                    </span>
+                  </div>
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                    {getTaskTitle(followUp.taskId)}
+                  </h4>
+                  <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">
+                    {followUp.remarks}
+                  </p>
+                  {followUp.nextFollowUpDate && (
+                    <p className="text-xs text-blue-600">
+                      Next follow-up: {format(parseISO(followUp.nextFollowUpDate), 'MMM dd, yyyy HH:mm')}
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
