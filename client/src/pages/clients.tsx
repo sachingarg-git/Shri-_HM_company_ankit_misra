@@ -157,6 +157,15 @@ export default function Clients() {
     queryKey: ["/api/clients/stats"],
   });
 
+  const salesUsers = useQuery({
+    queryKey: ["/api/users"],
+    queryFn: async () => {
+      const response = await fetch("/api/users", { credentials: "include" });
+      if (!response.ok) throw new Error('Failed to fetch users');
+      return await response.json();
+    },
+  });
+
   const form = useForm<ExtendedClient>({
     resolver: zodResolver(extendedClientSchema),
     defaultValues: {
@@ -183,6 +192,7 @@ export default function Clients() {
       bankInterestApplicable: "FROM_DUE_DATE",
       poRequired: false,
       invoicingEmails: [],
+      primarySalesPersonId: null,
       gstCertificateUploaded: false,
       panCopyUploaded: false,
       securityChequeUploaded: false,
@@ -257,6 +267,7 @@ export default function Clients() {
       bankInterestApplicable: client.bankInterestApplicable || "FROM_DUE_DATE",
       interestPercent: client.interestPercent || "",
       poRequired: client.poRequired || false,
+      primarySalesPersonId: client.primarySalesPersonId || null,
     });
     setIsFormOpen(true);
   };
@@ -1182,6 +1193,47 @@ export default function Clients() {
                   </CardContent>
                 </Card>
 
+                {/* Sales Assignment Section */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <User className="h-5 w-5 text-purple-600" />
+                      Sales Assignment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <FormField
+                      control={form.control}
+                      name="primarySalesPersonId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Primary Sales Person</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(value === "none" ? null : value)} value={field.value || "none"}>
+                            <FormControl>
+                              <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500">
+                                <SelectValue placeholder="Select sales person" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="none">No Assignment</SelectItem>
+                              {salesUsers.data?.filter(user => 
+                                user.role === 'SALES_MANAGER' || 
+                                user.role === 'SALES_EXECUTIVE' || 
+                                user.role === 'ADMIN'
+                              ).map((user) => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.firstName} {user.lastName} ({user.role})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+
                 {/* Documents Upload Section */}
                 <Card>
                   <CardHeader className="pb-3">
@@ -1450,6 +1502,7 @@ export default function Clients() {
                     <TableHead>Client Name</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Contact</TableHead>
+                    <TableHead>Sales Person</TableHead>
                     <TableHead>Compliance</TableHead>
                     <TableHead>Payment Terms</TableHead>
                     <TableHead>Credit Limit</TableHead>
@@ -1476,6 +1529,25 @@ export default function Clients() {
                           {client.contactPersonName && <div className="font-medium">{client.contactPersonName}</div>}
                           {client.mobileNumber && <div>{client.mobileNumber}</div>}
                           {client.email && <div className="text-gray-500">{client.email}</div>}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {client.primarySalesPersonId ? (
+                            (() => {
+                              const salesPerson = salesUsers.data?.find(user => user.id === client.primarySalesPersonId);
+                              return salesPerson ? (
+                                <div>
+                                  <div className="font-medium">{salesPerson.firstName} {salesPerson.lastName}</div>
+                                  <div className="text-gray-500">{salesPerson.role}</div>
+                                </div>
+                              ) : (
+                                <div className="text-gray-400">Unknown User</div>
+                              );
+                            })()
+                          ) : (
+                            <div className="text-gray-400">Not Assigned</div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
