@@ -1689,16 +1689,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== SALES OPERATIONS API ====================
   
-  // Leads API
-  app.get("/api/leads", async (req, res) => {
+  // Leads API - Role-based access control
+  app.get("/api/leads", requireAuth, async (req, res) => {
     try {
       const { status } = req.query;
+      const currentUser = (req as any).user;
+      
       let leads;
-      if (status) {
-        leads = await storage.getLeadsByStatus(status as string);
+      if (currentUser.role === 'ADMIN' || currentUser.role === 'SALES_MANAGER') {
+        // Admin and Sales Manager can see all leads
+        if (status) {
+          leads = await storage.getLeadsByStatus(status as string);
+        } else {
+          leads = await storage.getAllLeads();
+        }
       } else {
-        leads = await storage.getAllLeads();
+        // Sales Executive and others can only see their assigned leads
+        if (status) {
+          leads = await storage.getLeadsByStatusAndUser(status as string, currentUser.id);
+        } else {
+          leads = await storage.getLeadsByUser(currentUser.id);
+        }
       }
+      
       res.json(leads);
     } catch (error) {
       console.error("Leads fetch error:", error);
@@ -1706,12 +1719,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/leads/:id", async (req, res) => {
+  app.get("/api/leads/:id", requireAuth, async (req, res) => {
     try {
+      const currentUser = (req as any).user;
       const lead = await storage.getLead(req.params.id);
+      
       if (!lead) {
         return res.status(404).json({ message: "Lead not found" });
       }
+      
+      // Check if user can access this lead
+      if (currentUser.role === 'SALES_EXECUTIVE' && lead.assignedToUserId !== currentUser.id) {
+        return res.status(403).json({ error: "You can only access your assigned leads" });
+      }
+      
       res.json(lead);
     } catch (error) {
       console.error("Lead fetch error:", error);
@@ -1719,9 +1740,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/leads", async (req, res) => {
+  app.post("/api/leads", requireAuth, async (req, res) => {
     try {
-      const validatedData = insertLeadSchema.parse(req.body);
+      const currentUser = (req as any).user;
+      
+      // Check if user can create leads
+      if (!['ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE'].includes(currentUser.role)) {
+        return res.status(403).json({ error: "Insufficient permissions to create leads" });
+      }
+      
+      const leadData = { ...req.body };
+      
+      // Auto-assign lead to current user if not already assigned
+      if (!leadData.assignedToUserId) {
+        leadData.assignedToUserId = currentUser.id;
+      }
+      
+      // Generate lead number
+      const leadNumber = await storage.generateNextLeadNumber();
+      leadData.leadNumber = leadNumber;
+      
+      const validatedData = insertLeadSchema.parse(leadData);
       const lead = await storage.createLead(validatedData);
       res.status(201).json(lead);
     } catch (error) {
@@ -1733,8 +1772,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/leads/:id", async (req, res) => {
+  app.put("/api/leads/:id", requireAuth, async (req, res) => {
     try {
+      const currentUser = (req as any).user;
+      
+      // Check if user can update leads
+      if (!['ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE'].includes(currentUser.role)) {
+        return res.status(403).json({ error: "Insufficient permissions to update leads" });
+      }
+      
+      // For Sales Executive, check if they can access this lead
+      if (currentUser.role === 'SALES_EXECUTIVE') {
+        const existingLead = await storage.getLead(req.params.id);
+        if (!existingLead) {
+          return res.status(404).json({ message: "Lead not found" });
+        }
+        if (existingLead.assignedToUserId !== currentUser.id) {
+          return res.status(403).json({ error: "You can only update your assigned leads" });
+        }
+      }
+      
       const validatedData = insertLeadSchema.partial().parse(req.body);
       const lead = await storage.updateLead(req.params.id, validatedData);
       res.json(lead);
@@ -1747,8 +1804,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/leads/:id", async (req, res) => {
+  app.delete("/api/leads/:id", requireAuth, async (req, res) => {
     try {
+      const currentUser = (req as any).user;
+      
+      // Check if user can delete leads
+      if (!['ADMIN', 'SALES_MANAGER'].includes(currentUser.role)) {
+        return res.status(403).json({ error: "Insufficient permissions to delete leads" });
+      }
+      
       await storage.deleteLead(req.params.id);
       res.status(204).send();
     } catch (error) {

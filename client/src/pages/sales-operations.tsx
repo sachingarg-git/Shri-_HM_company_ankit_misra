@@ -30,6 +30,7 @@ import {
   Calendar,
   Package
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import type { 
   Lead,
   Opportunity,
@@ -38,6 +39,7 @@ import type {
   DeliveryPlan,
   Dispatch
 } from "@shared/schema";
+import { insertLeadSchema } from "@shared/schema";
 
 export default function SalesOperationsPage() {
   const [activeTab, setActiveTab] = useState("leads");
@@ -100,6 +102,258 @@ export default function SalesOperationsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// Add Lead Dialog Component
+interface AddLeadDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  lead?: Lead | null;
+  onLeadSaved: () => void;
+}
+
+function AddLeadDialog({ open, onOpenChange, lead, onLeadSaved }: AddLeadDialogProps) {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const form = useForm({
+    resolver: zodResolver(insertLeadSchema.omit({ id: true, leadNumber: true, createdAt: true, updatedAt: true })),
+    defaultValues: {
+      companyName: lead?.companyName || "",
+      contactPersonName: lead?.contactPersonName || "",
+      mobileNumber: lead?.mobileNumber || "",
+      email: lead?.email || "",
+      leadSource: lead?.leadSource || "WEBSITE",
+      leadStatus: lead?.leadStatus || "NEW",
+      interestedProducts: lead?.interestedProducts || [],
+      estimatedValue: lead?.estimatedValue || "",
+      expectedCloseDate: lead?.expectedCloseDate ? new Date(lead.expectedCloseDate).toISOString().split('T')[0] : "",
+      notes: lead?.notes || "",
+      assignedToUserId: lead?.assignedToUserId || user?.id || "",
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("/api/leads", "POST", data),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Lead created successfully" });
+      onLeadSaved();
+      form.reset();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to create lead",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: any) => apiRequest(`/api/leads/${lead?.id}`, "PUT", data),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Lead updated successfully" });
+      onLeadSaved();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Error", 
+        description: error.message || "Failed to update lead",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const onSubmit = (data: any) => {
+    if (lead) {
+      updateMutation.mutate(data);
+    } else {
+      createMutation.mutate(data);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{lead ? "Edit Lead" : "Add New Lead"}</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="companyName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company Name *</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter company name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="contactPersonName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contact Person *</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter contact person name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="mobileNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mobile Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter mobile number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" placeholder="Enter email address" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="leadSource"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lead Source *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select lead source" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="WEBSITE">Website</SelectItem>
+                        <SelectItem value="PHONE">Phone</SelectItem>
+                        <SelectItem value="EMAIL">Email</SelectItem>
+                        <SelectItem value="REFERRAL">Referral</SelectItem>
+                        <SelectItem value="TRADE_SHOW">Trade Show</SelectItem>
+                        <SelectItem value="ADVERTISEMENT">Advertisement</SelectItem>
+                        <SelectItem value="COLD_CALL">Cold Call</SelectItem>
+                        <SelectItem value="OTHERS">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="leadStatus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lead Status *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select lead status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="NEW">New</SelectItem>
+                        <SelectItem value="CONTACTED">Contacted</SelectItem>
+                        <SelectItem value="QUALIFIED">Qualified</SelectItem>
+                        <SelectItem value="PROPOSAL">Proposal</SelectItem>
+                        <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
+                        <SelectItem value="CLOSED_WON">Closed Won</SelectItem>
+                        <SelectItem value="CLOSED_LOST">Closed Lost</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="estimatedValue"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Estimated Value (₹)</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" placeholder="Enter estimated value" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="expectedCloseDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Expected Close Date</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="date" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} placeholder="Enter additional notes..." rows={3} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {createMutation.isPending || updateMutation.isPending ? "Saving..." : (lead ? "Update Lead" : "Add Lead")}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -171,7 +425,7 @@ function LeadCRMSection() {
               data-testid="search-leads"
             />
           </div>
-          <Button data-testid="button-add-lead">
+          <Button data-testid="button-add-lead" onClick={() => setIsDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Lead
           </Button>
@@ -236,7 +490,10 @@ function LeadCRMSection() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {/* Handle edit */}}
+                          onClick={() => {
+                            setEditingLead(lead);
+                            setIsDialogOpen(true);
+                          }}
                           data-testid={`button-edit-lead-${lead.id}`}
                         >
                           <Edit className="h-4 w-4 mr-1" />
@@ -268,6 +525,18 @@ function LeadCRMSection() {
           </div>
         )}
       </CardContent>
+      
+      {/* Lead Dialog */}
+      <AddLeadDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        lead={editingLead}
+        onLeadSaved={() => {
+          setIsDialogOpen(false);
+          setEditingLead(null);
+          queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
+        }}
+      />
     </Card>
   );
 }

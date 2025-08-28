@@ -1408,6 +1408,33 @@ export class DatabaseStorage implements IStorage {
   async deleteLead(id: string): Promise<void> {
     await db.delete(leads).where(eq(leads.id, id));
   }
+
+  // User-specific lead methods for role-based access
+  async getLeadsByUser(userId: string): Promise<Lead[]> {
+    return await db
+      .select()
+      .from(leads)
+      .where(eq(leads.assignedToUserId, userId))
+      .orderBy(desc(leads.createdAt));
+  }
+
+  async getLeadsByStatusAndUser(status: string, userId: string): Promise<Lead[]> {
+    return await db
+      .select()
+      .from(leads)
+      .where(and(eq(leads.leadStatus, status), eq(leads.assignedToUserId, userId)))
+      .orderBy(desc(leads.createdAt));
+  }
+
+  // Generate next lead number
+  async generateNextLeadNumber(): Promise<string> {
+    const [result] = await db
+      .select({ count: count() })
+      .from(leads);
+    
+    const nextNumber = (result.count || 0) + 1;
+    return `LEAD-${String(nextNumber).padStart(4, '0')}`;
+  }
   
   // Opportunities
   async getOpportunity(id: string): Promise<Opportunity | undefined> {
