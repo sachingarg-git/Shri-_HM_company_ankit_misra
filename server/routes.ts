@@ -173,10 +173,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dashboard API
-  app.get("/api/dashboard/stats", async (req, res) => {
+  // Dashboard API - Role-based filtering
+  app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats();
+      const currentUser = (req as any).user;
+      
+      let stats;
+      if (currentUser.role === 'ADMIN' || currentUser.role === 'SALES_MANAGER') {
+        // Admin and Sales Manager can see all stats
+        stats = await storage.getDashboardStats();
+      } else {
+        // Sales Executive and others can only see stats for their assigned clients
+        stats = await storage.getDashboardStats(currentUser.id);
+      }
+      
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard stats" });

@@ -1031,27 +1031,78 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Dashboard Stats
-  async getDashboardStats() {
-    const [pendingPaymentsResult] = await db.select({
+  async getDashboardStats(userId?: string) {
+    // Base queries for filtering by user assignment
+    const userFilter = userId ? eq(clients.primarySalesPersonId, userId) : undefined;
+    
+    // Pending payments for user's assigned clients
+    let pendingPaymentsQuery = db.select({
       total: sql<string>`COALESCE(SUM(${payments.amount}), 0)`
-    }).from(payments).where(eq(payments.status, 'PENDING'));
+    }).from(payments);
+    
+    if (userId) {
+      pendingPaymentsQuery = pendingPaymentsQuery
+        .innerJoin(orders, eq(payments.orderId, orders.id))
+        .innerJoin(clients, eq(orders.clientId, clients.id))
+        .where(and(eq(payments.status, 'PENDING'), eq(clients.primarySalesPersonId, userId)));
+    } else {
+      pendingPaymentsQuery = pendingPaymentsQuery.where(eq(payments.status, 'PENDING'));
+    }
+    
+    const [pendingPaymentsResult] = await pendingPaymentsQuery;
 
-    const [activeClientsResult] = await db.select({
+    // Active clients
+    let activeClientsQuery = db.select({
       count: count()
     }).from(clients);
+    
+    if (userFilter) {
+      activeClientsQuery = activeClientsQuery.where(userFilter);
+    }
+    
+    const [activeClientsResult] = await activeClientsQuery;
 
-    const [openTasksResult] = await db.select({
+    // Open tasks for user's assigned clients
+    let openTasksQuery = db.select({
       count: count()
-    }).from(tasks).where(eq(tasks.isCompleted, false));
+    }).from(tasks);
+    
+    if (userId) {
+      openTasksQuery = openTasksQuery
+        .innerJoin(clients, eq(tasks.clientId, clients.id))
+        .where(and(eq(tasks.isCompleted, false), eq(clients.primarySalesPersonId, userId)));
+    } else {
+      openTasksQuery = openTasksQuery.where(eq(tasks.isCompleted, false));
+    }
+    
+    const [openTasksResult] = await openTasksQuery;
 
-    const [inTransitResult] = await db.select({
+    // In transit items for user's assigned clients
+    let inTransitQuery = db.select({
       count: count()
-    }).from(clientTracking).where(eq(clientTracking.status, 'IN_TRANSIT'));
+    }).from(clientTracking);
+    
+    if (userId) {
+      inTransitQuery = inTransitQuery
+        .innerJoin(clients, eq(clientTracking.clientId, clients.id))
+        .where(and(eq(clientTracking.status, 'IN_TRANSIT'), eq(clients.primarySalesPersonId, userId)));
+    } else {
+      inTransitQuery = inTransitQuery.where(eq(clientTracking.status, 'IN_TRANSIT'));
+    }
+    
+    const [inTransitResult] = await inTransitQuery;
 
-    const categoryStats = await db.select({
+    // Category stats for user's assigned clients
+    let categoryStatsQuery = db.select({
       category: clients.category,
       count: count()
     }).from(clients).groupBy(clients.category);
+    
+    if (userFilter) {
+      categoryStatsQuery = categoryStatsQuery.where(userFilter);
+    }
+    
+    const categoryStats = await categoryStatsQuery;
 
     const clientCategories = {
       ALFA: 0,
