@@ -2188,7 +2188,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/quotations", async (req, res) => {
     try {
-      const validatedData = insertQuotationSchema.parse(req.body);
+      const { items, ...quotationFields } = req.body;
+      const validatedData = insertQuotationSchema.parse(quotationFields);
+      
       // Generate quotation number
       const quotationCount = await storage.getQuotationsCount();
       const quotationNumber = `QUO-${String(quotationCount + 1).padStart(6, '0')}`;
@@ -2198,7 +2200,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quotationNumber,
       };
       
+      // Create the quotation first
       const quotation = await storage.createQuotation(quotationData);
+      
+      // Create quotation items if provided
+      if (items && Array.isArray(items) && items.length > 0) {
+        for (const item of items) {
+          const quotationItemData = {
+            quotationId: quotation.id,
+            productId: item.productId,
+            description: item.description,
+            quantity: item.quantity.toString(),
+            unit: item.unit,
+            rate: item.unitPrice ? item.unitPrice.toString() : item.rate?.toString() || "0",
+            amount: item.totalPrice ? item.totalPrice.toString() : item.amount?.toString() || "0",
+          };
+          
+          await storage.createQuotationItem(quotationItemData);
+        }
+      }
+      
       res.status(201).json(quotation);
     } catch (error) {
       console.error("Quotation creation error:", error);
