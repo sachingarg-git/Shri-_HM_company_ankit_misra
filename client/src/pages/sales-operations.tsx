@@ -743,19 +743,27 @@ function QuotationSection() {
 
     const quotationData = {
       clientId: selectedClient,
-      quotationDate: new Date(quotationDate),
-      validUntil: validUntil ? new Date(validUntil) : null,
-      paymentTerms: parseInt(paymentTerms) || 30,
-      description,
-      subtotalAmount: totals.subtotal,
-      taxAmount: totals.tax,
+      quotationDate: new Date(quotationDate).toISOString(),
+      validUntil: validUntil ? new Date(validUntil).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       totalAmount: totals.total,
+      discountPercentage: 0,
+      discountAmount: 0,
+      taxAmount: totals.tax,
+      grandTotal: totals.total,
+      paymentTerms: `${parseInt(paymentTerms) || 30} days`,
+      deliveryTerms: "Standard delivery terms",
+      specialInstructions: description,
+      preparedByUserId: "system", // This should be from auth context
+      approvalStatus: "PENDING",
       items: quotationItems.filter(item => item.productId && item.quantity > 0).map(item => ({
         productId: item.productId,
+        description: products.find((p: any) => p.id === item.productId)?.name || "Product",
         quantity: item.quantity,
         unit: item.unit,
-        rate: item.rate,
-        amount: item.amount,
+        unitPrice: item.rate,
+        totalPrice: item.amount,
+        taxRate: 18,
+        taxAmount: item.amount * 0.18,
       }))
     };
 
