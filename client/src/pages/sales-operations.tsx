@@ -414,6 +414,39 @@ function LeadCRMSection() {
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
+  const convertToClientMutation = useMutation({
+    mutationFn: async (lead: Lead) => {
+      return apiCall("/api/leads/convert", "POST", { leadId: lead.id });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Lead converted to client successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to convert lead to client",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleConvertToClient = (lead: Lead) => {
+    if (lead.leadStatus !== 'QUALIFIED') {
+      toast({
+        title: "Cannot Convert",
+        description: "Lead must be qualified before conversion to client",
+        variant: "destructive",
+      });
+      return;
+    }
+    convertToClientMutation.mutate(lead);
+  };
+
   const { data: leads, isLoading } = useQuery<Lead[]>({
     queryKey: ["/api/leads"],
     retry: false,
@@ -554,11 +587,12 @@ function LeadCRMSection() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {/* Handle convert to opportunity */}}
+                          onClick={() => handleConvertToClient(lead)}
+                          disabled={convertToClientMutation.isPending}
                           data-testid={`button-convert-${lead.id}`}
                         >
                           <Target className="h-4 w-4 mr-1" />
-                          Convert
+                          {convertToClientMutation.isPending ? "Converting..." : "Convert"}
                         </Button>
                       </div>
                     </div>

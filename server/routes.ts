@@ -1914,6 +1914,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Lead Conversion API
+  app.post("/api/leads/convert", requireAuth, async (req, res) => {
+    try {
+      const currentUser = (req as any).user;
+      const { leadId } = req.body;
+      
+      // Check if user can convert leads
+      if (!['ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE'].includes(currentUser.role)) {
+        return res.status(403).json({ error: "Insufficient permissions to convert leads" });
+      }
+      
+      // Get the lead
+      const lead = await storage.getLead(leadId);
+      if (!lead) {
+        return res.status(404).json({ error: "Lead not found" });
+      }
+      
+      // For Sales Executive, check if they can access this lead
+      if (currentUser.role === 'SALES_EXECUTIVE') {
+        if (lead.assignedToUserId !== currentUser.id) {
+          return res.status(403).json({ error: "You can only convert your assigned leads" });
+        }
+      }
+      
+      // Check if lead is qualified
+      if (lead.leadStatus !== 'QUALIFIED') {
+        return res.status(400).json({ error: "Lead must be qualified before conversion" });
+      }
+      
+      // Convert lead to client
+      const clientData = {
+        name: lead.companyName,
+        contactPersonName: lead.contactPersonName,
+        mobileNumber: lead.mobileNumber,
+        email: lead.email,
+        category: 'DELTA', // New clients start as DELTA
+        primarySalesPersonId: lead.assignedToUserId || currentUser.id,
+        paymentTerms: 30, // Default payment terms
+        poRequired: false, // Default PO requirement
+      };
+      
+      const client = await storage.createClient(clientData);
+      
+      // Update lead status to CLOSED_WON
+      await storage.updateLead(leadId, { leadStatus: 'CLOSED_WON' });
+      
+      res.json({ client, message: "Lead converted to client successfully" });
+    } catch (error: any) {
+      console.error("Lead conversion error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid conversion data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to convert lead to client", error: error.message });
+    }
+  });
+
   // Opportunities API
   app.get("/api/opportunities", async (req, res) => {
     try {
