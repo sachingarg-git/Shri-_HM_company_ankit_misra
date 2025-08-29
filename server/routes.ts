@@ -2298,33 +2298,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Quotation not found" });
       }
       
-      // Check if quotation is accepted
-      if (quotation.status !== 'ACCEPTED') {
-        return res.status(400).json({ message: "Only accepted quotations can be converted to sales orders" });
-      }
+      // Note: Allowing manual sales order generation from any quotation status
       
       const quotationItems = await storage.getQuotationItemsByQuotation(quotationId);
       
       // Create sales order from quotation data
       const salesOrderData = {
-        quotationId: quotation.id,
         clientId: quotation.clientId,
-        clientType: quotation.clientType || 'client',
-        orderDate: new Date().toISOString(),
-        expectedDeliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+        salesPersonId: quotation.preparedByUserId,
+        orderNumber: `SO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        expectedDeliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         totalAmount: quotation.totalAmount,
+        status: 'PENDING',
+        creditCheckStatus: 'PENDING',
+        inventoryStatus: 'PENDING',
+        approvalStatus: 'PENDING',
         discountPercentage: quotation.discountPercentage || 0,
         discountAmount: quotation.discountAmount || 0,
         taxAmount: quotation.taxAmount,
         grandTotal: quotation.grandTotal,
         paymentTerms: quotation.paymentTerms,
         deliveryTerms: quotation.deliveryTerms,
-        specialInstructions: quotation.specialInstructions,
-        status: 'PENDING',
-        creditCheckStatus: 'PENDING',
-        inventoryStatus: 'PENDING',
-        approvalStatus: 'PENDING',
-        preparedByUserId: quotation.preparedByUserId
+        specialInstructions: quotation.specialInstructions
       };
       
       // Create the sales order
@@ -2338,10 +2333,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: item.description,
           quantity: item.quantity,
           unit: item.unit,
-          unitPrice: item.unitPrice,
-          totalPrice: item.totalPrice,
-          taxRate: item.taxRate,
-          taxAmount: item.taxAmount
+          unitPrice: item.rate, // quotation item uses 'rate' field
+          totalPrice: item.amount // quotation item uses 'amount' field
         });
       }
       
