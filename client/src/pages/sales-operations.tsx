@@ -631,11 +631,52 @@ function LeadCRMSection() {
 function QuotationSection() {
   const { toast } = useToast();
   const [isQuotationDialogOpen, setIsQuotationDialogOpen] = useState(false);
+  const [quotationItems, setQuotationItems] = useState([
+    { productId: "", quantity: 0, unit: "", rate: 0, amount: 0 }
+  ]);
   
   const { data: clients } = useQuery({
     queryKey: ["/api/clients"],
     retry: false,
   });
+
+  const { data: products } = useQuery({
+    queryKey: ["/api/products"],
+    retry: false,
+  });
+
+  const updateQuotationItem = (index: number, field: string, value: any) => {
+    const updatedItems = [...quotationItems];
+    updatedItems[index] = { ...updatedItems[index], [field]: value };
+    
+    // Auto-calculate amount when quantity or rate changes
+    if (field === 'quantity' || field === 'rate') {
+      const quantity = field === 'quantity' ? parseFloat(value) || 0 : updatedItems[index].quantity;
+      const rate = field === 'rate' ? parseFloat(value) || 0 : updatedItems[index].rate;
+      updatedItems[index].amount = quantity * rate;
+    }
+    
+    setQuotationItems(updatedItems);
+  };
+
+  const addQuotationItem = () => {
+    setQuotationItems([...quotationItems, { productId: "", quantity: 0, unit: "", rate: 0, amount: 0 }]);
+  };
+
+  const removeQuotationItem = (index: number) => {
+    if (quotationItems.length > 1) {
+      setQuotationItems(quotationItems.filter((_, i) => i !== index));
+    }
+  };
+
+  const calculateTotals = () => {
+    const subtotal = quotationItems.reduce((sum, item) => sum + item.amount, 0);
+    const tax = subtotal * 0.18; // 18% GST
+    const total = subtotal + tax;
+    return { subtotal, tax, total };
+  };
+
+  const totals = calculateTotals();
 
   const handleCreateQuotation = () => {
     setIsQuotationDialogOpen(true);
@@ -732,48 +773,99 @@ function QuotationSection() {
             <div className="border rounded-lg p-4">
               <h4 className="font-medium mb-3">Quotation Items</h4>
               <div className="grid grid-cols-12 gap-2 text-xs font-medium mb-2">
-                <div className="col-span-4">Product/Service</div>
+                <div className="col-span-3">Product/Service</div>
                 <div className="col-span-2">Quantity</div>
                 <div className="col-span-2">Unit</div>
-                <div className="col-span-2">Rate</div>
-                <div className="col-span-2">Amount</div>
+                <div className="col-span-2">Rate (₹)</div>
+                <div className="col-span-2">Amount (₹)</div>
+                <div className="col-span-1">Action</div>
               </div>
-              <div className="grid grid-cols-12 gap-2 mb-2">
-                <div className="col-span-4">
-                  <Select>
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Select product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bitumen-60-70">Bitumen 60/70</SelectItem>
-                      <SelectItem value="bitumen-80-100">Bitumen 80/100</SelectItem>
-                      <SelectItem value="emulsion">Bitumen Emulsion</SelectItem>
-                    </SelectContent>
-                  </Select>
+              
+              {quotationItems.map((item, index) => (
+                <div key={index} className="grid grid-cols-12 gap-2 mb-2">
+                  <div className="col-span-3">
+                    <Select 
+                      value={item.productId} 
+                      onValueChange={(value) => updateQuotationItem(index, 'productId', value)}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Select product" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products && products.length > 0 ? (
+                          products.map((product: any) => (
+                            <SelectItem key={product.id} value={product.id}>
+                              {product.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-products" disabled>
+                            No products available
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <Input 
+                      className="h-8" 
+                      type="number"
+                      value={item.quantity || ""} 
+                      onChange={(e) => updateQuotationItem(index, 'quantity', e.target.value)}
+                      placeholder="0" 
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Select 
+                      value={item.unit} 
+                      onValueChange={(value) => updateQuotationItem(index, 'unit', value)}
+                    >
+                      <SelectTrigger className="h-8">
+                        <SelectValue placeholder="Unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="MT">MT</SelectItem>
+                        <SelectItem value="KG">KG</SelectItem>
+                        <SelectItem value="L">Liters</SelectItem>
+                        <SelectItem value="TONS">Tons</SelectItem>
+                        <SelectItem value="DRUMS">Drums</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <Input 
+                      className="h-8" 
+                      type="number"
+                      step="0.01"
+                      value={item.rate || ""} 
+                      onChange={(e) => updateQuotationItem(index, 'rate', e.target.value)}
+                      placeholder="0.00" 
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Input 
+                      className="h-8" 
+                      value={item.amount.toFixed(2)} 
+                      readOnly 
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    {quotationItems.length > 1 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => removeQuotationItem(index)}
+                      >
+                        ×
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  <Input className="h-8" placeholder="0" />
-                </div>
-                <div className="col-span-2">
-                  <Select>
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="Unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MT">MT</SelectItem>
-                      <SelectItem value="KG">KG</SelectItem>
-                      <SelectItem value="L">Liters</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="col-span-2">
-                  <Input className="h-8" placeholder="0.00" />
-                </div>
-                <div className="col-span-2">
-                  <Input className="h-8" placeholder="0.00" readOnly />
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="mt-2">
+              ))}
+              
+              <Button variant="outline" size="sm" className="mt-2" onClick={addQuotationItem}>
                 <Plus className="h-3 w-3 mr-1" />
                 Add Item
               </Button>
@@ -781,12 +873,12 @@ function QuotationSection() {
 
             <div className="flex justify-between items-center pt-4 border-t">
               <div className="text-sm text-muted-foreground">
-                Total items: 1
+                Total items: {quotationItems.length}
               </div>
               <div className="text-right">
-                <div className="text-sm">Subtotal: ₹0.00</div>
-                <div className="text-sm">Tax (18% GST): ₹0.00</div>
-                <div className="text-lg font-bold">Total: ₹0.00</div>
+                <div className="text-sm">Subtotal: ₹{totals.subtotal.toFixed(2)}</div>
+                <div className="text-sm">Tax (18% GST): ₹{totals.tax.toFixed(2)}</div>
+                <div className="text-lg font-bold">Total: ₹{totals.total.toFixed(2)}</div>
               </div>
             </div>
           </div>
