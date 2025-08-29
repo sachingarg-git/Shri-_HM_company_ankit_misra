@@ -2495,6 +2495,30 @@ function QuotationSection() {
     }
   };
 
+  const handleGenerateSalesOrder = async (quotationId: string) => {
+    try {
+      const response = await apiCall(`/api/quotations/${quotationId}/generate-sales-order`, {
+        method: 'POST'
+      });
+      
+      toast({
+        title: "Success",
+        description: "Sales Order generated successfully",
+      });
+      
+      // Refresh both quotations and sales orders
+      queryClient.invalidateQueries({ queryKey: ['/api/quotations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sales-orders'] });
+      
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate sales order",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Helper function to get client/lead name for quotation display
   const getQuotationClientName = (quotation: any) => {
     // Use the clientName field from API if available, otherwise fallback to lookup
@@ -2780,112 +2804,124 @@ function QuotationSection() {
               </Button>
             </div>
             
-            <div className="space-y-3">
-              {(quotations as any[]).map((quotation: any) => (
-                <Card key={quotation.id} className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2">
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Quotation #</TableHead>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Valid Until</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Payment Terms</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(quotations as any[]).map((quotation: any) => (
+                    <TableRow key={quotation.id}>
+                      <TableCell>
                         <Badge variant={quotation.status === 'DRAFT' ? 'secondary' : quotation.status === 'SENT' ? 'outline' : quotation.status === 'ACCEPTED' ? 'default' : 'destructive'}>
                           {quotation.status}
                         </Badge>
-                        <span className="font-medium">{quotation.quotationNumber}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Client: {getQuotationClientName(quotation)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Date: {new Date(quotation.quotationDate).toLocaleDateString()}
-                        {quotation.validUntil && ` • Valid until: ${new Date(quotation.validUntil).toLocaleDateString()}`}
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="text-right">
-                        <div className="font-bold">₹{parseFloat(quotation.totalAmount).toFixed(2)}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {quotation.paymentTerms} days
-                        </div>
-                      </div>
-                      
-                      {/* Action Buttons */}
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleViewDetails(quotation)}
-                          data-testid={`button-view-details-${quotation.id}`}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              data-testid={`button-download-${quotation.id}`}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handleDownloadPDF(quotation, 'corporate')}>
-                              📋 Corporate Format
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadPDF(quotation, 'professional')}>
-                              💼 Professional Format
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDownloadPDF(quotation, 'advanced')}>
-                              ⭐ Advanced Format
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="outline" data-testid={`button-actions-${quotation.id}`}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleEditQuotation(quotation)}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit Quotation
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {quotation.status === 'DRAFT' && (
-                              <DropdownMenuItem onClick={() => handleUpdateStatus(quotation.id, 'SENT')}>
-                                <Send className="h-4 w-4 mr-2" />
-                                Mark as Sent
+                      </TableCell>
+                      <TableCell className="font-medium">{quotation.quotationNumber}</TableCell>
+                      <TableCell>{getQuotationClientName(quotation)}</TableCell>
+                      <TableCell>{new Date(quotation.quotationDate).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        {quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString() : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-bold">
+                        ₹{parseFloat(quotation.totalAmount || 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell>{quotation.paymentTerms} days</TableCell>
+                      <TableCell>
+                        <div className="flex justify-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewDetails(quotation)}
+                            data-testid={`button-view-details-${quotation.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                data-testid={`button-download-${quotation.id}`}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem onClick={() => handleDownloadPDF(quotation, 'corporate')}>
+                                📋 Corporate Format
                               </DropdownMenuItem>
-                            )}
-                            {quotation.status === 'SENT' && (
-                              <>
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(quotation.id, 'ACCEPTED')}>
-                                  <ThumbsUp className="h-4 w-4 mr-2" />
-                                  Mark as Accepted
+                              <DropdownMenuItem onClick={() => handleDownloadPDF(quotation, 'professional')}>
+                                💼 Professional Format
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadPDF(quotation, 'advanced')}>
+                                ⭐ Advanced Format
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline" data-testid={`button-actions-${quotation.id}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleEditQuotation(quotation)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit Quotation
+                              </DropdownMenuItem>
+                              {quotation.status === 'ACCEPTED' && (
+                                <DropdownMenuItem onClick={() => handleGenerateSalesOrder(quotation.id)}>
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Generate Sales Order
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(quotation.id, 'REJECTED')}>
-                                  <ThumbsDown className="h-4 w-4 mr-2" />
-                                  Mark as Rejected
+                              )}
+                              <DropdownMenuSeparator />
+                              {quotation.status === 'DRAFT' && (
+                                <DropdownMenuItem onClick={() => handleUpdateStatus(quotation.id, 'SENT')}>
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Mark as Sent
                                 </DropdownMenuItem>
-                              </>
-                            )}
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteQuotation(quotation.id)} 
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete Quotation
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+                              )}
+                              {quotation.status === 'SENT' && (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleUpdateStatus(quotation.id, 'ACCEPTED')}>
+                                    <ThumbsUp className="h-4 w-4 mr-2" />
+                                    Mark as Accepted
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleUpdateStatus(quotation.id, 'REJECTED')}>
+                                    <ThumbsDown className="h-4 w-4 mr-2" />
+                                    Mark as Rejected
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteQuotation(quotation.id)} 
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Quotation
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </div>
         ) : (
@@ -3250,7 +3286,7 @@ function QuotationSection() {
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center text-sm">
                   <span>Subtotal:</span>
-                  <span>₹{parseFloat(selectedQuotation.totalAmount).toFixed(2)}</span>
+                  <span>₹{parseFloat(selectedQuotation.totalAmount || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span>Tax (18% GST):</span>
@@ -3258,7 +3294,7 @@ function QuotationSection() {
                 </div>
                 <div className="flex justify-between items-center text-lg font-bold border-t pt-2 mt-2">
                   <span>Grand Total:</span>
-                  <span>₹{parseFloat(selectedQuotation.grandTotal).toFixed(2)}</span>
+                  <span>₹{parseFloat(selectedQuotation.grandTotal || 0).toFixed(2)}</span>
                 </div>
               </div>
 

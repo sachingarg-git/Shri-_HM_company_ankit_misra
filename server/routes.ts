@@ -2261,6 +2261,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate Sales Order from Quotation
+  app.post("/api/quotations/:id/generate-sales-order", async (req, res) => {
+    try {
+      const quotationId = req.params.id;
+      
+      // Get the quotation and its items
+      const quotation = await storage.getQuotation(quotationId);
+      if (!quotation) {
+        return res.status(404).json({ message: "Quotation not found" });
+      }
+      
+      // Check if quotation is accepted
+      if (quotation.status !== 'ACCEPTED') {
+        return res.status(400).json({ message: "Only accepted quotations can be converted to sales orders" });
+      }
+      
+      const quotationItems = await storage.getQuotationItemsByQuotation(quotationId);
+      
+      // Create sales order from quotation data
+      const salesOrderData = {
+        quotationId: quotation.id,
+        clientId: quotation.clientId,
+        clientType: quotation.clientType || 'client',
+        orderDate: new Date().toISOString(),
+        expectedDeliveryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+        totalAmount: quotation.totalAmount,
+        discountPercentage: quotation.discountPercentage || 0,
+        discountAmount: quotation.discountAmount || 0,
+        taxAmount: quotation.taxAmount,
+        grandTotal: quotation.grandTotal,
+        paymentTerms: quotation.paymentTerms,
+        deliveryTerms: quotation.deliveryTerms,
+        specialInstructions: quotation.specialInstructions,
+        status: 'PENDING',
+        creditCheckStatus: 'PENDING',
+        inventoryStatus: 'PENDING',
+        approvalStatus: 'PENDING',
+        preparedByUserId: quotation.preparedByUserId
+      };
+      
+      // Create the sales order
+      const salesOrder = await storage.createSalesOrder(salesOrderData);
+      
+      // Create sales order items from quotation items
+      for (const item of quotationItems) {
+        await storage.createSalesOrderItem({
+          salesOrderId: salesOrder.id,
+          productId: item.productId,
+          description: item.description,
+          quantity: item.quantity,
+          unit: item.unit,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          taxRate: item.taxRate,
+          taxAmount: item.taxAmount
+        });
+      }
+      
+      res.json({ 
+        message: "Sales order generated successfully",
+        salesOrder: salesOrder
+      });
+    } catch (error) {
+      console.error("Sales order generation error:", error);
+      res.status(500).json({ message: "Failed to generate sales order" });
+    }
+  });
+
   // Sales Orders API
   app.get("/api/sales-orders", async (req, res) => {
     try {
