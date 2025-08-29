@@ -631,6 +631,11 @@ function LeadCRMSection() {
 function QuotationSection() {
   const { toast } = useToast();
   const [isQuotationDialogOpen, setIsQuotationDialogOpen] = useState(false);
+  
+  const { data: clients } = useQuery({
+    queryKey: ["/api/clients"],
+    retry: false,
+  });
 
   const handleCreateQuotation = () => {
     setIsQuotationDialogOpen(true);
@@ -678,8 +683,17 @@ function QuotationSection() {
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="client1">Sample Client 1</SelectItem>
-                    <SelectItem value="client2">Sample Client 2</SelectItem>
+                    {clients && clients.length > 0 ? (
+                      clients.map((client: any) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-clients" disabled>
+                        No clients available
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -756,7 +770,7 @@ function QuotationSection() {
                   <Input className="h-8" placeholder="0.00" />
                 </div>
                 <div className="col-span-2">
-                  <Input className="h-8" placeholder="0.00" readonly />
+                  <Input className="h-8" placeholder="0.00" readOnly />
                 </div>
               </div>
               <Button variant="outline" size="sm" className="mt-2">
