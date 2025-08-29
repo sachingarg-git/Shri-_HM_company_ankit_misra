@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertClientSchema, type Client, type InsertClient } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiCall, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -218,10 +218,10 @@ export default function Clients() {
       const { shippingAddresses, ...clientData } = data;
       
       if (editingClient) {
-        const updatedClient = await apiRequest(`/api/clients/${editingClient.id}`, "PUT", clientData);
+        const updatedClient = await apiCall(`/api/clients/${editingClient.id}`, "PUT", clientData);
         return updatedClient;
       } else {
-        const newClient = await apiRequest("/api/clients", "POST", clientData);
+        const newClient = await apiCall("/api/clients", "POST", clientData);
         return newClient;
       }
     },
@@ -373,7 +373,7 @@ export default function Clients() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiRequest("DELETE", `/api/clients/${id}`);
+      await apiCall(`/api/clients/${id}`, "DELETE");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
@@ -411,7 +411,7 @@ export default function Clients() {
 
   const handleGetUploadParameters = async () => {
     try {
-      const response = await apiRequest("/api/clients/documents/upload", "POST", {});
+      const response = await apiCall("/api/clients/documents/upload", "POST", {});
       return {
         method: "PUT" as const,
         url: response.uploadURL,
@@ -449,7 +449,7 @@ export default function Clients() {
         .toLowerCase()
         .replace(/^-/, '');
 
-      await apiRequest(`/api/clients/${currentClientId}/documents/${apiDocumentType}`, "PUT", {
+      await apiCall(`/api/clients/${currentClientId}/documents/${apiDocumentType}`, "PUT", {
         documentURL: uploadedFile.uploadURL,
       });
 

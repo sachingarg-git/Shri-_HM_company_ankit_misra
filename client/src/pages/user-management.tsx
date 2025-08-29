@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { registerSchema, type RegisterRequest } from "@shared/schema";
-import { apiRequest } from "@/lib/queryClient";
+import { apiCall } from "@/lib/queryClient";
 import { UserIcon, PlusIcon, PencilIcon, TrashIcon } from "lucide-react";
 
 interface User {

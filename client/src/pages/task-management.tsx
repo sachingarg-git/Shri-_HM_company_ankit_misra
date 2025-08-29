@@ -11,7 +11,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiCall, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, Filter, CheckSquare, RotateCcw, Calendar, User, Edit3, Trash2, UserCheck, MessageCircle, Clock, ChevronDown, ChevronUp, History, X } from "lucide-react";
 import { useState } from "react";
@@ -141,7 +141,7 @@ export default function TaskManagement() {
   // Mutations
   const createTaskMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('POST', '/api/tasks', data);
+      return await apiCall('/api/tasks', 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
@@ -158,7 +158,7 @@ export default function TaskManagement() {
 
   const updateTaskMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return await apiRequest('PUT', `/api/tasks/${id}`, data);
+      return await apiCall(`/api/tasks/${id}`, 'PUT', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
@@ -175,7 +175,7 @@ export default function TaskManagement() {
 
   const transferTaskMutation = useMutation({
     mutationFn: async ({ id, assignedTo }: { id: string; assignedTo: string }) => {
-      return await apiRequest('PUT', `/api/tasks/${id}`, { assignedTo });
+      return await apiCall(`/api/tasks/${id}`, 'PUT', { assignedTo });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
@@ -193,7 +193,7 @@ export default function TaskManagement() {
 
   const deleteTaskMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest('DELETE', `/api/tasks/${id}`);
+      return await apiCall(`/api/tasks/${id}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
@@ -208,7 +208,7 @@ export default function TaskManagement() {
 
   const createFollowUpMutation = useMutation({
     mutationFn: async (data: any) => {
-      return await apiRequest('POST', '/api/follow-ups', data);
+      return await apiCall('/api/follow-ups', 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/follow-ups'] });

@@ -461,37 +461,56 @@ export const registerSchema = insertUserSchema.extend({
   path: ["confirmPassword"],
 });
 
-export const insertClientSchema = createInsertSchema(clients).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  incorporationDate: z.union([z.string(), z.date(), z.null()]).optional().nullable().transform(val => {
-    if (!val || val === "") return null;
-    if (typeof val === "string") {
-      try {
-        return new Date(val);
-      } catch {
-        return null;
-      }
-    }
-    return val;
+export const insertClientSchema = z.object({
+  name: z.string().min(1, "Company name is required"),
+  category: z.enum(['ALFA', 'BETA', 'GAMMA', 'DELTA', 'ALPHA']),
+  billingAddressLine: z.string().optional(),
+  billingCity: z.string().optional(),
+  billingPincode: z.string().optional(),
+  billingState: z.string().optional(),
+  billingCountry: z.string().default('India'),
+  gstNumber: z.string().optional(),
+  panNumber: z.string().optional(),
+  msmeNumber: z.string().optional(),
+  incorporationCertNumber: z.string().optional(),
+  incorporationDate: z.union([z.string(), z.date()]).optional().transform(val => {
+    if (!val) return undefined;
+    return typeof val === 'string' ? new Date(val) : val;
   }),
-  creditLimit: z.union([z.string(), z.number(), z.null()]).optional().nullable().transform(val => {
-    if (!val || val === "") return null;
-    if (typeof val === "string") {
-      const num = parseFloat(val);
-      return isNaN(num) ? null : num.toString();
-    }
-    return val;
+  companyType: z.enum(['PVT_LTD', 'PARTNERSHIP', 'PROPRIETOR', 'GOVT', 'OTHERS']).optional(),
+  contactPersonName: z.string().optional(),
+  mobileNumber: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  communicationPreferences: z.array(z.string()).optional(),
+  paymentTerms: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (val == null || val === "") return 30;
+    return typeof val === 'string' ? parseInt(val) || 30 : val;
   }),
-  interestPercent: z.union([z.string(), z.number(), z.null()]).optional().nullable().transform(val => {
-    if (!val || val === "") return null;
-    if (typeof val === "string") {
-      const num = parseFloat(val);
-      return isNaN(num) ? null : num.toString();
-    }
-    return val;
+  creditLimit: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (val == null || val === "") return undefined;
+    return typeof val === 'string' ? parseFloat(val) || 0 : val;
+  }),
+  bankInterestApplicable: z.enum(['FROM_DAY_1', 'FROM_DUE_DATE']).optional(),
+  interestPercent: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (val == null || val === "") return undefined;
+    return typeof val === 'string' ? parseFloat(val) || 0 : val;
+  }),
+  poRequired: z.boolean().default(false),
+  invoicingEmails: z.array(z.string()).optional(),
+  gstCertificateUploaded: z.boolean().default(false),
+  panCopyUploaded: z.boolean().default(false),
+  securityChequeUploaded: z.boolean().default(false),
+  aadharCardUploaded: z.boolean().default(false),
+  agreementUploaded: z.boolean().default(false),
+  poRateContractUploaded: z.boolean().default(false),
+  primarySalesPersonId: z.string().optional(),
+  lastContactDate: z.union([z.string(), z.date()]).optional().transform(val => {
+    if (!val) return undefined;
+    return typeof val === 'string' ? new Date(val) : val;
+  }),
+  nextFollowUpDate: z.union([z.string(), z.date()]).optional().transform(val => {
+    if (!val) return undefined;
+    return typeof val === 'string' ? new Date(val) : val;
   }),
 });
 
@@ -1213,30 +1232,55 @@ export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
   updatedAt: true,
 });
 
-export const insertQuotationSchema = createInsertSchema(quotations).omit({
-  id: true,
-  quotationNumber: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  quotationDate: z.string().transform(val => new Date(val)),
-  validUntil: z.string().transform(val => new Date(val)),
-  totalAmount: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
-  discountPercentage: z.union([z.string(), z.number()]).optional().transform(val => typeof val === 'string' ? parseFloat(val) : val),
-  discountAmount: z.union([z.string(), z.number()]).optional().transform(val => typeof val === 'string' ? parseFloat(val) : val),
-  taxAmount: z.union([z.string(), z.number()]).optional().transform(val => typeof val === 'string' ? parseFloat(val) : val),
-  grandTotal: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
+export const insertQuotationSchema = z.object({
+  opportunityId: z.string().optional(),
+  clientId: z.string(),
+  quotationDate: z.union([z.string(), z.date()]).transform(val => typeof val === 'string' ? new Date(val) : val),
+  validUntil: z.union([z.string(), z.date()]).transform(val => typeof val === 'string' ? new Date(val) : val),
+  status: z.enum(['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'SENT', 'REVISED', 'ACCEPTED', 'REJECTED', 'EXPIRED']).default('DRAFT'),
+  totalAmount: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) || 0 : val || 0),
+  discountPercentage: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (val == null) return 0;
+    return typeof val === 'string' ? parseFloat(val) || 0 : val;
+  }),
+  discountAmount: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (val == null) return 0;
+    return typeof val === 'string' ? parseFloat(val) || 0 : val;
+  }),
+  taxAmount: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (val == null) return 0;
+    return typeof val === 'string' ? parseFloat(val) || 0 : val;
+  }),
+  grandTotal: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) || 0 : val || 0),
+  paymentTerms: z.string().optional(),
+  deliveryTerms: z.string().optional(),
+  specialInstructions: z.string().optional(),
+  preparedByUserId: z.string(),
+  approvedByUserId: z.string().optional(),
+  approvalStatus: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'REQUIRES_REVISION']).default('PENDING'),
+  approvalComments: z.string().optional(),
 });
 
-export const insertQuotationItemSchema = createInsertSchema(quotationItems).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  quantity: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
-  unitPrice: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
-  totalPrice: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
-  taxRate: z.union([z.string(), z.number()]).optional().transform(val => typeof val === 'string' ? parseFloat(val) : val),
-  taxAmount: z.union([z.string(), z.number()]).optional().transform(val => typeof val === 'string' ? parseFloat(val) : val),
+export const insertQuotationItemSchema = z.object({
+  quotationId: z.string(),
+  productId: z.string(),
+  description: z.string().optional(),
+  quantity: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) || 0 : val || 0),
+  unit: z.string(),
+  unitPrice: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) || 0 : val || 0),
+  totalPrice: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) || 0 : val || 0),
+  taxRate: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (val == null) return 0;
+    return typeof val === 'string' ? parseFloat(val) || 0 : val;
+  }),
+  taxAmount: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (val == null) return 0;
+    return typeof val === 'string' ? parseFloat(val) || 0 : val;
+  }),
+  deliveryDate: z.union([z.string(), z.date()]).optional().transform(val => {
+    if (!val) return undefined;
+    return typeof val === 'string' ? new Date(val) : val;
+  }),
 });
 
 export const insertSalesOrderSchema = createInsertSchema(salesOrders).omit({

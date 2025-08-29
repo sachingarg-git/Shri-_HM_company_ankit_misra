@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { apiCall, apiRequest } from "@/lib/queryClient";
+import { apiCall } from "@/lib/queryClient";
 import { 
   Plus, 
   Edit, 
