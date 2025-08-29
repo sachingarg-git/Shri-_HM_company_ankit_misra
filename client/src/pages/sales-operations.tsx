@@ -26,6 +26,7 @@ import {
   Truck, 
   MapPin,
   User,
+  Users,
   Target,
   DollarSign,
   Calendar,
@@ -35,7 +36,8 @@ import {
   MoreHorizontal,
   Send,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  AlertCircle
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { 
@@ -413,6 +415,684 @@ function AddLeadDialog({ open, onOpenChange, lead, onLeadSaved }: AddLeadDialogP
   );
 }
 
+// Follow-up Dashboard Component
+interface FollowUpData {
+  id: string;
+  leadId: string;
+  type: "PHONE_CALL" | "EMAIL" | "ONLINE_MEETING" | "PHYSICAL_MEETING";
+  description: string;
+  followUpDate: string;
+  status: "PENDING" | "COMPLETED" | "CANCELLED";
+  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  outcome?: string;
+  nextFollowUpDate?: string;
+  completedAt?: string;
+  assignedUserId?: string;
+  createdAt: string;
+  lead?: any;
+}
+
+const followUpFormSchema = z.object({
+  leadId: z.string().min(1, "Lead selection is required"),
+  type: z.enum(["PHONE_CALL", "EMAIL", "ONLINE_MEETING", "PHYSICAL_MEETING"], {
+    required_error: "Follow-up type is required",
+  }),
+  description: z.string().min(1, "Description is required"),
+  followUpDate: z.string().min(1, "Follow-up date is required"),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"], {
+    required_error: "Priority is required",
+  }),
+  nextFollowUpDate: z.string().optional(),
+  assignedUserId: z.string().optional(),
+});
+
+type FollowUpFormData = z.infer<typeof followUpFormSchema>;
+
+function FollowUpDashboard() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [selectedFilter, setSelectedFilter] = useState<string>("all");
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+
+  // Fetch data
+  const { data: leadFollowUps = [], isLoading } = useQuery<FollowUpData[]>({
+    queryKey: ["/api/lead-follow-ups"],
+    retry: false,
+  });
+
+  const { data: leads = [] } = useQuery<any[]>({
+    queryKey: ["/api/leads"],
+    retry: false,
+  });
+
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+    retry: false,
+  });
+
+  // Create mutation
+  const createFollowUpMutation = useMutation({
+    mutationFn: async (data: FollowUpFormData) => {
+      return apiCall("/api/lead-follow-ups", "POST", {
+        ...data,
+        assignedUserId: data.assignedUserId === "unassigned" ? null : data.assignedUserId,
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Follow-up created successfully" });
+      setIsCreateDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-follow-ups"] });
+      form.reset();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create follow-up",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update status mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status, outcome }: { id: string; status: string; outcome?: string }) => {
+      return apiCall(`/api/lead-follow-ups/${id}`, "PUT", { status, outcome });
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Follow-up updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-follow-ups"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update follow-up",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const form = useForm<FollowUpFormData>({
+    resolver: zodResolver(followUpFormSchema),
+    defaultValues: {
+      type: "PHONE_CALL",
+      priority: "MEDIUM",
+      followUpDate: new Date().toISOString().split("T")[0],
+    },
+  });
+
+  const onSubmit = (data: FollowUpFormData) => {
+    createFollowUpMutation.mutate(data);
+  };
+
+  const handleStatusUpdate = (id: string, status: string) => {
+    if (status === "COMPLETED") {
+      const outcome = prompt("Enter follow-up outcome (optional):");
+      updateStatusMutation.mutate({ id, status, outcome: outcome || undefined });
+    } else {
+      updateStatusMutation.mutate({ id, status });
+    }
+  };
+
+  // Enhanced date filtering functions
+  const getDateRange = (period: string) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    
+    const startOfWeek = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000));
+    const endOfWeek = new Date(startOfWeek.getTime() + (6 * 24 * 60 * 60 * 1000));
+    
+    const startOfNextWeek = new Date(endOfWeek.getTime() + 24 * 60 * 60 * 1000);
+    const endOfNextWeek = new Date(startOfNextWeek.getTime() + (6 * 24 * 60 * 60 * 1000));
+    
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    switch (period) {
+      case "today": return [today, today];
+      case "tomorrow": return [tomorrow, tomorrow];
+      case "this_week": return [startOfWeek, endOfWeek];
+      case "next_week": return [startOfNextWeek, endOfNextWeek];
+      case "this_month": return [startOfMonth, endOfMonth];
+      default: return [null, null];
+    }
+  };
+
+  const isDateInRange = (dateStr: string, start: Date, end: Date) => {
+    const date = new Date(dateStr.split("T")[0]);
+    return date >= start && date <= end;
+  };
+
+  // Enhanced Stats
+  const stats = {
+    total: leadFollowUps.length,
+    overdue: leadFollowUps.filter(f => {
+      const today = new Date().toISOString().split("T")[0];
+      return f.followUpDate.split("T")[0] < today && f.status === "PENDING";
+    }).length,
+    today: leadFollowUps.filter(f => {
+      const [start, end] = getDateRange("today");
+      return start && end && isDateInRange(f.followUpDate, start, end) && f.status === "PENDING";
+    }).length,
+    tomorrow: leadFollowUps.filter(f => {
+      const [start, end] = getDateRange("tomorrow");
+      return start && end && isDateInRange(f.followUpDate, start, end) && f.status === "PENDING";
+    }).length,
+    thisWeek: leadFollowUps.filter(f => {
+      const [start, end] = getDateRange("this_week");
+      return start && end && isDateInRange(f.followUpDate, start, end) && f.status === "PENDING";
+    }).length,
+    nextWeek: leadFollowUps.filter(f => {
+      const [start, end] = getDateRange("next_week");
+      return start && end && isDateInRange(f.followUpDate, start, end) && f.status === "PENDING";
+    }).length,
+    thisMonth: leadFollowUps.filter(f => {
+      const [start, end] = getDateRange("this_month");
+      return start && end && isDateInRange(f.followUpDate, start, end) && f.status === "PENDING";
+    }).length,
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case "PHONE_CALL": return <Phone className="h-4 w-4" />;
+      case "EMAIL": return <Mail className="h-4 w-4" />;
+      case "ONLINE_MEETING": return <Users className="h-4 w-4" />;
+      case "PHYSICAL_MEETING": return <Users className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "PENDING": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "COMPLETED": return "bg-green-100 text-green-800 border-green-200";
+      case "CANCELLED": return "bg-red-100 text-red-800 border-red-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "LOW": return "bg-blue-100 text-blue-800 border-blue-200";
+      case "MEDIUM": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "HIGH": return "bg-orange-100 text-orange-800 border-orange-200";
+      case "URGENT": return "bg-red-100 text-red-800 border-red-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  // Filter follow-ups
+  const filteredFollowUps = leadFollowUps.filter(followUp => {
+    if (selectedFilter === "all") return true;
+    if (selectedFilter === "pending") return followUp.status === "PENDING";
+    if (selectedFilter === "completed") return followUp.status === "COMPLETED";
+    
+    const today = new Date().toISOString().split("T")[0];
+    if (selectedFilter === "overdue") {
+      return followUp.followUpDate.split("T")[0] < today && followUp.status === "PENDING";
+    }
+    
+    if (["today", "tomorrow", "this_week", "next_week", "this_month"].includes(selectedFilter)) {
+      const [start, end] = getDateRange(selectedFilter);
+      if (start && end) {
+        return isDateInRange(followUp.followUpDate, start, end) && followUp.status === "PENDING";
+      }
+    }
+    
+    return true;
+  });
+
+  if (isLoading) {
+    return <div className="flex justify-center p-4">Loading follow-ups...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Follow-up Management</h2>
+          <p className="text-gray-600">Track and manage all lead follow-up activities</p>
+        </div>
+        
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-follow-up">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Follow-up
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create Lead Follow-up</DialogTitle>
+              <DialogDescription>
+                Schedule a new follow-up activity for a lead
+              </DialogDescription>
+            </DialogHeader>
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="leadId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lead</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-lead">
+                            <SelectValue placeholder="Select lead" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {leads.map((lead) => (
+                            <SelectItem key={lead.id} value={lead.id}>
+                              {lead.companyName} - {lead.contactPersonName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Follow-up Type</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-type">
+                            <SelectValue placeholder="Select type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="PHONE_CALL">📞 Phone Call</SelectItem>
+                          <SelectItem value="EMAIL">📧 Email</SelectItem>
+                          <SelectItem value="ONLINE_MEETING">💻 Online Meeting</SelectItem>
+                          <SelectItem value="PHYSICAL_MEETING">🤝 Physical Meeting</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="priority"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priority</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-priority">
+                            <SelectValue placeholder="Select priority" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="LOW">🟢 Low</SelectItem>
+                          <SelectItem value="MEDIUM">🟡 Medium</SelectItem>
+                          <SelectItem value="HIGH">🟠 High</SelectItem>
+                          <SelectItem value="URGENT">🔴 Urgent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="followUpDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Follow-up Date</FormLabel>
+                      <FormControl>
+                        <Input type="datetime-local" data-testid="input-follow-up-date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="assignedUserId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assign To (Optional)</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-assigned-user">
+                            <SelectValue placeholder="Select user" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {users.map((user) => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.firstName} {user.lastName} ({user.role})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe the follow-up activity..."
+                          data-testid="textarea-description"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateDialogOpen(false)}
+                    data-testid="button-cancel"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={createFollowUpMutation.isPending}
+                    data-testid="button-submit"
+                  >
+                    {createFollowUpMutation.isPending ? "Creating..." : "Create Follow-up"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("overdue")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+            <AlertCircle className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600" data-testid="stat-overdue">{stats.overdue}</div>
+            <p className="text-xs text-muted-foreground">Past due</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("today")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today</CardTitle>
+            <Calendar className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600" data-testid="stat-today">{stats.today}</div>
+            <p className="text-xs text-muted-foreground">Due today</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("tomorrow")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tomorrow</CardTitle>
+            <Calendar className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600" data-testid="stat-tomorrow">{stats.tomorrow}</div>
+            <p className="text-xs text-muted-foreground">Due tomorrow</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("this_week")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">This Week</CardTitle>
+            <Calendar className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600" data-testid="stat-this-week">{stats.thisWeek}</div>
+            <p className="text-xs text-muted-foreground">This week</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("next_week")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Next Week</CardTitle>
+            <Calendar className="h-4 w-4 text-indigo-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-indigo-600" data-testid="stat-next-week">{stats.nextWeek}</div>
+            <p className="text-xs text-muted-foreground">Next week</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("this_month")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">This Month</CardTitle>
+            <Calendar className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600" data-testid="stat-this-month">{stats.thisMonth}</div>
+            <p className="text-xs text-muted-foreground">This month</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Follow-ups List */}
+      <div className="space-y-4">
+        {filteredFollowUps.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-10">
+              <Calendar className="h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No follow-ups found</h3>
+              <p className="text-gray-600 text-center max-w-md">
+                {selectedFilter === "all" 
+                  ? "No lead follow-ups have been created yet. Create your first follow-up to get started."
+                  : `No follow-ups match the "${selectedFilter}" filter.`
+                }
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredFollowUps.slice(0, 5).map((followUp) => {
+            const lead = leads.find(l => l.id === followUp.leadId);
+            const assignedUser = users.find(u => u.id === followUp.assignedUserId);
+            
+            return (
+              <Card key={followUp.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <div className="flex-shrink-0">
+                        {getTypeIcon(followUp.type)}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <h3 className="text-base font-medium text-gray-900">
+                            {lead?.companyName || "Unknown Lead"} - {lead?.contactPersonName}
+                          </h3>
+                          <Badge className={getStatusColor(followUp.status)}>
+                            {followUp.status}
+                          </Badge>
+                          <Badge className={getPriorityColor(followUp.priority)}>
+                            {followUp.priority}
+                          </Badge>
+                        </div>
+                        
+                        <p className="text-gray-700 mb-2">{followUp.description}</p>
+                        
+                        <div className="flex items-center space-x-4 text-sm text-gray-600">
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{new Date(followUp.followUpDate).toLocaleDateString()}</span>
+                          </div>
+                          
+                          {assignedUser && (
+                            <div>
+                              <strong>Assigned:</strong> {assignedUser.firstName} {assignedUser.lastName}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex space-x-2 ml-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedLeadId(followUp.leadId);
+                          setHistoryDialogOpen(true);
+                        }}
+                      >
+                        📋 History
+                      </Button>
+                      
+                      {followUp.status === "PENDING" && (
+                        <Button
+                          size="sm"
+                          onClick={() => handleStatusUpdate(followUp.id, "COMPLETED")}
+                          disabled={updateStatusMutation.isPending}
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Complete
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+        
+        {filteredFollowUps.length > 5 && (
+          <div className="text-center py-4">
+            <Button variant="outline" onClick={() => setSelectedFilter("all")}>
+              View All {filteredFollowUps.length} Follow-ups
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Follow-up History Dialog */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Follow-up History</DialogTitle>
+            <DialogDescription>
+              Complete history of follow-ups for {selectedLeadId ? leads.find(l => l.id === selectedLeadId)?.companyName : "this lead"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="overflow-y-auto max-h-[60vh] space-y-4">
+            {selectedLeadId && (
+              <>
+                {leadFollowUps
+                  .filter(f => f.leadId === selectedLeadId)
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .map((followUp) => {
+                    const assignedUser = users.find(u => u.id === followUp.assignedUserId);
+                    
+                    return (
+                      <Card key={followUp.id} className="border border-gray-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center space-x-3">
+                              {getTypeIcon(followUp.type)}
+                              <div>
+                                <h4 className="font-medium text-gray-900">
+                                  {followUp.type.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                                </h4>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <Badge className={getStatusColor(followUp.status)}>
+                                    {followUp.status}
+                                  </Badge>
+                                  <Badge className={getPriorityColor(followUp.priority)}>
+                                    {followUp.priority}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right text-sm text-gray-600">
+                              <div>Scheduled: {new Date(followUp.followUpDate).toLocaleDateString()}</div>
+                              <div>Created: {new Date(followUp.createdAt).toLocaleDateString()}</div>
+                              {followUp.completedAt && (
+                                <div>Completed: {new Date(followUp.completedAt).toLocaleDateString()}</div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <p className="text-gray-700 mb-3">{followUp.description}</p>
+                          
+                          {followUp.outcome && (
+                            <div className="p-3 bg-green-50 border border-green-200 rounded-lg mb-3">
+                              <p className="text-sm">
+                                <strong className="text-green-800">Outcome:</strong> 
+                                <span className="text-green-700 ml-1">{followUp.outcome}</span>
+                              </p>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            {assignedUser && (
+                              <span>Assigned to: {assignedUser.firstName} {assignedUser.lastName}</span>
+                            )}
+                            {followUp.nextFollowUpDate && (
+                              <span>Next follow-up: {new Date(followUp.nextFollowUpDate).toLocaleDateString()}</span>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                
+                {leadFollowUps.filter(f => f.leadId === selectedLeadId).length === 0 && (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No follow-up history</h3>
+                    <p className="text-gray-600">This lead has no follow-up activities yet.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          
+          <div className="flex justify-end pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setHistoryDialogOpen(false)}
+              data-testid="button-close-history"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // Lead & CRM Management Component
 function LeadCRMSection() {
   const { toast } = useToast();
@@ -578,18 +1258,30 @@ function LeadCRMSection() {
                         </div>
                       )}
                       
-                      <div className="flex justify-center pt-2">
+                      <div className="flex gap-2 pt-2">
                         <Button
                           variant="default"
                           size="sm"
-                          className="w-full"
+                          className="flex-1"
                           onClick={() => {
-                            window.location.href = `/lead-follow-up-hub?leadId=${lead.id}`;
+                            setEditingLead(lead);
+                            setIsDialogOpen(true);
                           }}
-                          data-testid={`button-follow-up-${lead.id}`}
+                          data-testid={`button-edit-${lead.id}`}
                         >
-                          <Clock className="h-4 w-4 mr-1" />
-                          Follow-up
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleConvertToClient(lead)}
+                          disabled={lead.leadStatus !== 'QUALIFIED' || convertToClientMutation.isPending}
+                          data-testid={`button-convert-${lead.id}`}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-1" />
+                          Convert
                         </Button>
                       </div>
                     </div>
@@ -620,6 +1312,11 @@ function LeadCRMSection() {
           queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
         }}
       />
+      
+      {/* Follow-up Management Section */}
+      <div className="mt-8">
+        <FollowUpDashboard />
+      </div>
     </Card>
   );
 }
