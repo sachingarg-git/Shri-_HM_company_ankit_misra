@@ -1201,6 +1201,7 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
   updatedAt: true,
 }).extend({
   expectedCloseDate: z.string().optional().transform((val) => val ? new Date(val) : undefined),
+  estimatedValue: z.string().optional().transform((val) => val && val !== "" ? parseFloat(val) : undefined),
 });
 
 export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
