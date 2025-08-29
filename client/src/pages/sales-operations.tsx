@@ -443,7 +443,18 @@ const followUpFormSchema = z.object({
   assignedUserId: z.string().min(1, "Assigned user is required"),
 });
 
+// New schema for lead-specific follow-up form
+const leadFollowUpFormSchema = z.object({
+  followUpType: z.enum(["CALL", "EMAIL", "MEETING", "DEMO", "PROPOSAL", "WHATSAPP"], {
+    required_error: "Follow-up type is required",
+  }),
+  remarks: z.string().min(1, "Remarks are required"),
+  followUpDate: z.string().min(1, "Follow-up date is required"),
+  nextFollowUpDate: z.string().optional(),
+});
+
 type FollowUpFormData = z.infer<typeof followUpFormSchema>;
+type LeadFollowUpFormData = z.infer<typeof leadFollowUpFormSchema>;
 
 function FollowUpDashboard() {
   const { toast } = useToast();
@@ -452,6 +463,8 @@ function FollowUpDashboard() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [isFollowUpDialogOpen, setIsFollowUpDialogOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<any>(null);
 
   // Fetch data
   const { data: leadFollowUps = [], isLoading } = useQuery<FollowUpData[]>({
@@ -650,12 +663,6 @@ function FollowUpDashboard() {
         </div>
         
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-follow-up">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Follow-up
-            </Button>
-          </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Create Lead Follow-up</DialogTitle>
@@ -1084,6 +1091,8 @@ function LeadCRMSection() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<string>("companyName");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [isFollowUpDialogOpen, setIsFollowUpDialogOpen] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<any>(null);
 
   const convertToClientMutation = useMutation({
     mutationFn: async (lead: Lead) => {
@@ -1126,6 +1135,64 @@ function LeadCRMSection() {
       });
     },
   });
+
+  // Form for lead-specific follow-up
+  const leadFollowUpForm = useForm<LeadFollowUpFormData>({
+    resolver: zodResolver(leadFollowUpFormSchema),
+    defaultValues: {
+      followUpType: "CALL",
+      remarks: "",
+      followUpDate: "",
+      nextFollowUpDate: "",
+    },
+  });
+
+  // Create lead follow-up mutation
+  const createLeadFollowUpMutation = useMutation({
+    mutationFn: async (data: LeadFollowUpFormData & { leadId: string; assignedUserId: string }) => {
+      return apiCall("/api/lead-follow-ups", "POST", data);
+    },
+    onSuccess: () => {
+      toast({ title: "Success", description: "Follow-up scheduled successfully" });
+      setIsFollowUpDialogOpen(false);
+      setSelectedLead(null);
+      leadFollowUpForm.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/lead-follow-ups"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create follow-up",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { data: users = [] } = useQuery<any[]>({
+    queryKey: ["/api/users"],
+    retry: false,
+  });
+
+  const onLeadFollowUpSubmit = (data: LeadFollowUpFormData) => {
+    if (!selectedLead) return;
+    
+    // Get current user ID (assuming first user for now, you might want to get from context)
+    const currentUserId = users[0]?.id;
+    if (!currentUserId) {
+      toast({
+        title: "Error",
+        description: "No user found for assignment",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createLeadFollowUpMutation.mutate({
+      ...data,
+      leadId: selectedLead.id,
+      assignedUserId: currentUserId,
+    });
+  };
 
   const handleConvertToClient = (lead: Lead) => {
     if (lead.leadStatus !== 'QUALIFIED') {
@@ -1362,6 +1429,17 @@ function LeadCRMSection() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
+                              setSelectedLead(lead);
+                              setIsFollowUpDialogOpen(true);
+                            }}
+                            data-testid={`button-followup-${lead.id}`}
+                          >
+                            <Phone className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
                               setEditingLead(lead);
                               setIsDialogOpen(true);
                             }}
@@ -1408,6 +1486,164 @@ function LeadCRMSection() {
           queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
         }}
       />
+
+      {/* Lead Follow-up Dialog */}
+      <Dialog open={isFollowUpDialogOpen} onOpenChange={setIsFollowUpDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Schedule Follow-up</DialogTitle>
+            <DialogDescription>
+              Create a follow-up for {selectedLead?.companyName || "this lead"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedLead && (
+            <div className="space-y-4">
+              {/* Lead Information Display */}
+              <Card className="bg-gray-50">
+                <CardContent className="p-4">
+                  <h4 className="font-medium text-gray-900 mb-2">Lead Information</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-600">Company:</span>
+                      <div className="font-medium">{selectedLead.companyName}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Contact Person:</span>
+                      <div className="font-medium">{selectedLead.contactPersonName}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Phone:</span>
+                      <div className="font-medium">{selectedLead.mobileNumber || "N/A"}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Email:</span>
+                      <div className="font-medium">{selectedLead.emailId || "N/A"}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Status:</span>
+                      <Badge className={getStatusColor(selectedLead.leadStatus)}>
+                        {selectedLead.leadStatus.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Estimated Value:</span>
+                      <div className="font-medium">
+                        {selectedLead.estimatedValue ? `₹${Number(selectedLead.estimatedValue).toLocaleString()}` : "N/A"}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Follow-up Form */}
+              <Form {...leadFollowUpForm}>
+                <form onSubmit={leadFollowUpForm.handleSubmit(onLeadFollowUpSubmit)} className="space-y-4">
+                  <FormField
+                    control={leadFollowUpForm.control}
+                    name="followUpType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Follow-up Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select follow-up type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="CALL">📞 Call</SelectItem>
+                            <SelectItem value="EMAIL">📧 Email</SelectItem>
+                            <SelectItem value="MEETING">🤝 Meeting</SelectItem>
+                            <SelectItem value="DEMO">💻 Demo</SelectItem>
+                            <SelectItem value="PROPOSAL">📋 Proposal</SelectItem>
+                            <SelectItem value="WHATSAPP">💬 WhatsApp</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={leadFollowUpForm.control}
+                    name="remarks"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Remarks</FormLabel>
+                        <FormControl>
+                          <textarea
+                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            placeholder="Enter follow-up details or notes..."
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={leadFollowUpForm.control}
+                    name="followUpDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Follow-up Date & Time</FormLabel>
+                        <FormControl>
+                          <input
+                            type="datetime-local"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={leadFollowUpForm.control}
+                    name="nextFollowUpDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Next Follow-up Date (Optional)</FormLabel>
+                        <FormControl>
+                          <input
+                            type="datetime-local"
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsFollowUpDialogOpen(false);
+                        setSelectedLead(null);
+                        leadFollowUpForm.reset();
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={createLeadFollowUpMutation.isPending}
+                    >
+                      {createLeadFollowUpMutation.isPending ? "Scheduling..." : "Schedule Follow-up"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
