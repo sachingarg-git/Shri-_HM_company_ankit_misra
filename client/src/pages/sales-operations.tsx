@@ -747,7 +747,7 @@ function QuotationSection() {
       discountAmount: 0,
       taxAmount: totals.tax,
       grandTotal: totals.total,
-      paymentTerms: `${parseInt(paymentTerms) || 30} days`,
+      paymentTerms: parseInt(paymentTerms) || 30,
       deliveryTerms: "Standard delivery terms",
       specialInstructions: description,
       preparedByUserId: "system", // This should be from auth context
