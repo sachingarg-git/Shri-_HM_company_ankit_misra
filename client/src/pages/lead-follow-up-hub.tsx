@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const followUpFormSchema = z.object({
   leadId: z.string().min(1, "Lead selection is required"),
-  type: z.enum(["CALL", "EMAIL", "MEETING", "DEMO", "PROPOSAL"], {
+  type: z.enum(["PHONE_CALL", "EMAIL", "ONLINE_MEETING", "PHYSICAL_MEETING"], {
     required_error: "Follow-up type is required",
   }),
   description: z.string().min(1, "Description is required"),
@@ -46,7 +46,7 @@ interface Lead {
 interface LeadFollowUp {
   id: string;
   leadId: string;
-  type: "CALL" | "EMAIL" | "MEETING" | "DEMO" | "PROPOSAL";
+  type: "PHONE_CALL" | "EMAIL" | "ONLINE_MEETING" | "PHYSICAL_MEETING";
   description: string;
   followUpDate: string;
   status: "PENDING" | "COMPLETED" | "CANCELLED";
@@ -69,11 +69,10 @@ interface User {
 
 const getTypeIcon = (type: string) => {
   switch (type) {
-    case "CALL": return <Phone className="h-4 w-4" />;
+    case "PHONE_CALL": return <Phone className="h-4 w-4" />;
     case "EMAIL": return <Mail className="h-4 w-4" />;
-    case "MEETING": return <Users className="h-4 w-4" />;
-    case "DEMO": return <Users className="h-4 w-4" />;
-    case "PROPOSAL": return <Users className="h-4 w-4" />;
+    case "ONLINE_MEETING": return <Users className="h-4 w-4" />;
+    case "PHYSICAL_MEETING": return <Users className="h-4 w-4" />;
     default: return <Clock className="h-4 w-4" />;
   }
 };
@@ -100,6 +99,8 @@ const getPriorityColor = (priority: string) => {
 export default function LeadFollowUpHub() {
   const [selectedFilter, setSelectedFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -168,7 +169,7 @@ export default function LeadFollowUpHub() {
   const form = useForm<FollowUpFormData>({
     resolver: zodResolver(followUpFormSchema),
     defaultValues: {
-      type: "CALL",
+      type: "PHONE_CALL",
       priority: "MEDIUM",
       followUpDate: new Date().toISOString().split("T")[0],
     },
@@ -187,30 +188,83 @@ export default function LeadFollowUpHub() {
     }
   };
 
+  // Enhanced date filtering functions
+  const getDateRange = (period: string) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    
+    const startOfWeek = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000));
+    const endOfWeek = new Date(startOfWeek.getTime() + (6 * 24 * 60 * 60 * 1000));
+    
+    const startOfNextWeek = new Date(endOfWeek.getTime() + 24 * 60 * 60 * 1000);
+    const endOfNextWeek = new Date(startOfNextWeek.getTime() + (6 * 24 * 60 * 60 * 1000));
+    
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    switch (period) {
+      case "today": return [today, today];
+      case "tomorrow": return [tomorrow, tomorrow];
+      case "this_week": return [startOfWeek, endOfWeek];
+      case "next_week": return [startOfNextWeek, endOfNextWeek];
+      case "this_month": return [startOfMonth, endOfMonth];
+      default: return [null, null];
+    }
+  };
+
+  const isDateInRange = (dateStr: string, start: Date, end: Date) => {
+    const date = new Date(dateStr.split("T")[0]);
+    return date >= start && date <= end;
+  };
+
   // Filter follow-ups
   const filteredFollowUps = leadFollowUps.filter(followUp => {
     if (selectedFilter === "all") return true;
     if (selectedFilter === "pending") return followUp.status === "PENDING";
     if (selectedFilter === "completed") return followUp.status === "COMPLETED";
-    if (selectedFilter === "today") {
-      const today = new Date().toISOString().split("T")[0];
-      return followUp.followUpDate.split("T")[0] === today;
-    }
+    
+    const today = new Date().toISOString().split("T")[0];
     if (selectedFilter === "overdue") {
-      const today = new Date().toISOString().split("T")[0];
       return followUp.followUpDate.split("T")[0] < today && followUp.status === "PENDING";
     }
+    
+    if (["today", "tomorrow", "this_week", "next_week", "this_month"].includes(selectedFilter)) {
+      const [start, end] = getDateRange(selectedFilter);
+      if (start && end) {
+        return isDateInRange(followUp.followUpDate, start, end) && followUp.status === "PENDING";
+      }
+    }
+    
     return true;
   });
 
-  // Stats
+  // Enhanced Stats
   const stats = {
     total: leadFollowUps.length,
-    pending: leadFollowUps.filter(f => f.status === "PENDING").length,
-    completed: leadFollowUps.filter(f => f.status === "COMPLETED").length,
     overdue: leadFollowUps.filter(f => {
       const today = new Date().toISOString().split("T")[0];
       return f.followUpDate.split("T")[0] < today && f.status === "PENDING";
+    }).length,
+    today: leadFollowUps.filter(f => {
+      const [start, end] = getDateRange("today");
+      return start && end && isDateInRange(f.followUpDate, start, end) && f.status === "PENDING";
+    }).length,
+    tomorrow: leadFollowUps.filter(f => {
+      const [start, end] = getDateRange("tomorrow");
+      return start && end && isDateInRange(f.followUpDate, start, end) && f.status === "PENDING";
+    }).length,
+    thisWeek: leadFollowUps.filter(f => {
+      const [start, end] = getDateRange("this_week");
+      return start && end && isDateInRange(f.followUpDate, start, end) && f.status === "PENDING";
+    }).length,
+    nextWeek: leadFollowUps.filter(f => {
+      const [start, end] = getDateRange("next_week");
+      return start && end && isDateInRange(f.followUpDate, start, end) && f.status === "PENDING";
+    }).length,
+    thisMonth: leadFollowUps.filter(f => {
+      const [start, end] = getDateRange("this_month");
+      return start && end && isDateInRange(f.followUpDate, start, end) && f.status === "PENDING";
     }).length,
   };
 
@@ -289,11 +343,10 @@ export default function LeadFollowUpHub() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="CALL">📞 Call</SelectItem>
+                          <SelectItem value="PHONE_CALL">📞 Phone Call</SelectItem>
                           <SelectItem value="EMAIL">📧 Email</SelectItem>
-                          <SelectItem value="MEETING">🤝 Meeting</SelectItem>
-                          <SelectItem value="DEMO">💻 Demo</SelectItem>
-                          <SelectItem value="PROPOSAL">📋 Proposal</SelectItem>
+                          <SelectItem value="ONLINE_MEETING">💻 Online Meeting</SelectItem>
+                          <SelectItem value="PHYSICAL_MEETING">🤝 Physical Meeting</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -420,38 +473,8 @@ export default function LeadFollowUpHub() {
         </Dialog>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("all")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Follow-ups</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" data-testid="stat-total">{stats.total}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("pending")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600" data-testid="stat-pending">{stats.pending}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("completed")}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600" data-testid="stat-completed">{stats.completed}</div>
-          </CardContent>
-        </Card>
-
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("overdue")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overdue</CardTitle>
@@ -459,6 +482,62 @@ export default function LeadFollowUpHub() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600" data-testid="stat-overdue">{stats.overdue}</div>
+            <p className="text-xs text-muted-foreground">Past due</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("today")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today</CardTitle>
+            <Calendar className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600" data-testid="stat-today">{stats.today}</div>
+            <p className="text-xs text-muted-foreground">Due today</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("tomorrow")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Tomorrow</CardTitle>
+            <Calendar className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600" data-testid="stat-tomorrow">{stats.tomorrow}</div>
+            <p className="text-xs text-muted-foreground">Due tomorrow</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("this_week")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">This Week</CardTitle>
+            <Calendar className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600" data-testid="stat-this-week">{stats.thisWeek}</div>
+            <p className="text-xs text-muted-foreground">This week</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("next_week")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Next Week</CardTitle>
+            <Calendar className="h-4 w-4 text-indigo-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-indigo-600" data-testid="stat-next-week">{stats.nextWeek}</div>
+            <p className="text-xs text-muted-foreground">Next week</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedFilter("this_month")}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">This Month</CardTitle>
+            <Calendar className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600" data-testid="stat-this-month">{stats.thisMonth}</div>
+            <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
       </div>
@@ -589,6 +668,18 @@ export default function LeadFollowUpHub() {
                     </div>
                     
                     <div className="flex flex-col space-y-2 ml-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedLeadId(followUp.leadId);
+                          setHistoryDialogOpen(true);
+                        }}
+                        data-testid={`button-history-${followUp.id}`}
+                      >
+                        📋 History
+                      </Button>
+                      
                       {followUp.status === "PENDING" && (
                         <>
                           <Button
@@ -625,6 +716,101 @@ export default function LeadFollowUpHub() {
           })
         )}
       </div>
+
+      {/* Follow-up History Dialog */}
+      <Dialog open={historyDialogOpen} onOpenChange={setHistoryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Follow-up History</DialogTitle>
+            <DialogDescription>
+              Complete history of follow-ups for {selectedLeadId ? leads.find(l => l.id === selectedLeadId)?.name : "this lead"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="overflow-y-auto max-h-[60vh] space-y-4">
+            {selectedLeadId && (
+              <>
+                {leadFollowUps
+                  .filter(f => f.leadId === selectedLeadId)
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .map((followUp) => {
+                    const assignedUser = users.find(u => u.id === followUp.assignedUserId);
+                    
+                    return (
+                      <Card key={followUp.id} className="border border-gray-200">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center space-x-3">
+                              {getTypeIcon(followUp.type)}
+                              <div>
+                                <h4 className="font-medium text-gray-900">
+                                  {followUp.type.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                                </h4>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  <Badge className={getStatusColor(followUp.status)}>
+                                    {followUp.status}
+                                  </Badge>
+                                  <Badge className={getPriorityColor(followUp.priority)}>
+                                    {followUp.priority}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right text-sm text-gray-600">
+                              <div>Scheduled: {format(new Date(followUp.followUpDate), "MMM dd, yyyy 'at' h:mm a")}</div>
+                              <div>Created: {format(new Date(followUp.createdAt), "MMM dd, yyyy")}</div>
+                              {followUp.completedAt && (
+                                <div>Completed: {format(new Date(followUp.completedAt), "MMM dd, yyyy")}</div>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <p className="text-gray-700 mb-3">{followUp.description}</p>
+                          
+                          {followUp.outcome && (
+                            <div className="p-3 bg-green-50 border border-green-200 rounded-lg mb-3">
+                              <p className="text-sm">
+                                <strong className="text-green-800">Outcome:</strong> 
+                                <span className="text-green-700 ml-1">{followUp.outcome}</span>
+                              </p>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            {assignedUser && (
+                              <span>Assigned to: {assignedUser.firstName} {assignedUser.lastName}</span>
+                            )}
+                            {followUp.nextFollowUpDate && (
+                              <span>Next follow-up: {format(new Date(followUp.nextFollowUpDate), "MMM dd, yyyy")}</span>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                
+                {leadFollowUps.filter(f => f.leadId === selectedLeadId).length === 0 && (
+                  <div className="text-center py-8">
+                    <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No follow-up history</h3>
+                    <p className="text-gray-600">This lead has no follow-up activities yet.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          
+          <div className="flex justify-end pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => setHistoryDialogOpen(false)}
+              data-testid="button-close-history"
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

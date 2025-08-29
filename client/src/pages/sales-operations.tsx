@@ -129,7 +129,7 @@ function AddLeadDialog({ open, onOpenChange, lead, onLeadSaved }: AddLeadDialogP
   const form = useForm({
     resolver: zodResolver(
       insertLeadSchema
-        .omit({ id: true, leadNumber: true, createdAt: true, updatedAt: true })
+        .omit({ leadNumber: true })
         .extend({
           expectedCloseDate: z.string().optional(),
         })
@@ -159,7 +159,7 @@ function AddLeadDialog({ open, onOpenChange, lead, onLeadSaved }: AddLeadDialogP
         email: lead.email || "",
         leadSource: lead.leadSource || "WEBSITE",
         leadStatus: lead.leadStatus || "NEW",
-        interestedProducts: lead.interestedProducts || [],
+        interestedProducts: (lead.interestedProducts as string[]) || [],
         estimatedValue: lead.estimatedValue || "",
         expectedCloseDate: lead.expectedCloseDate ? new Date(lead.expectedCloseDate).toISOString().split('T')[0] : "",
         notes: lead.notes || "",
@@ -578,22 +578,11 @@ function LeadCRMSection() {
                         </div>
                       )}
                       
-                      <div className="flex flex-wrap gap-2 pt-2">
+                      <div className="flex justify-center pt-2">
                         <Button
-                          variant="outline"
+                          variant="default"
                           size="sm"
-                          onClick={() => {
-                            setEditingLead(lead);
-                            setIsDialogOpen(true);
-                          }}
-                          data-testid={`button-edit-lead-${lead.id}`}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
+                          className="w-full"
                           onClick={() => {
                             window.location.href = `/lead-follow-up-hub?leadId=${lead.id}`;
                           }}
@@ -601,16 +590,6 @@ function LeadCRMSection() {
                         >
                           <Clock className="h-4 w-4 mr-1" />
                           Follow-up
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleConvertToClient(lead)}
-                          disabled={convertToClientMutation.isPending}
-                          data-testid={`button-convert-${lead.id}`}
-                        >
-                          <Target className="h-4 w-4 mr-1" />
-                          {convertToClientMutation.isPending ? "Converting..." : "Convert"}
                         </Button>
                       </div>
                     </div>
