@@ -477,10 +477,19 @@ export default function Clients() {
     }
 
     const uploadedFile = result.successful[0];
-    if (!uploadedFile.uploadURL || !currentClientId) {
+    if (!uploadedFile.uploadURL) {
       toast({
         title: "Error", 
-        description: "Upload URL or client ID missing",
+        description: "Upload URL missing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!currentClientId) {
+      toast({
+        title: "Client Must Be Saved First", 
+        description: "Please save the client details before uploading documents",
         variant: "destructive",
       });
       return;
@@ -534,19 +543,27 @@ export default function Clients() {
         
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-gray-400 transition-colors">
           {!isUploaded ? (
-            <ObjectUploader
-              maxNumberOfFiles={1}
-              maxFileSize={10485760} // 10MB
-              onGetUploadParameters={handleGetUploadParameters}
-              onComplete={(result) => handleDocumentUpload(documentType, result)}
-              buttonClassName="w-full h-24 border-none bg-transparent hover:bg-gray-50"
-            >
-              <div className="flex flex-col items-center gap-2 text-gray-500">
+            currentClientId ? (
+              <ObjectUploader
+                maxNumberOfFiles={1}
+                maxFileSize={10485760} // 10MB
+                onGetUploadParameters={handleGetUploadParameters}
+                onComplete={(result) => handleDocumentUpload(documentType, result)}
+                buttonClassName="w-full h-24 border-none bg-transparent hover:bg-gray-50"
+              >
+                <div className="flex flex-col items-center gap-2 text-gray-500">
+                  <Upload className="h-8 w-8" />
+                  <span className="text-sm">Click to upload {label}</span>
+                  <span className="text-xs text-gray-400">PDF, JPG, PNG, DOC (max 10MB)</span>
+                </div>
+              </ObjectUploader>
+            ) : (
+              <div className="flex flex-col items-center gap-2 text-gray-400 py-6">
                 <Upload className="h-8 w-8" />
-                <span className="text-sm">Click to upload {label}</span>
-                <span className="text-xs text-gray-400">PDF, JPG, PNG, DOC (max 10MB)</span>
+                <span className="text-sm">Save client first to upload {label}</span>
+                <span className="text-xs">Complete and save client details to enable document upload</span>
               </div>
-            </ObjectUploader>
+            )
           ) : (
             <div className="flex items-center justify-center py-4">
               <div className="flex items-center gap-2">
