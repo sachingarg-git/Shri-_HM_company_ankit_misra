@@ -1054,12 +1054,10 @@ export const quotationItems = pgTable("quotation_items", {
   description: text("description"),
   quantity: decimal("quantity", { precision: 15, scale: 3 }).notNull(),
   unit: text("unit").notNull(),
-  unitPrice: decimal("unit_price", { precision: 15, scale: 2 }).notNull(),
-  totalPrice: decimal("total_price", { precision: 15, scale: 2 }).notNull(),
-  taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default('0'),
-  taxAmount: decimal("tax_amount", { precision: 15, scale: 2 }).default('0'),
-  deliveryDate: timestamp("delivery_date"),
+  rate: decimal("rate", { precision: 15, scale: 2 }).notNull(),
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
 // Sales Orders with Credit Checks
