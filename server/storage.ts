@@ -242,6 +242,7 @@ export interface IStorage {
   getQuotation(id: string): Promise<Quotation | undefined>;
   getAllQuotations(): Promise<Quotation[]>;
   getQuotationsByOpportunity(opportunityId: string): Promise<Quotation[]>;
+  getQuotationsCount(): Promise<number>;
   createQuotation(quotation: InsertQuotation): Promise<Quotation>;
   updateQuotation(id: string, quotation: Partial<InsertQuotation>): Promise<Quotation>;
   
@@ -1493,6 +1494,11 @@ export class DatabaseStorage implements IStorage {
       .from(quotations)
       .where(eq(quotations.opportunityId, opportunityId))
       .orderBy(desc(quotations.createdAt));
+  }
+
+  async getQuotationsCount(): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` }).from(quotations);
+    return result[0]?.count || 0;
   }
 
   async createQuotation(quotationData: InsertQuotation): Promise<Quotation> {

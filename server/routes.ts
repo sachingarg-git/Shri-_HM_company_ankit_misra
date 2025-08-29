@@ -2035,7 +2035,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/quotations", async (req, res) => {
     try {
       const validatedData = insertQuotationSchema.parse(req.body);
-      const quotation = await storage.createQuotation(validatedData);
+      // Generate quotation number
+      const quotationCount = await storage.getQuotationsCount();
+      const quotationNumber = `QUO-${String(quotationCount + 1).padStart(6, '0')}`;
+      
+      const quotationData = {
+        ...validatedData,
+        quotationNumber,
+      };
+      
+      const quotation = await storage.createQuotation(quotationData);
       res.status(201).json(quotation);
     } catch (error) {
       console.error("Quotation creation error:", error);

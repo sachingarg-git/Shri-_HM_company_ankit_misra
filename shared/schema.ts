@@ -1215,13 +1215,28 @@ export const insertOpportunitySchema = createInsertSchema(opportunities).omit({
 
 export const insertQuotationSchema = createInsertSchema(quotations).omit({
   id: true,
+  quotationNumber: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  quotationDate: z.string().transform(val => new Date(val)),
+  validUntil: z.string().transform(val => new Date(val)),
+  totalAmount: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
+  discountPercentage: z.union([z.string(), z.number()]).optional().transform(val => typeof val === 'string' ? parseFloat(val) : val),
+  discountAmount: z.union([z.string(), z.number()]).optional().transform(val => typeof val === 'string' ? parseFloat(val) : val),
+  taxAmount: z.union([z.string(), z.number()]).optional().transform(val => typeof val === 'string' ? parseFloat(val) : val),
+  grandTotal: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
 });
 
 export const insertQuotationItemSchema = createInsertSchema(quotationItems).omit({
   id: true,
   createdAt: true,
+}).extend({
+  quantity: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
+  unitPrice: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
+  totalPrice: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) : val),
+  taxRate: z.union([z.string(), z.number()]).optional().transform(val => typeof val === 'string' ? parseFloat(val) : val),
+  taxAmount: z.union([z.string(), z.number()]).optional().transform(val => typeof val === 'string' ? parseFloat(val) : val),
 });
 
 export const insertSalesOrderSchema = createInsertSchema(salesOrders).omit({
