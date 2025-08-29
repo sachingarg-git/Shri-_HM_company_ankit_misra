@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
-import { apiCall } from "@/lib/queryClient";
+import { apiCall, apiRequest } from "@/lib/queryClient";
 import { 
   Plus, 
   Edit, 
@@ -634,15 +634,55 @@ function QuotationSection() {
   const [quotationItems, setQuotationItems] = useState([
     { productId: "", quantity: 0, unit: "", rate: 0, amount: 0 }
   ]);
+  const [selectedClient, setSelectedClient] = useState("");
+  const [quotationDate, setQuotationDate] = useState(new Date().toISOString().split('T')[0]);
+  const [validUntil, setValidUntil] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
+  const [description, setDescription] = useState("");
   
-  const { data: clients } = useQuery({
+  const { data: clients = [] } = useQuery({
     queryKey: ["/api/clients"],
     retry: false,
   });
 
-  const { data: products } = useQuery({
+  const { data: products = [] } = useQuery({
     queryKey: ["/api/products"],
     retry: false,
+  });
+
+  const { data: quotations = [], refetch: refetchQuotations } = useQuery({
+    queryKey: ["/api/quotations"],
+    retry: false,
+  });
+
+  const createQuotationMutation = useMutation({
+    mutationFn: async (quotationData: any) => {
+      return apiRequest("/api/quotations", {
+        method: "POST",
+        body: JSON.stringify(quotationData),
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Quotation created successfully",
+      });
+      setIsQuotationDialogOpen(false);
+      refetchQuotations();
+      // Reset form
+      setQuotationItems([{ productId: "", quantity: 0, unit: "", rate: 0, amount: 0 }]);
+      setSelectedClient("");
+      setValidUntil("");
+      setPaymentTerms("");
+      setDescription("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create quotation",
+        variant: "destructive",
+      });
+    },
   });
 
   const updateQuotationItem = (index: number, field: string, value: any) => {
@@ -682,6 +722,46 @@ function QuotationSection() {
     setIsQuotationDialogOpen(true);
   };
 
+  const handleSaveQuotation = async () => {
+    if (!selectedClient) {
+      toast({
+        title: "Error",
+        description: "Please select a client",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (quotationItems.every(item => !item.productId)) {
+      toast({
+        title: "Error", 
+        description: "Please add at least one product",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const quotationData = {
+      clientId: selectedClient,
+      quotationDate: new Date(quotationDate),
+      validUntil: validUntil ? new Date(validUntil) : null,
+      paymentTerms: parseInt(paymentTerms) || 30,
+      description,
+      subtotalAmount: totals.subtotal,
+      taxAmount: totals.tax,
+      totalAmount: totals.total,
+      items: quotationItems.filter(item => item.productId && item.quantity > 0).map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        unit: item.unit,
+        rate: item.rate,
+        amount: item.amount,
+      }))
+    };
+
+    createQuotationMutation.mutate(quotationData);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -692,17 +772,61 @@ function QuotationSection() {
         <CardDescription>Multi-level approvals, competitive pricing, and quote management</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="text-center py-8">
-          <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">Quotation Management</h3>
-          <p className="text-muted-foreground mb-4">
-            Create professional quotes with multi-level approval workflow
-          </p>
-          <Button onClick={handleCreateQuotation} data-testid="button-create-quotation">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Quotation
-          </Button>
-        </div>
+        {quotations && quotations.length > 0 ? (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <div className="text-sm text-muted-foreground">
+                {quotations.length} quotation{quotations.length !== 1 ? 's' : ''} found
+              </div>
+              <Button onClick={handleCreateQuotation} data-testid="button-create-quotation">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Quotation
+              </Button>
+            </div>
+            
+            <div className="space-y-3">
+              {quotations.map((quotation: any) => (
+                <Card key={quotation.id} className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={quotation.status === 'DRAFT' ? 'secondary' : 'default'}>
+                          {quotation.status}
+                        </Badge>
+                        <span className="font-medium">{quotation.quotationNumber}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Client: {clients?.find((c: any) => c.id === quotation.clientId)?.name || 'Unknown'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Date: {new Date(quotation.quotationDate).toLocaleDateString()}
+                        {quotation.validUntil && ` • Valid until: ${new Date(quotation.validUntil).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold">₹{parseFloat(quotation.totalAmount).toFixed(2)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {quotation.paymentTerms} days
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-medium mb-2">Quotation Management</h3>
+            <p className="text-muted-foreground mb-4">
+              Create professional quotes with multi-level approval workflow
+            </p>
+            <Button onClick={handleCreateQuotation} data-testid="button-create-quotation">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Quotation
+            </Button>
+          </div>
+        )}
       </CardContent>
 
       {/* Quotation Creation Dialog */}
@@ -719,7 +843,7 @@ function QuotationSection() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Client</label>
-                <Select>
+                <Select value={selectedClient} onValueChange={setSelectedClient}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
@@ -740,18 +864,26 @@ function QuotationSection() {
               </div>
               <div>
                 <label className="text-sm font-medium">Quotation Date</label>
-                <Input type="date" defaultValue={new Date().toISOString().split('T')[0]} />
+                <Input 
+                  type="date" 
+                  value={quotationDate}
+                  onChange={(e) => setQuotationDate(e.target.value)}
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Valid Until</label>
-                <Input type="date" />
+                <Input 
+                  type="date" 
+                  value={validUntil}
+                  onChange={(e) => setValidUntil(e.target.value)}
+                />
               </div>
               <div>
                 <label className="text-sm font-medium">Payment Terms</label>
-                <Select>
+                <Select value={paymentTerms} onValueChange={setPaymentTerms}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select payment terms" />
                   </SelectTrigger>
@@ -767,7 +899,12 @@ function QuotationSection() {
 
             <div>
               <label className="text-sm font-medium">Description/Notes</label>
-              <Textarea placeholder="Enter quotation description and special terms..." rows={3} />
+              <Textarea 
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter quotation description and special terms..." 
+                rows={3} 
+              />
             </div>
 
             <div className="border rounded-lg p-4">
@@ -890,14 +1027,11 @@ function QuotationSection() {
             <Button variant="outline">
               Save as Draft
             </Button>
-            <Button onClick={() => {
-              toast({
-                title: "Success",
-                description: "Quotation created successfully",
-              });
-              setIsQuotationDialogOpen(false);
-            }}>
-              Create Quotation
+            <Button 
+              onClick={handleSaveQuotation}
+              disabled={createQuotationMutation.isPending}
+            >
+              {createQuotationMutation.isPending ? "Creating..." : "Create Quotation"}
             </Button>
           </DialogFooter>
         </DialogContent>
