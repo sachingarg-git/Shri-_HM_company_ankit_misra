@@ -747,10 +747,10 @@ function QuotationSection() {
       discountAmount: 0,
       taxAmount: totals.tax,
       grandTotal: totals.total,
-      paymentTerms: parseInt(paymentTerms) || 30,
+      paymentTerms: `${parseInt(paymentTerms) || 30}`,
       deliveryTerms: "Standard delivery terms",
       specialInstructions: description,
-      preparedByUserId: "system", // This should be from auth context
+      preparedByUserId: user?.id || "system",
       approvalStatus: "PENDING",
       items: quotationItems.filter(item => item.productId && item.quantity > 0).map(item => ({
         productId: item.productId,
