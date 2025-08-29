@@ -94,13 +94,19 @@ export const clients = pgTable("clients", {
   poRequired: boolean("po_required").default(false),
   invoicingEmails: text("invoicing_emails").array(), // JSON array of emails
   
-  // Documents Upload Status
+  // Documents Upload Status and Paths
   gstCertificateUploaded: boolean("gst_certificate_uploaded").default(false),
+  gstCertificatePath: text("gst_certificate_path"),
   panCopyUploaded: boolean("pan_copy_uploaded").default(false),
+  panCopyPath: text("pan_copy_path"),
   securityChequeUploaded: boolean("security_cheque_uploaded").default(false),
+  securityChequePath: text("security_cheque_path"),
   aadharCardUploaded: boolean("aadhar_card_uploaded").default(false),
+  aadharCardPath: text("aadhar_card_path"),
   agreementUploaded: boolean("agreement_uploaded").default(false),
+  agreementPath: text("agreement_path"),
   poRateContractUploaded: boolean("po_rate_contract_uploaded").default(false),
+  poRateContractPath: text("po_rate_contract_path"),
   
   // Sales Assignment Fields
   primarySalesPersonId: varchar("primary_sales_person_id").references(() => users.id),

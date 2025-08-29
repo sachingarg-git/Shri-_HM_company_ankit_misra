@@ -395,11 +395,45 @@ export default function Clients() {
 
   const [currentClientId, setCurrentClientId] = useState<string | null>(null);
 
-  const handleViewDocument = async (clientId: string, documentType: string) => {
+  const handleViewDocument = async (client: Client, documentType: string) => {
     try {
-      // Create a temporary link to open the document in a new tab
-      const documentUrl = `/objects/uploads/${clientId}/${documentType}`;
-      window.open(documentUrl, '_blank');
+      let documentPath: string | null = null;
+      
+      // Get the actual stored path for the document type
+      switch (documentType) {
+        case 'gst-certificate':
+          documentPath = (client as any).gstCertificatePath;
+          break;
+        case 'pan-copy':
+          documentPath = (client as any).panCopyPath;
+          break;
+        case 'security-cheque':
+          documentPath = (client as any).securityChequePath;
+          break;
+        case 'aadhar-card':
+          documentPath = (client as any).aadharCardPath;
+          break;
+        case 'agreement':
+          documentPath = (client as any).agreementPath;
+          break;
+        case 'po-rate-contract':
+          documentPath = (client as any).poRateContractPath;
+          break;
+        default:
+          throw new Error("Invalid document type");
+      }
+
+      if (!documentPath) {
+        toast({
+          title: "Error",
+          description: "Document path not found",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Open the document using the stored path
+      window.open(documentPath, '_blank');
     } catch (error: any) {
       toast({
         title: "Error",
@@ -1677,7 +1711,7 @@ export default function Clients() {
                                 <>
                                   <Check className="h-3 w-3 text-green-600" />
                                   <button
-                                    onClick={() => handleViewDocument(client.id, docType)}
+                                    onClick={() => handleViewDocument(client, docType)}
                                     className="text-green-600 hover:text-green-800 hover:underline cursor-pointer"
                                     title={`View ${label} document`}
                                   >
