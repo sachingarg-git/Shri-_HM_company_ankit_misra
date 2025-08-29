@@ -3364,6 +3364,35 @@ function QuotationSection() {
 
 // Sales Orders Component
 function SalesOrderSection() {
+  const { data: salesOrders, isLoading } = useQuery({
+    queryKey: ['/api/sales-orders'],
+  });
+
+  const { data: clients } = useQuery({
+    queryKey: ['/api/clients'],
+  });
+
+  const getSalesOrderClientName = (salesOrder: any) => {
+    const client = (clients as any[])?.find((c: any) => c.id === salesOrder.clientId);
+    return client ? client.name : 'Unknown Client';
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            Sales Orders
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">Loading sales orders...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -3374,17 +3403,82 @@ function SalesOrderSection() {
         <CardDescription>Credit checks, inventory allocation, and order processing</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="text-center py-8">
-          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-lg font-medium mb-2">Sales Order Management</h3>
-          <p className="text-muted-foreground mb-4">
-            Process orders with automated credit checks and inventory allocation
-          </p>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Sales Order
-          </Button>
-        </div>
+        {!salesOrders || (salesOrders as any[]).length === 0 ? (
+          <div className="text-center py-8">
+            <CheckCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-medium mb-2">No Sales Orders Yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Generate sales orders from accepted quotations to see them here
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Order #</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Order Date</TableHead>
+                  <TableHead>Expected Delivery</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Credit Check</TableHead>
+                  <TableHead className="text-center">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(salesOrders as any[]).map((salesOrder: any) => (
+                  <TableRow key={salesOrder.id}>
+                    <TableCell>
+                      <Badge variant={
+                        salesOrder.status === 'DRAFT' ? 'secondary' : 
+                        salesOrder.status === 'APPROVED' ? 'default' : 
+                        salesOrder.status === 'COMPLETED' ? 'default' : 'outline'
+                      }>
+                        {salesOrder.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">{salesOrder.orderNumber}</TableCell>
+                    <TableCell>{getSalesOrderClientName(salesOrder)}</TableCell>
+                    <TableCell>{new Date(salesOrder.orderDate || salesOrder.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {salesOrder.expectedDeliveryDate ? new Date(salesOrder.expectedDeliveryDate).toLocaleDateString() : '-'}
+                    </TableCell>
+                    <TableCell className="text-right font-bold">
+                      ₹{parseFloat(salesOrder.totalAmount || 0).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={
+                        salesOrder.creditCheckStatus === 'APPROVED' ? 'default' : 
+                        salesOrder.creditCheckStatus === 'PENDING' ? 'outline' : 'destructive'
+                      }>
+                        {salesOrder.creditCheckStatus}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-testid={`button-view-sales-order-${salesOrder.id}`}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-testid={`button-edit-sales-order-${salesOrder.id}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
