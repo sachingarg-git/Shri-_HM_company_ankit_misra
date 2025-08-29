@@ -1143,7 +1143,7 @@ function LeadCRMSection() {
     defaultValues: {
       followUpType: "CALL",
       remarks: "",
-      followUpDate: "",
+      followUpDate: new Date().toISOString().slice(0, 16), // Auto-fill current date/time
       nextFollowUpDate: "",
     },
   });
@@ -1155,7 +1155,12 @@ function LeadCRMSection() {
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Follow-up scheduled successfully" });
-      leadFollowUpForm.reset();
+      leadFollowUpForm.reset({
+        followUpType: "CALL",
+        remarks: "",
+        followUpDate: new Date().toISOString().slice(0, 16),
+        nextFollowUpDate: "",
+      });
       setActiveFollowUpTab("history");
       queryClient.invalidateQueries({ queryKey: ["/api/lead-follow-ups"] });
       if (selectedLead?.id) {
@@ -1222,6 +1227,12 @@ function LeadCRMSection() {
 
   const { data: leads, isLoading } = useQuery<Lead[]>({
     queryKey: ["/api/leads"],
+    retry: false,
+  });
+
+  // Query for all follow-ups to show summary cards
+  const { data: allFollowUps = [] } = useQuery<any[]>({
+    queryKey: ["/api/lead-follow-ups"],
     retry: false,
   });
 
@@ -1317,6 +1328,132 @@ function LeadCRMSection() {
       </CardHeader>
 
       <CardContent>
+        {/* Follow-up Summary Cards */}
+        <div className="grid grid-cols-6 gap-4 mb-6">
+          {/* Overdue */}
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-red-600">
+                    {allFollowUps.filter(f => {
+                      const followUpDate = new Date(f.followUpDate || f.createdAt);
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return followUpDate < today && f.status !== 'COMPLETED';
+                    }).length}
+                  </div>
+                  <div className="text-sm text-red-700">Past due</div>
+                </div>
+                <AlertCircle className="h-5 w-5 text-red-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Today */}
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {allFollowUps.filter(f => {
+                      const followUpDate = new Date(f.followUpDate || f.createdAt);
+                      const today = new Date();
+                      return followUpDate.toDateString() === today.toDateString() && f.status !== 'COMPLETED';
+                    }).length}
+                  </div>
+                  <div className="text-sm text-blue-700">Due today</div>
+                </div>
+                <Calendar className="h-5 w-5 text-blue-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tomorrow */}
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {allFollowUps.filter(f => {
+                      const followUpDate = new Date(f.followUpDate || f.createdAt);
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      return followUpDate.toDateString() === tomorrow.toDateString() && f.status !== 'COMPLETED';
+                    }).length}
+                  </div>
+                  <div className="text-sm text-green-700">Due tomorrow</div>
+                </div>
+                <Calendar className="h-5 w-5 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* This Week */}
+          <Card className="border-purple-200 bg-purple-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {allFollowUps.filter(f => {
+                      const followUpDate = new Date(f.followUpDate || f.createdAt);
+                      const today = new Date();
+                      const endOfWeek = new Date(today);
+                      endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
+                      return followUpDate >= today && followUpDate <= endOfWeek && f.status !== 'COMPLETED';
+                    }).length}
+                  </div>
+                  <div className="text-sm text-purple-700">This week</div>
+                </div>
+                <Clock className="h-5 w-5 text-purple-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Next Week */}
+          <Card className="border-indigo-200 bg-indigo-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-indigo-600">
+                    {allFollowUps.filter(f => {
+                      const followUpDate = new Date(f.followUpDate || f.createdAt);
+                      const startOfNextWeek = new Date();
+                      startOfNextWeek.setDate(startOfNextWeek.getDate() + (7 - startOfNextWeek.getDay()) + 1);
+                      const endOfNextWeek = new Date(startOfNextWeek);
+                      endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
+                      return followUpDate >= startOfNextWeek && followUpDate <= endOfNextWeek && f.status !== 'COMPLETED';
+                    }).length}
+                  </div>
+                  <div className="text-sm text-indigo-700">Next week</div>
+                </div>
+                <Calendar className="h-5 w-5 text-indigo-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* This Month */}
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {allFollowUps.filter(f => {
+                      const followUpDate = new Date(f.followUpDate || f.createdAt);
+                      const today = new Date();
+                      return followUpDate.getMonth() === today.getMonth() && 
+                             followUpDate.getFullYear() === today.getFullYear() && 
+                             f.status !== 'COMPLETED';
+                    }).length}
+                  </div>
+                  <div className="text-sm text-orange-700">This month</div>
+                </div>
+                <Calendar className="h-5 w-5 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Leads Data Grid */}
         {filteredAndSortedLeads.length > 0 ? (
           <div className="border rounded-md">
@@ -1646,7 +1783,12 @@ function LeadCRMSection() {
                             setIsFollowUpDialogOpen(false);
                             setSelectedLead(null);
                             setActiveFollowUpTab("create");
-                            leadFollowUpForm.reset();
+                            leadFollowUpForm.reset({
+                              followUpType: "CALL",
+                              remarks: "",
+                              followUpDate: new Date().toISOString().slice(0, 16),
+                              nextFollowUpDate: "",
+                            });
                           }}
                         >
                           Cancel
