@@ -1311,11 +1311,6 @@ function LeadCRMSection() {
       </CardHeader>
 
       <CardContent>
-        {/* Follow-up Creation Section - Positioned Above Grid */}
-        <div className="mb-8">
-          <FollowUpDashboard />
-        </div>
-
         {/* Leads Data Grid */}
         {filteredAndSortedLeads.length > 0 ? (
           <div className="border rounded-md">
