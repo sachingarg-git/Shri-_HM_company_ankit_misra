@@ -2842,18 +2842,16 @@ function QuotationSection() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {quotation.status === 'ACCEPTED' && (
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => handleGenerateSalesOrder(quotation.id)}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                              data-testid={`button-generate-sales-order-${quotation.id}`}
-                            >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Sales Order
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => handleGenerateSalesOrder(quotation.id)}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            data-testid={`button-generate-sales-order-${quotation.id}`}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Sales Order
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
