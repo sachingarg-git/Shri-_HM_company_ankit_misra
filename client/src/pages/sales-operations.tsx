@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
@@ -161,7 +162,7 @@ function AddLeadDialog({ open, onOpenChange, lead, onLeadSaved }: AddLeadDialogP
         email: lead.email || "",
         leadSource: lead.leadSource || "WEBSITE",
         leadStatus: lead.leadStatus || "NEW",
-        interestedProducts: (lead.interestedProducts as string[]) || [],
+        interestedProducts: Array.isArray(lead.interestedProducts) ? lead.interestedProducts : [],
         estimatedValue: lead.estimatedValue || "",
         expectedCloseDate: lead.expectedCloseDate ? new Date(lead.expectedCloseDate).toISOString().split('T')[0] : "",
         notes: lead.notes || "",
@@ -1100,6 +1101,8 @@ function LeadCRMSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState<string>("companyName");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
 
   const convertToClientMutation = useMutation({
     mutationFn: async (lead: Lead) => {
@@ -1117,6 +1120,27 @@ function LeadCRMSection() {
       toast({
         title: "Error",
         description: error.message || "Failed to convert lead to client",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update lead status mutation
+  const updateLeadStatusMutation = useMutation({
+    mutationFn: async ({ leadId, status }: { leadId: string; status: string }) => {
+      return apiCall(`/api/leads/${leadId}`, "PUT", { leadStatus: status });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Lead status updated successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update lead status",
         variant: "destructive",
       });
     },
@@ -1162,10 +1186,36 @@ function LeadCRMSection() {
     return icons[source as keyof typeof icons] || Target;
   };
 
-  const filteredLeads = leads?.filter(lead => 
+  // Filter and sort leads
+  const filteredAndSortedLeads = leads?.filter(lead => 
     lead.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.contactPersonName.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  ).sort((a, b) => {
+    let aValue = a[sortField as keyof Lead] as string;
+    let bValue = b[sortField as keyof Lead] as string;
+    
+    if (typeof aValue === 'string') aValue = aValue.toLowerCase();
+    if (typeof bValue === 'string') bValue = bValue.toLowerCase();
+    
+    if (sortDirection === "asc") {
+      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+    } else {
+      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+    }
+  }) || [];
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const handleStatusUpdate = (leadId: string, newStatus: string) => {
+    updateLeadStatusMutation.mutate({ leadId, status: newStatus });
+  };
 
   if (isLoading) {
     return <div className="flex justify-center p-8">Loading leads...</div>;
@@ -1205,93 +1255,158 @@ function LeadCRMSection() {
       </CardHeader>
 
       <CardContent>
-        {filteredLeads.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="leads-list">
-            {filteredLeads.map((lead) => {
-              const SourceIcon = getSourceIcon(lead.leadSource);
-              return (
-                <Card key={lead.id} className="hover:shadow-md transition-shadow" data-testid={`card-lead-${lead.id}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <CardTitle className="text-base" data-testid={`text-company-${lead.id}`}>
-                          {lead.companyName}
-                        </CardTitle>
-                        <CardDescription data-testid={`text-contact-${lead.id}`}>
-                          {lead.contactPersonName}
-                        </CardDescription>
-                      </div>
-                      <Badge className={getStatusColor(lead.leadStatus)} data-testid={`badge-status-${lead.id}`}>
-                        {lead.leadStatus.replace('_', ' ')}
-                      </Badge>
+        {/* Follow-up Creation Section - Positioned Above Grid */}
+        <div className="mb-8">
+          <FollowUpDashboard />
+        </div>
+
+        {/* Leads Data Grid */}
+        {filteredAndSortedLeads.length > 0 ? (
+          <div className="border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort("companyName")}>
+                    <div className="flex items-center gap-1">
+                      Company Name
+                      {sortField === "companyName" && (
+                        <span className="text-xs">{sortDirection === "asc" ? "↑" : "↓"}</span>
+                      )}
                     </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <SourceIcon className="h-4 w-4 text-muted-foreground" />
-                        <span data-testid={`text-source-${lead.id}`}>
-                          {lead.leadSource.replace('_', ' ')}
-                        </span>
-                      </div>
-                      
-                      {lead.mobileNumber && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-4 w-4 text-muted-foreground" />
-                          <span data-testid={`text-mobile-${lead.id}`}>{lead.mobileNumber}</span>
-                        </div>
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort("contactPersonName")}>
+                    <div className="flex items-center gap-1">
+                      Contact Person
+                      {sortField === "contactPersonName" && (
+                        <span className="text-xs">{sortDirection === "asc" ? "↑" : "↓"}</span>
                       )}
-                      
-                      {lead.email && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <span data-testid={`text-email-${lead.id}`}>{lead.email}</span>
-                        </div>
+                    </div>
+                  </TableHead>
+                  <TableHead>Contact Info</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort("leadSource")}>
+                    <div className="flex items-center gap-1">
+                      Source
+                      {sortField === "leadSource" && (
+                        <span className="text-xs">{sortDirection === "asc" ? "↑" : "↓"}</span>
                       )}
-                      
-                      {lead.estimatedValue && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span data-testid={`text-value-${lead.id}`}>
-                            ₹{Number(lead.estimatedValue).toLocaleString()}
+                    </div>
+                  </TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort("estimatedValue")}>
+                    <div className="flex items-center gap-1">
+                      Est. Value
+                      {sortField === "estimatedValue" && (
+                        <span className="text-xs">{sortDirection === "asc" ? "↑" : "↓"}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAndSortedLeads.map((lead) => {
+                  const SourceIcon = getSourceIcon(lead.leadSource);
+                  return (
+                    <TableRow key={lead.id} data-testid={`row-lead-${lead.id}`} className="hover:bg-muted/50">
+                      <TableCell>
+                        <div className="font-medium" data-testid={`text-company-${lead.id}`}>
+                          {lead.companyName}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div data-testid={`text-contact-${lead.id}`}>
+                          {lead.contactPersonName}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1 text-sm">
+                          {lead.mobileNumber && (
+                            <div className="flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              <span data-testid={`text-mobile-${lead.id}`}>{lead.mobileNumber}</span>
+                            </div>
+                          )}
+                          {lead.email && (
+                            <div className="flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              <span data-testid={`text-email-${lead.id}`} className="truncate max-w-[150px]">
+                                {lead.email}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <SourceIcon className="h-4 w-4 text-muted-foreground" />
+                          <span data-testid={`text-source-${lead.id}`}>
+                            {lead.leadSource.replace('_', ' ')}
                           </span>
                         </div>
-                      )}
-                      
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => {
-                            setEditingLead(lead);
-                            setIsDialogOpen(true);
-                          }}
-                          data-testid={`button-edit-${lead.id}`}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={lead.leadStatus}
+                          onValueChange={(value) => handleStatusUpdate(lead.id, value)}
+                          data-testid={`select-status-${lead.id}`}
                         >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1"
-                          onClick={() => handleConvertToClient(lead)}
-                          disabled={lead.leadStatus !== 'QUALIFIED' || convertToClientMutation.isPending}
-                          data-testid={`button-convert-${lead.id}`}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Convert
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                          <SelectTrigger className="w-auto min-w-[120px]">
+                            <SelectValue>
+                              <Badge className={getStatusColor(lead.leadStatus)}>
+                                {lead.leadStatus.replace('_', ' ')}
+                              </Badge>
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NEW">🆕 New</SelectItem>
+                            <SelectItem value="CONTACTED">📞 Contacted</SelectItem>
+                            <SelectItem value="QUALIFIED">✅ Qualified</SelectItem>
+                            <SelectItem value="PROPOSAL">📋 Proposal</SelectItem>
+                            <SelectItem value="NEGOTIATION">🤝 Negotiation</SelectItem>
+                            <SelectItem value="CLOSED_WON">🎉 Closed Won</SelectItem>
+                            <SelectItem value="CLOSED_LOST">❌ Closed Lost</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        {lead.estimatedValue && (
+                          <div className="text-right font-medium" data-testid={`text-value-${lead.id}`}>
+                            ₹{Number(lead.estimatedValue).toLocaleString()}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingLead(lead);
+                              setIsDialogOpen(true);
+                            }}
+                            data-testid={`button-edit-${lead.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant={lead.leadStatus === 'QUALIFIED' ? "default" : "secondary"}
+                            size="sm"
+                            onClick={() => handleConvertToClient(lead)}
+                            disabled={lead.leadStatus !== 'QUALIFIED' || convertToClientMutation.isPending}
+                            data-testid={`button-convert-${lead.id}`}
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         ) : (
-          <div className="text-center py-8" data-testid="leads-empty">
+          <div className="text-center py-12" data-testid="leads-empty">
             <User className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-medium mb-2">No Leads Found</h3>
             <p className="text-muted-foreground mb-4">
@@ -1312,11 +1427,6 @@ function LeadCRMSection() {
           queryClient.invalidateQueries({ queryKey: ['/api/leads'] });
         }}
       />
-      
-      {/* Follow-up Management Section */}
-      <div className="mt-8">
-        <FollowUpDashboard />
-      </div>
     </Card>
   );
 }
