@@ -126,10 +126,11 @@ interface AddLeadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lead?: Lead | null;
+  users?: any[];
   onLeadSaved: () => void;
 }
 
-function AddLeadDialog({ open, onOpenChange, lead, onLeadSaved }: AddLeadDialogProps) {
+function AddLeadDialog({ open, onOpenChange, lead, users, onLeadSaved }: AddLeadDialogProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -154,6 +155,7 @@ function AddLeadDialog({ open, onOpenChange, lead, onLeadSaved }: AddLeadDialogP
       expectedCloseDate: "",
       notes: "",
       assignedToUserId: user?.id || "",
+      primarySalesPersonId: user?.id || "",
     },
   });
 
@@ -172,6 +174,7 @@ function AddLeadDialog({ open, onOpenChange, lead, onLeadSaved }: AddLeadDialogP
         expectedCloseDate: lead.expectedCloseDate ? new Date(lead.expectedCloseDate).toISOString().split('T')[0] : "",
         notes: lead.notes || "",
         assignedToUserId: lead.assignedToUserId || user?.id || "",
+        primarySalesPersonId: lead.primarySalesPersonId || user?.id || "",
       });
     } else {
       form.reset({
@@ -186,6 +189,7 @@ function AddLeadDialog({ open, onOpenChange, lead, onLeadSaved }: AddLeadDialogP
         expectedCloseDate: "",
         notes: "",
         assignedToUserId: user?.id || "",
+        primarySalesPersonId: user?.id || "",
       });
     }
   }, [lead, user?.id, form]);
@@ -398,6 +402,35 @@ function AddLeadDialog({ open, onOpenChange, lead, onLeadSaved }: AddLeadDialogP
                   <FormControl>
                     <Textarea {...field} placeholder="Enter additional notes..." rows={3} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="primarySalesPersonId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Primary Sales Person</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select sales person" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {(users as any[])?.filter((user: any) => 
+                        user.role === 'SALES_MANAGER' || 
+                        user.role === 'SALES_EXECUTIVE' || 
+                        user.role === 'ADMIN'
+                      ).map((user: any) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.firstName} {user.lastName} ({user.role.replace('_', ' ')})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -1100,6 +1133,8 @@ const getCurrentLocalDateTime = () => {
 function LeadCRMSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -1773,6 +1808,7 @@ function LeadCRMSection() {
                     </div>
                   </TableHead>
                   <TableHead>Next Follow-up</TableHead>
+                  <TableHead>Primary Sales Person</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1880,6 +1916,12 @@ function LeadCRMSection() {
                           );
                         })()}
                       </TableCell>
+                      <TableCell>
+                        {lead.primarySalesPersonId ? 
+                          (users as any[])?.find(u => u.id === lead.primarySalesPersonId)?.firstName + ' ' + 
+                          (users as any[])?.find(u => u.id === lead.primarySalesPersonId)?.lastName 
+                          : '-'}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">
                           <Button
@@ -1937,6 +1979,7 @@ function LeadCRMSection() {
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         lead={editingLead}
+        users={users}
         onLeadSaved={() => {
           setIsDialogOpen(false);
           setEditingLead(null);

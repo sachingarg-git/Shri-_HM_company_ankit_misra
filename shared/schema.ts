@@ -990,6 +990,7 @@ export const leads = pgTable("leads", {
   expectedCloseDate: timestamp("expected_close_date"),
   notes: text("notes"),
   assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  primarySalesPersonId: varchar("primary_sales_person_id").references(() => users.id),
   clientId: varchar("client_id").references(() => clients.id), // Converted to client when qualified
   
   // Follow-up tracking fields
