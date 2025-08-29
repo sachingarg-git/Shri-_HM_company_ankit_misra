@@ -1088,6 +1088,15 @@ function FollowUpDashboard() {
 }
 
 // Lead & CRM Management Component
+// Helper function to get current local date/time in the correct format for datetime-local input
+const getCurrentLocalDateTime = () => {
+  const now = new Date();
+  // Get the timezone offset and adjust for local time
+  const timezoneOffset = now.getTimezoneOffset() * 60000; // offset in milliseconds
+  const localTime = new Date(now.getTime() - timezoneOffset);
+  return localTime.toISOString().slice(0, 16);
+};
+
 function LeadCRMSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -1150,7 +1159,7 @@ function LeadCRMSection() {
     defaultValues: {
       followUpType: "CALL",
       remarks: "",
-      followUpDate: new Date().toISOString().slice(0, 16), // Auto-fill current date/time
+      followUpDate: getCurrentLocalDateTime(), // Auto-fill current date/time
       nextFollowUpDate: "",
     },
   });
@@ -1165,7 +1174,7 @@ function LeadCRMSection() {
       leadFollowUpForm.reset({
         followUpType: "CALL",
         remarks: "",
-        followUpDate: new Date().toISOString().slice(0, 16),
+        followUpDate: getCurrentLocalDateTime(),
         nextFollowUpDate: "",
       });
       setActiveFollowUpTab("history");
@@ -2088,7 +2097,7 @@ function LeadCRMSection() {
                             leadFollowUpForm.reset({
                               followUpType: "CALL",
                               remarks: "",
-                              followUpDate: new Date().toISOString().slice(0, 16),
+                              followUpDate: getCurrentLocalDateTime(),
                               nextFollowUpDate: "",
                             });
                           }}
