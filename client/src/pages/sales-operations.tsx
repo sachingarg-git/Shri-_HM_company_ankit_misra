@@ -2363,7 +2363,7 @@ function QuotationSection() {
   };
 
   const calculateTotals = () => {
-    const subtotal = quotationItems.reduce((sum, item) => sum + item.amount, 0);
+    const subtotal = quotationItems.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
     const tax = subtotal * 0.18; // 18% GST
     const total = subtotal + tax;
     return { subtotal, tax, total };
@@ -2460,10 +2460,10 @@ function QuotationSection() {
     // Load existing quotation items
     const existingItems = quotation.items?.map((item: any) => ({
       productId: item.productId,
-      quantity: item.quantity,
+      quantity: parseFloat(item.quantity || 0),
       unit: item.unit || "Nos",
-      rate: item.unitPrice,
-      amount: item.totalPrice
+      rate: parseFloat(item.unitPrice || item.rate || 0),
+      amount: parseFloat(item.totalPrice || item.amount || 0)
     })) || [];
     
     setQuotationItems(existingItems);
@@ -2959,9 +2959,10 @@ function QuotationSection() {
                       setClientType(e.target.value as "lead" | "client");
                       setSelectedClient(""); // Reset selection when type changes
                     }}
+                    disabled={editingQuotationId !== null}
                     className="text-blue-600"
                   />
-                  <span className="text-sm">Existing Client</span>
+                  <span className={`text-sm ${editingQuotationId ? 'text-gray-400' : ''}`}>Existing Client</span>
                 </label>
                 <label className="flex items-center space-x-2">
                   <input
@@ -2972,9 +2973,10 @@ function QuotationSection() {
                       setClientType(e.target.value as "lead" | "client");
                       setSelectedClient(""); // Reset selection when type changes
                     }}
+                    disabled={editingQuotationId !== null}
                     className="text-blue-600"
                   />
-                  <span className="text-sm">New Client (from Leads)</span>
+                  <span className={`text-sm ${editingQuotationId ? 'text-gray-400' : ''}`}>New Client (from Leads)</span>
                 </label>
               </div>
             </div>
@@ -2984,7 +2986,7 @@ function QuotationSection() {
                 <label className="text-sm font-medium">
                   {clientType === "client" ? "Select Client" : "Select Lead"}
                 </label>
-                <Select value={selectedClient} onValueChange={setSelectedClient}>
+                <Select value={selectedClient} onValueChange={setSelectedClient} disabled={editingQuotationId !== null}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
@@ -3139,7 +3141,7 @@ function QuotationSection() {
                   <div className="col-span-2">
                     <Input 
                       className="h-8" 
-                      value={(item.amount || 0).toFixed(2)} 
+                      value={parseFloat(item.amount || 0).toFixed(2)} 
                       readOnly 
                       placeholder="0.00"
                     />
