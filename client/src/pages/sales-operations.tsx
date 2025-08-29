@@ -1094,6 +1094,7 @@ function LeadCRMSection() {
   const [isFollowUpDialogOpen, setIsFollowUpDialogOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [activeFollowUpTab, setActiveFollowUpTab] = useState("create");
+  const [followUpFilter, setFollowUpFilter] = useState<string>("all");
 
   const convertToClientMutation = useMutation({
     mutationFn: async (lead: Lead) => {
@@ -1259,11 +1260,118 @@ function LeadCRMSection() {
     return icons[source as keyof typeof icons] || Target;
   };
 
+  // Helper functions for date filtering
+  const getDateRanges = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    
+    const startOfNextWeek = new Date(endOfWeek);
+    startOfNextWeek.setDate(endOfWeek.getDate() + 1);
+    const endOfNextWeek = new Date(startOfNextWeek);
+    endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
+    
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    return {
+      today,
+      tomorrow,
+      tomorrowEnd: new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000 - 1),
+      startOfWeek,
+      endOfWeek,
+      startOfNextWeek,
+      endOfNextWeek,
+      startOfMonth,
+      endOfMonth
+    };
+  };
+
+  const getFollowUpCounts = () => {
+    const ranges = getDateRanges();
+    
+    return {
+      overdue: allFollowUps.filter(f => {
+        const followUpDate = new Date(f.followUpDate || f.createdAt);
+        return followUpDate < ranges.today && f.status !== 'COMPLETED';
+      }).length,
+      
+      today: allFollowUps.filter(f => {
+        const followUpDate = new Date(f.followUpDate || f.createdAt);
+        return followUpDate >= ranges.today && followUpDate < ranges.tomorrow && f.status !== 'COMPLETED';
+      }).length,
+      
+      tomorrow: allFollowUps.filter(f => {
+        const followUpDate = new Date(f.followUpDate || f.createdAt);
+        return followUpDate >= ranges.tomorrow && followUpDate < ranges.tomorrowEnd && f.status !== 'COMPLETED';
+      }).length,
+      
+      thisWeek: allFollowUps.filter(f => {
+        const followUpDate = new Date(f.followUpDate || f.createdAt);
+        return followUpDate >= ranges.today && followUpDate <= ranges.endOfWeek && f.status !== 'COMPLETED';
+      }).length,
+      
+      nextWeek: allFollowUps.filter(f => {
+        const followUpDate = new Date(f.followUpDate || f.createdAt);
+        return followUpDate >= ranges.startOfNextWeek && followUpDate <= ranges.endOfNextWeek && f.status !== 'COMPLETED';
+      }).length,
+      
+      thisMonth: allFollowUps.filter(f => {
+        const followUpDate = new Date(f.followUpDate || f.createdAt);
+        return followUpDate >= ranges.startOfMonth && followUpDate <= ranges.endOfMonth && f.status !== 'COMPLETED';
+      }).length
+    };
+  };
+
+  const followUpCounts = getFollowUpCounts();
+
+  // Filter leads by follow-up dates
+  const getFilteredLeadsByFollowUp = (leads: Lead[]) => {
+    if (followUpFilter === 'all') return leads;
+    
+    const ranges = getDateRanges();
+    const leadsWithFollowUps = leads.filter(lead => {
+      const leadFollowUps = allFollowUps.filter(f => f.leadId === lead.id && f.status !== 'COMPLETED');
+      
+      return leadFollowUps.some(f => {
+        const followUpDate = new Date(f.followUpDate || f.createdAt);
+        
+        switch (followUpFilter) {
+          case 'overdue':
+            return followUpDate < ranges.today;
+          case 'today':
+            return followUpDate >= ranges.today && followUpDate < ranges.tomorrow;
+          case 'tomorrow':
+            return followUpDate >= ranges.tomorrow && followUpDate < ranges.tomorrowEnd;
+          case 'thisWeek':
+            return followUpDate >= ranges.today && followUpDate <= ranges.endOfWeek;
+          case 'nextWeek':
+            return followUpDate >= ranges.startOfNextWeek && followUpDate <= ranges.endOfNextWeek;
+          case 'thisMonth':
+            return followUpDate >= ranges.startOfMonth && followUpDate <= ranges.endOfMonth;
+          default:
+            return true;
+        }
+      });
+    });
+    
+    return leadsWithFollowUps;
+  };
+
   // Filter and sort leads
-  const filteredAndSortedLeads = leads?.filter(lead => 
+  const filteredLeads = leads?.filter(lead => 
     lead.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.contactPersonName.toLowerCase().includes(searchTerm.toLowerCase())
-  ).sort((a, b) => {
+  ) || [];
+  
+  const filteredAndSortedLeads = getFilteredLeadsByFollowUp(filteredLeads)
+  .sort((a, b) => {
     let aValue = a[sortField as keyof Lead] as string;
     let bValue = b[sortField as keyof Lead] as string;
     
@@ -1331,17 +1439,17 @@ function LeadCRMSection() {
         {/* Follow-up Summary Cards */}
         <div className="grid grid-cols-6 gap-4 mb-6">
           {/* Overdue */}
-          <Card className="border-red-200 bg-red-50">
+          <Card 
+            className={`border-red-200 bg-red-50 cursor-pointer hover:shadow-md transition-shadow ${
+              followUpFilter === 'overdue' ? 'ring-2 ring-red-500' : ''
+            }`}
+            onClick={() => setFollowUpFilter(followUpFilter === 'overdue' ? 'all' : 'overdue')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-red-600">
-                    {allFollowUps.filter(f => {
-                      const followUpDate = new Date(f.followUpDate || f.createdAt);
-                      const today = new Date();
-                      today.setHours(0, 0, 0, 0);
-                      return followUpDate < today && f.status !== 'COMPLETED';
-                    }).length}
+                    {followUpCounts.overdue}
                   </div>
                   <div className="text-sm text-red-700">Past due</div>
                 </div>
@@ -1351,16 +1459,17 @@ function LeadCRMSection() {
           </Card>
 
           {/* Today */}
-          <Card className="border-blue-200 bg-blue-50">
+          <Card 
+            className={`border-blue-200 bg-blue-50 cursor-pointer hover:shadow-md transition-shadow ${
+              followUpFilter === 'today' ? 'ring-2 ring-blue-500' : ''
+            }`}
+            onClick={() => setFollowUpFilter(followUpFilter === 'today' ? 'all' : 'today')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-blue-600">
-                    {allFollowUps.filter(f => {
-                      const followUpDate = new Date(f.followUpDate || f.createdAt);
-                      const today = new Date();
-                      return followUpDate.toDateString() === today.toDateString() && f.status !== 'COMPLETED';
-                    }).length}
+                    {followUpCounts.today}
                   </div>
                   <div className="text-sm text-blue-700">Due today</div>
                 </div>
@@ -1370,17 +1479,17 @@ function LeadCRMSection() {
           </Card>
 
           {/* Tomorrow */}
-          <Card className="border-green-200 bg-green-50">
+          <Card 
+            className={`border-green-200 bg-green-50 cursor-pointer hover:shadow-md transition-shadow ${
+              followUpFilter === 'tomorrow' ? 'ring-2 ring-green-500' : ''
+            }`}
+            onClick={() => setFollowUpFilter(followUpFilter === 'tomorrow' ? 'all' : 'tomorrow')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-green-600">
-                    {allFollowUps.filter(f => {
-                      const followUpDate = new Date(f.followUpDate || f.createdAt);
-                      const tomorrow = new Date();
-                      tomorrow.setDate(tomorrow.getDate() + 1);
-                      return followUpDate.toDateString() === tomorrow.toDateString() && f.status !== 'COMPLETED';
-                    }).length}
+                    {followUpCounts.tomorrow}
                   </div>
                   <div className="text-sm text-green-700">Due tomorrow</div>
                 </div>
@@ -1390,18 +1499,17 @@ function LeadCRMSection() {
           </Card>
 
           {/* This Week */}
-          <Card className="border-purple-200 bg-purple-50">
+          <Card 
+            className={`border-purple-200 bg-purple-50 cursor-pointer hover:shadow-md transition-shadow ${
+              followUpFilter === 'thisWeek' ? 'ring-2 ring-purple-500' : ''
+            }`}
+            onClick={() => setFollowUpFilter(followUpFilter === 'thisWeek' ? 'all' : 'thisWeek')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-purple-600">
-                    {allFollowUps.filter(f => {
-                      const followUpDate = new Date(f.followUpDate || f.createdAt);
-                      const today = new Date();
-                      const endOfWeek = new Date(today);
-                      endOfWeek.setDate(today.getDate() + (7 - today.getDay()));
-                      return followUpDate >= today && followUpDate <= endOfWeek && f.status !== 'COMPLETED';
-                    }).length}
+                    {followUpCounts.thisWeek}
                   </div>
                   <div className="text-sm text-purple-700">This week</div>
                 </div>
@@ -1411,19 +1519,17 @@ function LeadCRMSection() {
           </Card>
 
           {/* Next Week */}
-          <Card className="border-indigo-200 bg-indigo-50">
+          <Card 
+            className={`border-indigo-200 bg-indigo-50 cursor-pointer hover:shadow-md transition-shadow ${
+              followUpFilter === 'nextWeek' ? 'ring-2 ring-indigo-500' : ''
+            }`}
+            onClick={() => setFollowUpFilter(followUpFilter === 'nextWeek' ? 'all' : 'nextWeek')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-indigo-600">
-                    {allFollowUps.filter(f => {
-                      const followUpDate = new Date(f.followUpDate || f.createdAt);
-                      const startOfNextWeek = new Date();
-                      startOfNextWeek.setDate(startOfNextWeek.getDate() + (7 - startOfNextWeek.getDay()) + 1);
-                      const endOfNextWeek = new Date(startOfNextWeek);
-                      endOfNextWeek.setDate(startOfNextWeek.getDate() + 6);
-                      return followUpDate >= startOfNextWeek && followUpDate <= endOfNextWeek && f.status !== 'COMPLETED';
-                    }).length}
+                    {followUpCounts.nextWeek}
                   </div>
                   <div className="text-sm text-indigo-700">Next week</div>
                 </div>
@@ -1433,18 +1539,17 @@ function LeadCRMSection() {
           </Card>
 
           {/* This Month */}
-          <Card className="border-orange-200 bg-orange-50">
+          <Card 
+            className={`border-orange-200 bg-orange-50 cursor-pointer hover:shadow-md transition-shadow ${
+              followUpFilter === 'thisMonth' ? 'ring-2 ring-orange-500' : ''
+            }`}
+            onClick={() => setFollowUpFilter(followUpFilter === 'thisMonth' ? 'all' : 'thisMonth')}
+          >
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-2xl font-bold text-orange-600">
-                    {allFollowUps.filter(f => {
-                      const followUpDate = new Date(f.followUpDate || f.createdAt);
-                      const today = new Date();
-                      return followUpDate.getMonth() === today.getMonth() && 
-                             followUpDate.getFullYear() === today.getFullYear() && 
-                             f.status !== 'COMPLETED';
-                    }).length}
+                    {followUpCounts.thisMonth}
                   </div>
                   <div className="text-sm text-orange-700">This month</div>
                 </div>
