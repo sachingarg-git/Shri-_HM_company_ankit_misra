@@ -1008,6 +1008,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const leadFollowUpData = {
         ...validatedData,
+        // Populate both old and new columns for compatibility
+        type: validatedData.followUpType, // Old column
+        description: validatedData.remarks, // Old column
+        priority: 'MEDIUM', // Old column needs a default value
         followUpDate: new Date(validatedData.followUpDate),
         nextFollowUpDate: validatedData.nextFollowUpDate ? new Date(validatedData.nextFollowUpDate) : undefined,
         completedAt: validatedData.completedAt ? new Date(validatedData.completedAt) : undefined,
