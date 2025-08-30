@@ -17,6 +17,7 @@ import { Search, Plus, Filter, Users, Edit, Eye, Upload, Download, FileText, Shi
 import { useState } from "react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { DragDropUpload } from "@/components/DragDropUpload";
+import { TestUpload } from "@/components/TestUpload";
 
 export default function ClientManagement() {
   const { toast } = useToast();
@@ -349,6 +350,13 @@ export default function ClientManagement() {
                                   onUploadComplete={handleDocumentUpload}
                                 />
                               </div>
+                              
+                              {/* Test Upload */}
+                              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <h4 className="text-sm font-medium text-yellow-800 mb-2">Test Upload (Debug)</h4>
+                                <TestUpload />
+                              </div>
+                              
                               <p className="text-sm text-gray-500 mt-3">
                                 You can upload documents now or later after creating the client.
                               </p>
