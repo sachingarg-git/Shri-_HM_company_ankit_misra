@@ -130,11 +130,11 @@ export function DragDropUpload({ documentType, onUploadComplete, disabled }: Dra
       </label>
       <div
         className={`
-          relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors
-          ${isDragOver && !disabled ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}
-          ${uploadSuccess ? 'border-green-400 bg-green-50' : ''}
-          ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-400 hover:bg-gray-50'}
-          ${isUploading ? 'border-blue-400 bg-blue-50' : ''}
+          relative border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200
+          ${isDragOver && !disabled ? 'border-blue-500 bg-blue-50 scale-105' : 'border-gray-400'}
+          ${uploadSuccess ? 'border-green-500 bg-green-50' : ''}
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500 hover:bg-blue-50 hover:shadow-md'}
+          ${isUploading ? 'border-blue-500 bg-blue-50' : ''}
         `}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -168,7 +168,9 @@ export function DragDropUpload({ documentType, onUploadComplete, disabled }: Dra
                 <span className="text-gray-400">Complete and save client details to enable document upload</span>
               ) : (
                 <>
-                  <span className="font-medium">Drop file here or click to browse</span>
+                  <span className="font-medium text-blue-600">Click here to browse files</span>
+                  <br />
+                  <span className="text-sm text-gray-600">or drag and drop</span>
                   <br />
                   <span className="text-xs text-gray-500">PDF, Word, Images (max 10MB)</span>
                 </>
