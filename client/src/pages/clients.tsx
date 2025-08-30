@@ -230,14 +230,21 @@ export default function Clients() {
 
   const clientMutation = useMutation({
     mutationFn: async (data: ExtendedClient) => {
+      console.log('Client mutation started with data:', data);
+      console.log('Editing client:', editingClient);
+      
       // Separate shipping addresses from client data
       const { shippingAddresses, ...clientData } = data;
       
       if (editingClient) {
+        console.log('Updating existing client:', editingClient.id);
         const updatedClient = await apiCall(`/api/clients/${editingClient.id}`, "PUT", clientData);
+        console.log('Client update successful:', updatedClient);
         return updatedClient;
       } else {
+        console.log('Creating new client');
         const newClient = await apiCall("/api/clients", "POST", clientData);
+        console.log('Client creation successful:', newClient);
         return newClient;
       }
     },
@@ -748,7 +755,21 @@ export default function Clients() {
             </div>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((data) => clientMutation.mutate(data))} className="space-y-6">
+              <form onSubmit={form.handleSubmit(
+                (data) => {
+                  console.log('Form submission - valid data:', data);
+                  console.log('Editing client:', editingClient);
+                  clientMutation.mutate(data);
+                },
+                (errors) => {
+                  console.error('Form validation errors:', errors);
+                  toast({
+                    title: "Form Validation Error",
+                    description: "Please check the required fields and try again.",
+                    variant: "destructive",
+                  });
+                }
+              )} className="space-y-6">
                 
                 {/* Company & Compliance Section */}
                 <Card>
