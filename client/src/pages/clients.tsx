@@ -490,9 +490,24 @@ export default function Clients() {
     try {
       // Get the correct document URL from the server
       const response = await fetch(`/api/clients/${clientId}/documents/${documentType}`);
+      
       if (!response.ok) {
-        throw new Error('Failed to get document URL');
+        const errorData = await response.json().catch(() => ({}));
+        
+        if (errorData.needsReupload) {
+          toast({
+            title: "Document Not Found",
+            description: "This document needs to be re-uploaded. Please upload it again.",
+            variant: "destructive",
+          });
+          // Refresh the client data to update the UI
+          await queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+          return;
+        }
+        
+        throw new Error(errorData.message || 'Failed to get document URL');
       }
+      
       const { documentUrl } = await response.json();
       setCurrentDocument({ clientId, docType: documentType, label, documentUrl });
       setIsDocumentViewerOpen(true);

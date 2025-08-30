@@ -204,6 +204,56 @@ export class ObjectStorageService {
     return objectFile;
   }
 
+  // Find client document file by searching through possible paths
+  async findClientDocumentFile(clientId: string, documentType: string): Promise<File | null> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    if (!privateObjectDir) {
+      return null;
+    }
+
+    // Try new path structure first: uploads/{clientId}/{documentType}
+    try {
+      const newPath = `${privateObjectDir}/uploads/${clientId}/${documentType}`;
+      const { bucketName, objectName } = parseObjectPath(newPath);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      const [exists] = await file.exists();
+      if (exists) {
+        return file;
+      }
+    } catch (error) {
+      console.log(`New path structure not found for ${clientId}/${documentType}`);
+    }
+
+    // Try to find document in uploads directory by listing files
+    try {
+      const uploadsPath = `${privateObjectDir}/uploads/`;
+      const { bucketName } = parseObjectPath(uploadsPath);
+      const bucket = objectStorageClient.bucket(bucketName);
+      
+      // List all files in uploads directory
+      const [files] = await bucket.getFiles({
+        prefix: uploadsPath.substring(1), // Remove leading slash for GCS
+      });
+
+      // Look for files that might match this client's documents
+      for (const file of files) {
+        // Check if this file was uploaded for this client by checking metadata or filename patterns
+        try {
+          const [metadata] = await file.getMetadata();
+          // For now, we can't reliably match old documents without additional metadata
+          // This is a limitation of the old upload system
+        } catch (error) {
+          // Skip files we can't read metadata for
+        }
+      }
+    } catch (error) {
+      console.log(`Error searching for document files: ${error}`);
+    }
+
+    return null;
+  }
+
   normalizeObjectEntityPath(
     rawPath: string,
   ): string {

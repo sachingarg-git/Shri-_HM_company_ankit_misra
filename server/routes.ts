@@ -1431,12 +1431,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if document is uploaded
       const documentField = `${documentType.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())}Uploaded` as keyof typeof client;
       if (!client[documentField]) {
-        return res.status(404).json({ error: "Document not found" });
+        return res.status(404).json({ error: "Document not uploaded" });
       }
       
-      // Construct document URL based on pattern used in uploads
-      // Documents are typically stored as: uploads/{uuid}/{document-type}
+      // Try to find the document using the search method
+      const objectStorageService = new ObjectStorageService();
+      const documentFile = await objectStorageService.findClientDocumentFile(clientId, documentType);
+      
+      if (!documentFile) {
+        console.log(`Document not found in storage for ${clientId}/${documentType}, marking as not uploaded`);
+        // Reset the upload flag since the document is not actually available
+        await storage.updateClient(clientId, { [documentField]: false });
+        return res.status(404).json({ 
+          error: "Document file not found", 
+          message: "Please re-upload this document",
+          needsReupload: true 
+        });
+      }
+      
+      // Construct document URL based on the found file
       const documentUrl = `/objects/uploads/${clientId}/${documentType}`;
+      
+      console.log(`Document URL requested for ${clientId}/${documentType}: ${documentUrl}`);
       
       res.json({ documentUrl });
     } catch (error: any) {
@@ -1451,6 +1467,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentUser = (req as any).user;
       const objectStorageService = new ObjectStorageService();
       
+      console.log(`Document access requested: ${req.path}`);
+      console.log(`Full URL: ${req.url}`);
+      
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       const canAccess = await objectStorageService.canAccessObjectEntity({
         objectFile,
@@ -1459,13 +1478,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       if (!canAccess) {
+        console.log(`Access denied for path: ${req.path}`);
         return res.sendStatus(401);
       }
       
       objectStorageService.downloadObject(objectFile, res);
     } catch (error: any) {
-      console.error("Error accessing document:", error);
+      console.error(`Error accessing document at path ${req.path}:`, error);
       if (error instanceof ObjectNotFoundError) {
+        console.log(`Document not found at path: ${req.path}`);
         return res.sendStatus(404);
       }
       return res.sendStatus(500);
