@@ -22,7 +22,7 @@ export default function ClientManagement() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [documentUploads, setDocumentUploads] = useState<Record<string, boolean>>({});
+  const [documentUploads, setDocumentUploads] = useState<Record<string, { uploaded: boolean; fileUrl?: string; uploading?: boolean }>>({});
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ['/api/clients'],
@@ -63,12 +63,54 @@ export default function ClientManagement() {
     }
   });
 
-  const handleFileSelected = (file: File, documentType: string) => {
+  const handleFileSelected = async (file: File, documentType: string) => {
     console.log(`File selected for ${documentType}:`, file.name);
+    
+    // Set uploading state
     setDocumentUploads(prev => ({
       ...prev,
-      [documentType]: true
+      [documentType]: { uploaded: false, uploading: true }
     }));
+    
+    try {
+      // Get upload URL from server
+      const response = await apiRequest('POST', '/api/objects/upload', {}) as any;
+      const uploadURL = response.uploadURL;
+      
+      // Upload file to object storage
+      const uploadResponse = await fetch(uploadURL, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type,
+        },
+      });
+      
+      if (uploadResponse.ok) {
+        setDocumentUploads(prev => ({
+          ...prev,
+          [documentType]: { uploaded: true, fileUrl: uploadURL, uploading: false }
+        }));
+        
+        toast({
+          title: "Success",
+          description: `${file.name} uploaded successfully`,
+        });
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      setDocumentUploads(prev => ({
+        ...prev,
+        [documentType]: { uploaded: false, uploading: false }
+      }));
+      toast({
+        title: "Error",
+        description: `Failed to upload ${file.name}`,
+        variant: "destructive"
+      });
+    }
   };
 
   const onSubmit = (data: any) => {
@@ -82,12 +124,12 @@ export default function ClientManagement() {
       ...data,
       creditLimit: creditLimit || null,
       // Add document upload status
-      gstCertificateUploaded: documentUploads.gstCertificate || false,
-      panCopyUploaded: documentUploads.panCopy || false,
-      securityChequeUploaded: documentUploads.securityCheque || false,
-      aadharCardUploaded: documentUploads.aadharCard || false,
-      agreementUploaded: documentUploads.agreement || false,
-      poRateContractUploaded: documentUploads.poRateContract || false,
+      gstCertificateUploaded: documentUploads.gstCertificate?.uploaded || false,
+      panCopyUploaded: documentUploads.panCopy?.uploaded || false,
+      securityChequeUploaded: documentUploads.securityCheque?.uploaded || false,
+      aadharCardUploaded: documentUploads.aadharCard?.uploaded || false,
+      agreementUploaded: documentUploads.agreement?.uploaded || false,
+      poRateContractUploaded: documentUploads.poRateContract?.uploaded || false,
     });
   };
 
@@ -335,31 +377,43 @@ export default function ClientManagement() {
                                   label="GST Certificate"
                                   documentType="gstCertificate"
                                   onFileSelected={handleFileSelected}
+                                  isUploading={documentUploads.gstCertificate?.uploading}
+                                  isUploaded={documentUploads.gstCertificate?.uploaded}
                                 />
                                 <FileUploadButton
                                   label="PAN Copy"
                                   documentType="panCopy"
                                   onFileSelected={handleFileSelected}
+                                  isUploading={documentUploads.panCopy?.uploading}
+                                  isUploaded={documentUploads.panCopy?.uploaded}
                                 />
                                 <FileUploadButton
                                   label="Security Cheque"
                                   documentType="securityCheque"
                                   onFileSelected={handleFileSelected}
+                                  isUploading={documentUploads.securityCheque?.uploading}
+                                  isUploaded={documentUploads.securityCheque?.uploaded}
                                 />
                                 <FileUploadButton
                                   label="Aadhar Card"
                                   documentType="aadharCard"
                                   onFileSelected={handleFileSelected}
+                                  isUploading={documentUploads.aadharCard?.uploading}
+                                  isUploaded={documentUploads.aadharCard?.uploaded}
                                 />
                                 <FileUploadButton
                                   label="Agreement"
                                   documentType="agreement"
                                   onFileSelected={handleFileSelected}
+                                  isUploading={documentUploads.agreement?.uploading}
+                                  isUploaded={documentUploads.agreement?.uploaded}
                                 />
                                 <FileUploadButton
                                   label="PO / Rate Contract"
                                   documentType="poRateContract"
                                   onFileSelected={handleFileSelected}
+                                  isUploading={documentUploads.poRateContract?.uploading}
+                                  isUploaded={documentUploads.poRateContract?.uploaded}
                                 />
                               </div>
                               

@@ -4,22 +4,31 @@ interface FileUploadButtonProps {
   label: string;
   documentType: string;
   onFileSelected?: (file: File, documentType: string) => void;
+  isUploading?: boolean;
+  isUploaded?: boolean;
 }
 
-export function FileUploadButton({ label, documentType, onFileSelected }: FileUploadButtonProps) {
+export function FileUploadButton({ label, documentType, onFileSelected, isUploading = false, isUploaded = false }: FileUploadButtonProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleButtonClick = () => {
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Button clicked for:', documentType);
     fileInputRef.current?.click();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File input changed for:', documentType);
     const file = event.target.files?.[0];
     if (file) {
+      console.log('File selected:', file.name, file.size);
       setSelectedFile(file);
       onFileSelected?.(file, documentType);
     }
+    // Reset input value to allow selecting the same file again
+    event.target.value = '';
   };
 
   return (
@@ -34,17 +43,26 @@ export function FileUploadButton({ label, documentType, onFileSelected }: FileUp
         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
         onChange={handleFileChange}
         style={{ display: 'none' }}
+        data-testid={`file-input-${documentType}`}
+        tabIndex={-1}
       />
       
       <button
         type="button"
         onClick={handleButtonClick}
-        className="w-full px-4 py-3 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
+        disabled={isUploading}
+        className="w-full px-4 py-3 border-2 border-dashed border-blue-300 rounded-lg text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        data-testid={`upload-button-${documentType}`}
       >
-        {selectedFile ? (
+        {isUploading ? (
+          <>
+            <span className="animate-spin">⟳</span>
+            Uploading...
+          </>
+        ) : isUploaded || selectedFile ? (
           <>
             <span className="text-green-600">✓</span>
-            {selectedFile.name}
+            {selectedFile ? selectedFile.name : `${label} uploaded`}
           </>
         ) : (
           <>
