@@ -5,12 +5,11 @@ import { apiRequest } from "@/lib/queryClient";
 
 interface DragDropUploadProps {
   documentType: string;
-  onUploadComplete: (documentType: string, success: boolean, documentUrl?: string) => void;
+  onUploadComplete: (documentType: string, success: boolean) => void;
   disabled?: boolean;
-  isFormMode?: boolean;
 }
 
-export function DragDropUpload({ documentType, onUploadComplete, disabled, isFormMode = false }: DragDropUploadProps) {
+export function DragDropUpload({ documentType, onUploadComplete, disabled }: DragDropUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -30,10 +29,10 @@ export function DragDropUpload({ documentType, onUploadComplete, disabled, isFor
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    if ((!disabled || isFormMode) && !isUploading) {
+    if (!disabled && !isUploading) {
       setIsDragOver(true);
     }
-  }, [disabled, isFormMode, isUploading]);
+  }, [disabled, isUploading]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -41,7 +40,7 @@ export function DragDropUpload({ documentType, onUploadComplete, disabled, isFor
   }, []);
 
   const uploadFile = async (file: File) => {
-    if (disabled && !isFormMode) return;
+    if (disabled) return;
     
     setIsUploading(true);
     try {
@@ -62,7 +61,7 @@ export function DragDropUpload({ documentType, onUploadComplete, disabled, isFor
 
       if (uploadResult.ok) {
         setUploadSuccess(true);
-        onUploadComplete(documentType, true, uploadResponse.uploadURL);
+        onUploadComplete(documentType, true);
         toast({
           title: "Success",
           description: `${getDisplayName(documentType)} uploaded successfully`,
@@ -88,7 +87,7 @@ export function DragDropUpload({ documentType, onUploadComplete, disabled, isFor
     e.preventDefault();
     setIsDragOver(false);
     
-    if ((disabled && !isFormMode) || isUploading) return;
+    if (disabled || isUploading) return;
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length === 0) return;
@@ -115,14 +114,14 @@ export function DragDropUpload({ documentType, onUploadComplete, disabled, isFor
     }
 
     await uploadFile(file);
-  }, [disabled, isFormMode, isUploading, documentType, onUploadComplete, toast]);
+  }, [disabled, isUploading, documentType, onUploadComplete, toast]);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0 || (disabled && !isFormMode) || isUploading) return;
+    if (!files || files.length === 0 || disabled || isUploading) return;
 
     await uploadFile(files[0]);
-  }, [disabled, isFormMode, isUploading]);
+  }, [disabled, isUploading]);
 
   return (
     <div className="w-full">
@@ -132,15 +131,15 @@ export function DragDropUpload({ documentType, onUploadComplete, disabled, isFor
       <div
         className={`
           relative border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors
-          ${isDragOver && (!disabled || isFormMode) ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}
+          ${isDragOver && !disabled ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}
           ${uploadSuccess ? 'border-green-400 bg-green-50' : ''}
-          ${(disabled && !isFormMode) ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-400 hover:bg-gray-50'}
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-400 hover:bg-gray-50'}
           ${isUploading ? 'border-blue-400 bg-blue-50' : ''}
         `}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => (!disabled || isFormMode) && !isUploading && document.getElementById(`file-${documentType}`)?.click()}
+        onClick={() => !disabled && !isUploading && document.getElementById(`file-${documentType}`)?.click()}
       >
         <input
           id={`file-${documentType}`}
@@ -148,7 +147,7 @@ export function DragDropUpload({ documentType, onUploadComplete, disabled, isFor
           className="hidden"
           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
           onChange={handleFileSelect}
-          disabled={(disabled && !isFormMode) || isUploading}
+          disabled={disabled || isUploading}
         />
         
         <div className="flex flex-col items-center space-y-2">
@@ -165,7 +164,7 @@ export function DragDropUpload({ documentType, onUploadComplete, disabled, isFor
             </div>
           ) : (
             <div className="text-sm text-gray-600">
-              {disabled && !isFormMode ? (
+              {disabled ? (
                 <span className="text-gray-400">Complete and save client details to enable document upload</span>
               ) : (
                 <>

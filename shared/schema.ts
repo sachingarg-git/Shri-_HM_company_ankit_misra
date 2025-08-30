@@ -104,14 +104,6 @@ export const clients = pgTable("clients", {
   agreementUploaded: boolean("agreement_uploaded").default(false),
   poRateContractUploaded: boolean("po_rate_contract_uploaded").default(false),
   
-  // Document Storage URLs
-  gstCertificateUrl: text("gst_certificate_url"),
-  panCopyUrl: text("pan_copy_url"),
-  securityChequeUrl: text("security_cheque_url"),
-  aadharCardUrl: text("aadhar_card_url"),
-  agreementUrl: text("agreement_url"),
-  poRateContractUrl: text("po_rate_contract_url"),
-  
   // Sales Assignment Fields
   primarySalesPersonId: varchar("primary_sales_person_id").references(() => users.id),
   lastContactDate: timestamp("last_contact_date"),
@@ -492,42 +484,57 @@ export const registerSchema = insertUserSchema.extend({
   path: ["confirmPassword"],
 });
 
-export const insertClientSchema = createInsertSchema(clients).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  // Transform string inputs to proper types for numeric fields
-  creditLimit: z.union([z.string(), z.number()]).optional().nullable().transform(val => {
-    if (val == null || val === "") return null;
-    return typeof val === 'string' ? parseFloat(val) || null : val;
+export const insertClientSchema = z.object({
+  name: z.string().min(1, "Company name is required"),
+  category: z.enum(['ALFA', 'BETA', 'GAMMA', 'DELTA', 'ALPHA']),
+  billingAddressLine: z.string().optional(),
+  billingCity: z.string().optional(),
+  billingPincode: z.string().optional(),
+  billingState: z.string().optional(),
+  billingCountry: z.string().default('India'),
+  gstNumber: z.string().optional(),
+  panNumber: z.string().optional(),
+  msmeNumber: z.string().optional(),
+  incorporationCertNumber: z.string().optional(),
+  incorporationDate: z.union([z.string(), z.date()]).optional().transform(val => {
+    if (!val) return undefined;
+    return typeof val === 'string' ? new Date(val) : val;
   }),
-  interestPercent: z.union([z.string(), z.number()]).optional().nullable().transform(val => {
-    if (val == null || val === "") return null;
-    return typeof val === 'string' ? parseFloat(val) || null : val;
-  }),
+  companyType: z.enum(['PVT_LTD', 'PARTNERSHIP', 'PROPRIETOR', 'GOVT', 'OTHERS']).optional(),
+  contactPersonName: z.string().optional(),
+  mobileNumber: z.string().optional(),
+  email: z.string().email().optional().or(z.literal("")),
+  communicationPreferences: z.array(z.string()).optional(),
   paymentTerms: z.union([z.string(), z.number()]).optional().transform(val => {
     if (val == null || val === "") return 30;
     return typeof val === 'string' ? parseInt(val) || 30 : val;
   }),
-  // Transform date fields
-  incorporationDate: z.union([z.string(), z.date()]).optional().nullable().transform(val => {
-    if (!val || val === "") return null;
+  creditLimit: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (val == null || val === "") return undefined;
+    return typeof val === 'string' ? parseFloat(val) || 0 : val;
+  }),
+  bankInterestApplicable: z.enum(['FROM_DAY_1', 'FROM_DUE_DATE']).optional(),
+  interestPercent: z.union([z.string(), z.number()]).optional().transform(val => {
+    if (val == null || val === "") return undefined;
+    return typeof val === 'string' ? parseFloat(val) || 0 : val;
+  }),
+  poRequired: z.boolean().default(false),
+  invoicingEmails: z.array(z.string()).optional().nullable().transform(val => val || []),
+  gstCertificateUploaded: z.boolean().default(false),
+  panCopyUploaded: z.boolean().default(false),
+  securityChequeUploaded: z.boolean().default(false),
+  aadharCardUploaded: z.boolean().default(false),
+  agreementUploaded: z.boolean().default(false),
+  poRateContractUploaded: z.boolean().default(false),
+  primarySalesPersonId: z.string().optional(),
+  lastContactDate: z.union([z.string(), z.date()]).optional().transform(val => {
+    if (!val) return undefined;
     return typeof val === 'string' ? new Date(val) : val;
   }),
-  lastContactDate: z.union([z.string(), z.date()]).optional().nullable().transform(val => {
-    if (!val || val === "") return null;
+  nextFollowUpDate: z.union([z.string(), z.date()]).optional().transform(val => {
+    if (!val) return undefined;
     return typeof val === 'string' ? new Date(val) : val;
   }),
-  nextFollowUpDate: z.union([z.string(), z.date()]).optional().nullable().transform(val => {
-    if (!val || val === "") return null;
-    return typeof val === 'string' ? new Date(val) : val;
-  }),
-  // Handle email validation properly
-  email: z.string().email().optional().or(z.literal("")).nullable(),
-  // Handle array fields properly
-  communicationPreferences: z.array(z.string()).optional().nullable().transform(val => val || []),
-  invoicingEmails: z.array(z.string().email()).optional().nullable().transform(val => val || []),
 });
 
 export const insertShippingAddressSchema = createInsertSchema(shippingAddresses).omit({

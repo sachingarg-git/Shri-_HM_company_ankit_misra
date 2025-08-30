@@ -17,14 +17,12 @@ import { Search, Plus, Filter, Users, Edit, Eye, Upload, Download, FileText, Shi
 import { useState } from "react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { DragDropUpload } from "@/components/DragDropUpload";
-import { DocumentViewer } from "@/components/DocumentViewer";
 
 export default function ClientManagement() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [documentUploads, setDocumentUploads] = useState<Record<string, boolean>>({});
-  const [documentUrls, setDocumentUrls] = useState<Record<string, string>>({});
 
   const { data: clients, isLoading } = useQuery({
     queryKey: ['/api/clients'],
@@ -45,7 +43,6 @@ export default function ClientManagement() {
       setIsDialogOpen(false);
       form.reset();
       setDocumentUploads({});
-      setDocumentUrls({});
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to create client", variant: "destructive" });
@@ -56,54 +53,27 @@ export default function ClientManagement() {
     resolver: zodResolver(insertClientSchema),
     defaultValues: {
       name: "",
-      category: "BETA" as const,
-      billingAddressLine: "",
-      billingCity: "",
-      billingPincode: "",
-      billingState: "",
-      billingCountry: "India",
-      gstNumber: "",
-      panNumber: "",
-      msmeNumber: "",
-      incorporationCertNumber: "",
-      incorporationDate: null,
-      companyType: "PVT_LTD" as const,
-      contactPersonName: "",
-      mobileNumber: "",
+      category: "BETA",
       email: "",
-      communicationPreferences: [],
-      paymentTerms: 30,
+      phone: "",
+      address: "",
+      gstNumber: "",
       creditLimit: "",
-      interestPercent: "",
-      bankInterestApplicable: "FROM_DUE_DATE" as const,
-      poRequired: false,
-      invoicingEmails: [],
-      primarySalesPersonId: null,
-      gstCertificateUploaded: false,
-      panCopyUploaded: false,
-      securityChequeUploaded: false,
-      aadharCardUploaded: false,
-      agreementUploaded: false,
-      poRateContractUploaded: false,
+      paymentTerms: 30
     }
   });
 
-  const handleDocumentUpload = (documentType: string, success: boolean, documentUrl?: string) => {
+  const handleDocumentUpload = (documentType: string, success: boolean) => {
     setDocumentUploads(prev => ({
       ...prev,
       [documentType]: success
     }));
-    if (success && documentUrl) {
-      setDocumentUrls(prev => ({
-        ...prev,
-        [documentType]: documentUrl
-      }));
-    }
   };
 
   const onSubmit = (data: any) => {
-    const submissionData = {
+    createClientMutation.mutate({
       ...data,
+      creditLimit: data.creditLimit ? parseFloat(data.creditLimit) : null,
       // Add document upload status
       gstCertificateUploaded: documentUploads.gstCertificate || false,
       panCopyUploaded: documentUploads.panCopy || false,
@@ -111,16 +81,7 @@ export default function ClientManagement() {
       aadharCardUploaded: documentUploads.aadharCard || false,
       agreementUploaded: documentUploads.agreement || false,
       poRateContractUploaded: documentUploads.poRateContract || false,
-      // Add document URLs
-      gstCertificateUrl: documentUrls.gstCertificate || null,
-      panCopyUrl: documentUrls.panCopy || null,
-      securityChequeUrl: documentUrls.securityCheque || null,
-      aadharCardUrl: documentUrls.aadharCard || null,
-      agreementUrl: documentUrls.agreement || null,
-      poRateContractUrl: documentUrls.poRateContract || null,
-    };
-    
-    createClientMutation.mutate(submissionData);
+    });
   };
 
   const getCategoryColor = (category: string) => {
@@ -139,8 +100,8 @@ export default function ClientManagement() {
   };
 
   const filteredClients = selectedCategory === "all" 
-    ? clients || []
-    : (clients as any[])?.filter((client: any) => client.category === selectedCategory) || [];
+    ? clients 
+    : (clients as any[])?.filter((client: any) => client.category === selectedCategory);
 
   const categoryStats = [
     {
@@ -289,10 +250,10 @@ export default function ClientManagement() {
                               />
                               <FormField
                                 control={form.control}
-                                name="mobileNumber"
+                                name="phone"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel>Mobile Number</FormLabel>
+                                    <FormLabel>Phone</FormLabel>
                                     <FormControl>
                                       <Input placeholder="+91 98765 43210" {...field} />
                                     </FormControl>
@@ -301,99 +262,19 @@ export default function ClientManagement() {
                                 )}
                               />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <FormField
-                                control={form.control}
-                                name="contactPersonName"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Contact Person Name</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="Enter contact person name" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name="companyType"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Company Type</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                      <FormControl>
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Select company type" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem value="PVT_LTD">Private Limited</SelectItem>
-                                        <SelectItem value="PARTNERSHIP">Partnership</SelectItem>
-                                        <SelectItem value="PROPRIETOR">Proprietorship</SelectItem>
-                                        <SelectItem value="GOVT">Government</SelectItem>
-                                        <SelectItem value="OTHERS">Others</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
                             <FormField
                               control={form.control}
-                              name="billingAddressLine"
+                              name="address"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Billing Address</FormLabel>
+                                  <FormLabel>Address</FormLabel>
                                   <FormControl>
-                                    <Textarea placeholder="Enter billing address" {...field} />
+                                    <Textarea placeholder="Enter client address" {...field} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )}
                             />
-                            <div className="grid grid-cols-3 gap-4">
-                              <FormField
-                                control={form.control}
-                                name="billingCity"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>City</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="City" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name="billingState"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>State</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="State" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name="billingPincode"
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel>Pincode</FormLabel>
-                                    <FormControl>
-                                      <Input placeholder="Pincode" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
                             <div className="grid grid-cols-3 gap-4">
                               <FormField
                                 control={form.control}
@@ -446,32 +327,26 @@ export default function ClientManagement() {
                                 <DragDropUpload
                                   documentType="gstCertificate"
                                   onUploadComplete={handleDocumentUpload}
-                                  isFormMode={true}
                                 />
                                 <DragDropUpload
                                   documentType="panCopy"
                                   onUploadComplete={handleDocumentUpload}
-                                  isFormMode={true}
                                 />
                                 <DragDropUpload
                                   documentType="securityCheque"
                                   onUploadComplete={handleDocumentUpload}
-                                  isFormMode={true}
                                 />
                                 <DragDropUpload
                                   documentType="aadharCard"
                                   onUploadComplete={handleDocumentUpload}
-                                  isFormMode={true}
                                 />
                                 <DragDropUpload
                                   documentType="agreement"
                                   onUploadComplete={handleDocumentUpload}
-                                  isFormMode={true}
                                 />
                                 <DragDropUpload
                                   documentType="poRateContract"
                                   onUploadComplete={handleDocumentUpload}
-                                  isFormMode={true}
                                 />
                               </div>
                               <p className="text-sm text-gray-500 mt-3">
@@ -560,24 +435,6 @@ export default function ClientManagement() {
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex space-x-2">
-                                <DocumentViewer
-                                  clientId={client.id}
-                                  clientName={client.name}
-                                  documents={{
-                                    gstCertificateUrl: client.gstCertificateUrl,
-                                    panCopyUrl: client.panCopyUrl,
-                                    securityChequeUrl: client.securityChequeUrl,
-                                    aadharCardUrl: client.aadharCardUrl,
-                                    agreementUrl: client.agreementUrl,
-                                    poRateContractUrl: client.poRateContractUrl,
-                                    gstCertificateUploaded: client.gstCertificateUploaded,
-                                    panCopyUploaded: client.panCopyUploaded,
-                                    securityChequeUploaded: client.securityChequeUploaded,
-                                    aadharCardUploaded: client.aadharCardUploaded,
-                                    agreementUploaded: client.agreementUploaded,
-                                    poRateContractUploaded: client.poRateContractUploaded,
-                                  }}
-                                />
                                 <Button variant="outline" size="sm">
                                   <Edit size={16} className="mr-1" />
                                   Edit
