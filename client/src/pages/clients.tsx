@@ -27,6 +27,9 @@ import { z } from "zod";
 const extendedClientSchema = insertClientSchema.extend({
   communicationPreferences: z.array(z.enum(['EMAIL', 'WHATSAPP', 'PHONE', 'SMS'])).default([]),
   invoicingEmails: z.array(z.string().email()).default([]),
+  // Fix date validation issues by making them optional and allowing null
+  lastContactDate: z.union([z.string(), z.date(), z.null()]).optional(),
+  nextFollowUpDate: z.union([z.string(), z.date(), z.null()]).optional(),
   shippingAddresses: z.array(z.object({
     addressLine: z.string().min(1, "Address is required"),
     city: z.string().min(1, "City is required"),
@@ -153,7 +156,7 @@ export default function Clients() {
     poRateContract: false,
   });
   const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false);
-  const [currentDocument, setCurrentDocument] = useState<{clientId: string, docType: string, label: string} | null>(null);
+  const [currentDocument, setCurrentDocument] = useState<{clientId: string, docType: string, label: string, documentUrl?: string} | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -230,21 +233,14 @@ export default function Clients() {
 
   const clientMutation = useMutation({
     mutationFn: async (data: ExtendedClient) => {
-      console.log('Client mutation started with data:', data);
-      console.log('Editing client:', editingClient);
-      
       // Separate shipping addresses from client data
       const { shippingAddresses, ...clientData } = data;
       
       if (editingClient) {
-        console.log('Updating existing client:', editingClient.id);
         const updatedClient = await apiCall(`/api/clients/${editingClient.id}`, "PUT", clientData);
-        console.log('Client update successful:', updatedClient);
         return updatedClient;
       } else {
-        console.log('Creating new client');
         const newClient = await apiCall("/api/clients", "POST", clientData);
-        console.log('Client creation successful:', newClient);
         return newClient;
       }
     },
@@ -491,15 +487,30 @@ export default function Clients() {
   const [currentClientId, setCurrentClientId] = useState<string | null>(null);
 
   const handleViewDocument = async (clientId: string, documentType: string, label: string) => {
-    setCurrentDocument({ clientId, docType: documentType, label });
-    setIsDocumentViewerOpen(true);
+    try {
+      // Get the correct document URL from the server
+      const response = await fetch(`/api/clients/${clientId}/documents/${documentType}`);
+      if (!response.ok) {
+        throw new Error('Failed to get document URL');
+      }
+      const { documentUrl } = await response.json();
+      setCurrentDocument({ clientId, docType: documentType, label, documentUrl });
+      setIsDocumentViewerOpen(true);
+    } catch (error) {
+      console.error('Error getting document URL:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load document. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleDownloadDocument = async () => {
     if (!currentDocument) return;
     
     try {
-      const documentUrl = `/objects/uploads/${currentDocument.clientId}/${currentDocument.docType}`;
+      const documentUrl = currentDocument.documentUrl || `/objects/uploads/${currentDocument.clientId}/${currentDocument.docType}`;
       const response = await fetch(documentUrl);
       if (!response.ok) throw new Error('Failed to fetch document');
       
@@ -757,8 +768,6 @@ export default function Clients() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(
                 (data) => {
-                  console.log('Form submission - valid data:', data);
-                  console.log('Editing client:', editingClient);
                   clientMutation.mutate(data);
                 },
                 (errors) => {
@@ -1970,7 +1979,7 @@ export default function Clients() {
               {/* Document Display */}
               <div className="border rounded-lg overflow-hidden bg-gray-50" style={{ height: '500px' }}>
                 <iframe
-                  src={`/objects/uploads/${currentDocument.clientId}/${currentDocument.docType}`}
+                  src={currentDocument.documentUrl || `/objects/uploads/${currentDocument.clientId}/${currentDocument.docType}`}
                   className="w-full h-full"
                   title={`${currentDocument.label} Document`}
                   onError={() => {

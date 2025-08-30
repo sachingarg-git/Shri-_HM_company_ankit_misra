@@ -1377,26 +1377,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       );
 
-      // Update client document status in database
+      // Update client document status and path in database
       const updateData: any = {};
       switch (documentType) {
         case 'gst-certificate':
           updateData.gstCertificateUploaded = true;
+          updateData.gstCertificatePath = objectPath;
           break;
         case 'pan-copy':
           updateData.panCopyUploaded = true;
+          updateData.panCopyPath = objectPath;
           break;
         case 'security-cheque':
           updateData.securityChequeUploaded = true;
+          updateData.securityChequePath = objectPath;
           break;
         case 'aadhar-card':
           updateData.aadharCardUploaded = true;
+          updateData.aadharCardPath = objectPath;
           break;
         case 'agreement':
           updateData.agreementUploaded = true;
+          updateData.agreementPath = objectPath;
           break;
         case 'po-rate-contract':
           updateData.poRateContractUploaded = true;
+          updateData.poRateContractPath = objectPath;
           break;
         default:
           return res.status(400).json({ error: "Invalid document type" });
@@ -1408,6 +1414,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Document upload error:", error);
       res.status(500).json({ error: "Failed to upload document" });
+    }
+  });
+
+  // Get client document URL for viewing
+  app.get("/api/clients/:clientId/documents/:documentType", requireAuth, async (req, res) => {
+    try {
+      const { clientId, documentType } = req.params;
+      const currentUser = (req as any).user;
+      
+      // Get client to check if document is uploaded
+      const client = await storage.getClient(clientId);
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      // Check if document is uploaded
+      const documentField = `${documentType.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())}Uploaded` as keyof typeof client;
+      if (!client[documentField]) {
+        return res.status(404).json({ error: "Document not found" });
+      }
+      
+      // Construct document URL based on pattern used in uploads
+      // Documents are typically stored as: uploads/{uuid}/{document-type}
+      const documentUrl = `/objects/uploads/${clientId}/${documentType}`;
+      
+      res.json({ documentUrl });
+    } catch (error: any) {
+      console.error("Error getting document URL:", error);
+      res.status(500).json({ error: "Failed to get document URL" });
     }
   });
 
