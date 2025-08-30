@@ -395,6 +395,7 @@ export default function ClientManagement() {
                         <th className="px-6 py-3">Client</th>
                         <th className="px-6 py-3">Category</th>
                         <th className="px-6 py-3">Contact</th>
+                        <th className="px-6 py-3">Documents</th>
                         <th className="px-6 py-3">Credit Limit</th>
                         <th className="px-6 py-3">Payment Terms</th>
                         <th className="px-6 py-3">Actions</th>
@@ -407,6 +408,7 @@ export default function ClientManagement() {
                             <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
                             <td className="px-6 py-4"><div className="h-6 bg-gray-200 rounded w-16"></div></td>
                             <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+                            <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
                             <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
                             <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
                             <td className="px-6 py-4"><div className="h-8 bg-gray-200 rounded w-20"></div></td>
@@ -414,7 +416,7 @@ export default function ClientManagement() {
                         ))
                       ) : !filteredClients || (Array.isArray(filteredClients) && filteredClients.length === 0) ? (
                         <tr>
-                          <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                          <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                             <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                             <p>No clients found</p>
                           </td>
@@ -438,6 +440,9 @@ export default function ClientManagement() {
                                 <div className="text-gray-900">{client.email || 'No email'}</div>
                                 <div className="text-sm text-gray-500">{client.phone || 'No phone'}</div>
                               </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <DocumentStatus client={client} />
                             </td>
                             <td className="px-6 py-4">
                               <div className="font-semibold text-gray-900">
@@ -470,6 +475,52 @@ export default function ClientManagement() {
 
             {/* Client Attachments Section */}
             <ClientAttachmentsSection />
+    </div>
+  );
+}
+
+// Document Status Component  
+function DocumentStatus({ client }: { client: any }) {
+  const documents = [
+    { key: 'gstCertificateUploaded', label: 'GST', type: 'gstCertificate' },
+    { key: 'panCopyUploaded', label: 'PAN', type: 'panCopy' },
+    { key: 'securityChequeUploaded', label: 'SEC', type: 'securityCheque' },
+    { key: 'aadharCardUploaded', label: 'ADH', type: 'aadharCard' },
+    { key: 'agreementUploaded', label: 'AGR', type: 'agreement' },
+    { key: 'poRateContractUploaded', label: 'PO', type: 'poRateContract' }
+  ];
+
+  const handleViewDocument = async (documentType: string) => {
+    try {
+      // Open the document in a new tab
+      const documentUrl = `/objects/uploads/${client.id}/${documentType}`;
+      window.open(documentUrl, '_blank');
+    } catch (error) {
+      console.error('Error viewing document:', error);
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      {documents.map((doc) => (
+        <div key={doc.key} className="flex items-center justify-between text-xs">
+          <span className="text-gray-600 w-8">{doc.label}:</span>
+          {client[doc.key] ? (
+            <div className="flex items-center gap-1">
+              <span className="text-green-600">✓</span>
+              <button
+                onClick={() => handleViewDocument(doc.type)}
+                className="text-blue-600 hover:text-blue-800 transition-colors"
+                title={`View ${doc.label} document`}
+              >
+                <Eye size={12} />
+              </button>
+            </div>
+          ) : (
+            <span className="text-red-600">✗</span>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
