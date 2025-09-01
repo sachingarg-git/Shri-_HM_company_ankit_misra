@@ -157,8 +157,29 @@ export default function Clients() {
   });
   const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false);
   const [currentDocument, setCurrentDocument] = useState<{clientId: string, docType: string, label: string, documentUrl?: string} | null>(null);
+  const [documentBlobUrl, setDocumentBlobUrl] = useState<string | null>(null);
+  const [documentContentType, setDocumentContentType] = useState<string | null>(null);
+  const [isLoadingDocument, setIsLoadingDocument] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Cleanup blob URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (documentBlobUrl) {
+        URL.revokeObjectURL(documentBlobUrl);
+      }
+    };
+  }, [documentBlobUrl]);
+
+  // Cleanup when modal closes
+  useEffect(() => {
+    if (!isDocumentViewerOpen && documentBlobUrl) {
+      URL.revokeObjectURL(documentBlobUrl);
+      setDocumentBlobUrl(null);
+      setDocumentContentType(null);
+    }
+  }, [isDocumentViewerOpen, documentBlobUrl]);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["/api/clients", selectedCategory, searchTerm, dateFrom, dateTo],
@@ -487,12 +508,13 @@ export default function Clients() {
   const [currentClientId, setCurrentClientId] = useState<string | null>(null);
 
   const handleViewDocument = async (clientId: string, documentType: string, label: string) => {
+    setIsLoadingDocument(true);
     try {
       // Get the correct document URL from the server
-      const response = await fetch(`/api/clients/${clientId}/documents/${documentType}`);
+      const urlResponse = await fetch(`/api/clients/${clientId}/documents/${documentType}`);
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      if (!urlResponse.ok) {
+        const errorData = await urlResponse.json().catch(() => ({}));
         
         if (errorData.needsReupload) {
           toast({
@@ -502,41 +524,74 @@ export default function Clients() {
           });
           // Refresh the client data to update the UI
           await queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+          setIsLoadingDocument(false);
           return;
         }
         
         throw new Error(errorData.message || 'Failed to get document URL');
       }
       
-      const { documentUrl } = await response.json();
+      const { documentUrl } = await urlResponse.json();
+      
+      // Fetch the actual document with proper authentication
+      const documentResponse = await fetch(documentUrl, {
+        method: 'GET',
+        credentials: 'include', // Include cookies for authentication
+      });
+      
+      if (!documentResponse.ok) {
+        throw new Error('Failed to fetch document');
+      }
+      
+      // Get content type to determine how to display
+      const contentType = documentResponse.headers.get('content-type') || 'application/octet-stream';
+      
+      // Create blob URL for secure display
+      const blob = await documentResponse.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Clean up previous blob URL
+      if (documentBlobUrl) {
+        URL.revokeObjectURL(documentBlobUrl);
+      }
+      
       setCurrentDocument({ clientId, docType: documentType, label, documentUrl });
+      setDocumentBlobUrl(blobUrl);
+      setDocumentContentType(contentType);
       setIsDocumentViewerOpen(true);
     } catch (error) {
-      console.error('Error getting document URL:', error);
+      console.error('Error getting document:', error);
       toast({
         title: "Error",
         description: "Failed to load document. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoadingDocument(false);
     }
   };
 
   const handleDownloadDocument = async () => {
-    if (!currentDocument) return;
+    if (!currentDocument || !documentBlobUrl) return;
     
     try {
-      const documentUrl = currentDocument.documentUrl || `/objects/uploads/${currentDocument.clientId}/${currentDocument.docType}`;
-      const response = await fetch(documentUrl);
-      if (!response.ok) throw new Error('Failed to fetch document');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Use the already fetched blob URL
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `${currentDocument.label}-${currentDocument.clientId}.pdf`;
+      a.href = documentBlobUrl;
+      
+      // Try to determine file extension from content type
+      let fileExtension = 'bin';
+      if (documentContentType?.includes('pdf')) {
+        fileExtension = 'pdf';
+      } else if (documentContentType?.startsWith('image/')) {
+        fileExtension = documentContentType.split('/')[1] || 'jpg';
+      } else if (documentContentType?.includes('word')) {
+        fileExtension = 'docx';
+      }
+      
+      a.download = `${currentDocument.label}-${currentDocument.clientId}.${fileExtension}`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
       toast({
@@ -553,19 +608,29 @@ export default function Clients() {
   };
 
   const handlePrintDocument = async () => {
-    if (!currentDocument) return;
+    if (!currentDocument || !documentBlobUrl) return;
     
     try {
-      const documentUrl = `/objects/uploads/${currentDocument.clientId}/${currentDocument.docType}`;
-      const printWindow = window.open(documentUrl, '_blank');
+      // Use blob URL for printing
+      const printWindow = window.open(documentBlobUrl, '_blank');
       if (printWindow) {
         printWindow.onload = () => {
           printWindow.print();
         };
+      } else {
+        // Fallback: create a hidden iframe and print
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = documentBlobUrl;
+        document.body.appendChild(iframe);
+        iframe.onload = () => {
+          iframe.contentWindow?.print();
+          setTimeout(() => document.body.removeChild(iframe), 1000);
+        };
       }
     } catch (error) {
       toast({
-        title: "Error",
+        title: "Error", 
         description: "Failed to print document",
         variant: "destructive",
       });
@@ -1998,22 +2063,61 @@ export default function Clients() {
             <DialogTitle>Document Viewer - {currentDocument?.label}</DialogTitle>
           </DialogHeader>
           
-          {currentDocument && (
+          {isLoadingDocument ? (
+            /* Loading State */
+            <div className="flex items-center justify-center space-y-4" style={{ height: '500px' }}>
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                <p className="text-muted-foreground">Loading document...</p>
+              </div>
+            </div>
+          ) : currentDocument && documentBlobUrl ? (
             <div className="space-y-4">
               {/* Document Display */}
               <div className="border rounded-lg overflow-hidden bg-gray-50" style={{ height: '500px' }}>
-                <iframe
-                  src={currentDocument.documentUrl || `/objects/uploads/${currentDocument.clientId}/${currentDocument.docType}`}
-                  className="w-full h-full"
-                  title={`${currentDocument.label} Document`}
-                  onError={() => {
-                    toast({
-                      title: "Error",
-                      description: "Failed to load document",
-                      variant: "destructive",
-                    });
-                  }}
-                />
+                {documentContentType?.startsWith('image/') ? (
+                  /* Image Display */
+                  <img
+                    src={documentBlobUrl}
+                    alt={`${currentDocument.label} Document`}
+                    className="w-full h-full object-contain"
+                    onError={() => {
+                      toast({
+                        title: "Error",
+                        description: "Failed to load document image",
+                        variant: "destructive",
+                      });
+                    }}
+                  />
+                ) : documentContentType === 'application/pdf' ? (
+                  /* PDF Display */
+                  <iframe
+                    src={documentBlobUrl}
+                    className="w-full h-full"
+                    title={`${currentDocument.label} Document`}
+                    onError={() => {
+                      toast({
+                        title: "Error", 
+                        description: "Failed to load PDF document",
+                        variant: "destructive",
+                      });
+                    }}
+                  />
+                ) : (
+                  /* Other file types - show info and download option */
+                  <div className="flex flex-col items-center justify-center h-full space-y-4 text-center p-8">
+                    <FileText className="h-16 w-16 text-muted-foreground" />
+                    <div>
+                      <h3 className="font-medium">Document Ready</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {documentContentType ? `File type: ${documentContentType}` : 'Document file'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Click download to view this document
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
               
               {/* Action Buttons */}
@@ -2035,6 +2139,11 @@ export default function Clients() {
                   </Button>
                 </div>
               </div>
+            </div>
+          ) : (
+            /* No document loaded */
+            <div className="flex items-center justify-center" style={{ height: '500px' }}>
+              <p className="text-muted-foreground">No document selected</p>
             </div>
           )}
         </DialogContent>

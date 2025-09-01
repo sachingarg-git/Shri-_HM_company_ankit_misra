@@ -1482,6 +1482,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.sendStatus(401);
       }
       
+      // Set headers to allow iframe embedding for same origin
+      res.set({
+        'X-Frame-Options': 'SAMEORIGIN',
+        'Content-Security-Policy': "frame-ancestors 'self'",
+      });
+      
       objectStorageService.downloadObject(objectFile, res);
     } catch (error: any) {
       console.error(`Error accessing document at path ${req.path}:`, error);
