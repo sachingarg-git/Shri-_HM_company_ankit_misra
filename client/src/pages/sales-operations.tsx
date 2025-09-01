@@ -3658,7 +3658,7 @@ M/S SRI HM BITUMEN CO
     setIsViewDialogOpen(true);
   };
 
-  // Email functionality - Open default email client with pre-filled details
+  // Email functionality - Generate PDF and open Gmail compose
   const handleSendToEmail = async (salesOrder: any) => {
     try {
       // Get client details and email
@@ -3674,31 +3674,26 @@ M/S SRI HM BITUMEN CO
         return;
       }
       
-      // Get quotation items for email content
+      // Generate and download PDF first
       const quotation = (quotations as any[])?.find((q: any) => q.id === salesOrder.quotationId);
-      const itemsText = quotation?.items?.map((item: any) => 
-        `• ${item.description || 'Product'}: ${item.quantity} ${item.unit} @ ₹${parseFloat(item.unitPrice || item.rate || 0).toFixed(2)} = ₹${parseFloat(item.totalPrice || item.amount || 0).toFixed(2)}`
-      ).join('\n') || '';
       
-      // Create email content
-      const subject = `Sales Order ${salesOrder.orderNumber} - M/S SRI HM BITUMEN CO`;
-      const body = `Dear ${client.name},
+      try {
+        await handleDownloadSalesOrderPDF(salesOrder);
+        
+        // Short delay to ensure PDF download starts
+        setTimeout(() => {
+          // Create Gmail compose URL with pre-filled data
+          const subject = `Sales Order ${salesOrder.orderNumber} - M/S SRI HM BITUMEN CO`;
+          const body = `Dear ${client.name},
 
-Thank you for your business! Please find your sales order details below:
+Thank you for your business! Please find the attached sales order PDF for the following:
 
-ORDER DETAILS:
 Order Number: ${salesOrder.orderNumber}
 Order Date: ${new Date(salesOrder.orderDate || salesOrder.createdAt).toLocaleDateString()}
+Total Amount: ₹${parseFloat(salesOrder.totalAmount || 0).toFixed(2)}
 Status: ${salesOrder.status}
-Expected Delivery: ${salesOrder.expectedDeliveryDate ? new Date(salesOrder.expectedDeliveryDate).toLocaleDateString() : 'TBD'}
 
-ITEMS:
-${itemsText}
-
-AMOUNT SUMMARY:
-Subtotal: ₹${parseFloat(salesOrder.totalAmount || 0).toFixed(2)}
-GST (18%): ₹${(parseFloat(salesOrder.totalAmount || 0) * 0.18).toFixed(2)}
-Total Amount: ₹${(parseFloat(salesOrder.totalAmount || 0) * 1.18).toFixed(2)}
+The detailed sales order document is attached to this email.
 
 If you have any questions or concerns, please don't hesitate to contact us.
 
@@ -3712,21 +3707,47 @@ Phone: +91 8453059698
 Email: info.srihmbitumen@gmail.com
 GST: 18CGMPP6536N2ZG`;
 
-      // Create mailto link
-      const mailtoLink = `mailto:${clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      
-      // Open default email client
-      window.open(mailtoLink, '_blank');
-      
-      toast({
-        title: "Email Client Opened",
-        description: `Default email client opened with pre-filled order details for ${client.name}.`
-      });
+          // Gmail compose URL
+          const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(clientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+          
+          // Open Gmail compose in new tab
+          window.open(gmailComposeUrl, '_blank');
+          
+          toast({
+            title: "Gmail Opened",
+            description: `Gmail compose opened for ${client.name}. Please attach the downloaded PDF file to the email.`,
+          });
+        }, 1000);
+        
+      } catch (pdfError) {
+        // If PDF generation fails, still open Gmail
+        const subject = `Sales Order ${salesOrder.orderNumber} - M/S SRI HM BITUMEN CO`;
+        const body = `Dear ${client.name},
+
+Thank you for your business! Here are your sales order details:
+
+Order Number: ${salesOrder.orderNumber}
+Order Date: ${new Date(salesOrder.orderDate || salesOrder.createdAt).toLocaleDateString()}
+Total Amount: ₹${parseFloat(salesOrder.totalAmount || 0).toFixed(2)}
+Status: ${salesOrder.status}
+
+Best regards,
+M/S SRI HM BITUMEN CO`;
+
+        const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(clientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.open(gmailComposeUrl, '_blank');
+        
+        toast({
+          title: "Gmail Opened",
+          description: `Gmail compose opened for ${client.name}. PDF generation failed - please create manually if needed.`,
+          variant: "destructive"
+        });
+      }
       
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to open email client. Please try again.",
+        description: "Failed to open Gmail. Please try again.",
         variant: "destructive"
       });
     }
