@@ -2252,9 +2252,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { items, ...quotationFields } = req.body;
       const validatedData = insertQuotationSchema.parse(quotationFields);
       
-      // Generate quotation number
-      const quotationCount = await storage.getQuotationsCount();
-      const quotationNumber = `QUO-${String(quotationCount + 1).padStart(6, '0')}`;
+      // Generate quotation number - find the highest existing number
+      const existingQuotations = await storage.getAllQuotations();
+      let maxNumber = 0;
+      
+      existingQuotations.forEach(q => {
+        const match = q.quotationNumber.match(/QUO-(\d+)/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNumber) {
+            maxNumber = num;
+          }
+        }
+      });
+      
+      const quotationNumber = `QUO-${String(maxNumber + 1).padStart(6, '0')}`;
       
       const quotationData = {
         ...validatedData,
