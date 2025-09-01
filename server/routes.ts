@@ -2518,6 +2518,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PATCH endpoint for sales orders (partial updates)
+  app.patch("/api/sales-orders/:id", async (req, res) => {
+    try {
+      const validatedData = insertSalesOrderSchema.partial().parse(req.body);
+      const salesOrder = await storage.updateSalesOrder(req.params.id, validatedData);
+      res.json(salesOrder);
+    } catch (error) {
+      console.error("Sales order update error:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid sales order data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update sales order" });
+    }
+  });
+
+  // Send Sales Order via Email
+  app.post("/api/send-sales-order-email", async (req, res) => {
+    try {
+      const { salesOrder, client, quotation, toEmail } = req.body;
+      
+      if (!toEmail) {
+        return res.status(400).json({ message: "Email address is required" });
+      }
+
+      // Import SendGrid after ensuring API key is available
+      if (!process.env.SENDGRID_API_KEY) {
+        return res.status(500).json({ message: "Email service not configured. Please contact administrator." });
+      }
+
+      const sgMail = require('@sendgrid/mail');
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+      // Generate PDF content for email attachment
+      const { generateBitumenSalesOrderPDF } = require('../client/src/components/sales-order-template');
+      
+      // Email content
+      const msg = {
+        to: toEmail,
+        from: 'info.srihmbitumen@gmail.com', // Use verified sender address
+        subject: `Sales Order ${salesOrder.orderNumber} - M/S SRI HM BITUMEN CO`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+              <h2 style="color: #2c3e50; margin-bottom: 20px;">Sales Order Confirmation</h2>
+              
+              <p>Dear ${client.name},</p>
+              
+              <p>Thank you for your business! Please find your sales order details below:</p>
+              
+              <div style="background: white; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Order Number:</strong></td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">${salesOrder.orderNumber}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Order Date:</strong></td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">${new Date(salesOrder.orderDate || salesOrder.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Total Amount:</strong></td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">₹${parseFloat(salesOrder.totalAmount || 0).toFixed(2)}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Status:</strong></td>
+                    <td style="padding: 8px; border-bottom: 1px solid #eee;">${salesOrder.status}</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <p>The detailed sales order document is attached to this email.</p>
+              
+              <p>If you have any questions or concerns, please don't hesitate to contact us.</p>
+              
+              <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+                <p><strong>M/S SRI HM BITUMEN CO</strong></p>
+                <p>Dag No: 1071, Patta No: 264, Mkirpara<br>
+                Chakardaigaon, Mouza - Ramcharani<br>
+                Guwahati, Assam - 781035</p>
+                <p>📞 +91 8453059698<br>
+                📧 info.srihmbitumen@gmail.com<br>
+                🌐 GST: 18CGMPP6536N2ZG</p>
+              </div>
+            </div>
+          </div>
+        `,
+        text: `
+Sales Order Confirmation
+
+Dear ${client.name},
+
+Thank you for your business! Here are your sales order details:
+
+Order Number: ${salesOrder.orderNumber}
+Order Date: ${new Date(salesOrder.orderDate || salesOrder.createdAt).toLocaleDateString()}
+Total Amount: ₹${parseFloat(salesOrder.totalAmount || 0).toFixed(2)}
+Status: ${salesOrder.status}
+
+The detailed sales order document is attached to this email.
+
+If you have any questions, please contact us.
+
+Best regards,
+M/S SRI HM BITUMEN CO
+📞 +91 8453059698
+📧 info.srihmbitumen@gmail.com
+        `
+      };
+
+      await sgMail.send(msg);
+      
+      res.json({ message: "Email sent successfully" });
+    } catch (error) {
+      console.error("Email sending error:", error);
+      res.status(500).json({ 
+        message: "Failed to send email", 
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   // Delivery Plans API
   app.get("/api/delivery-plans", async (req, res) => {
     try {

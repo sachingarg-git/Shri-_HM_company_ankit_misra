@@ -61,6 +61,108 @@ import { z } from "zod";
 import { generateBitumenQuotationPDF } from "@/components/quotation-template";
 import { generateBitumenSalesOrderPDF } from "@/components/sales-order-template";
 
+// Edit Sales Order Form Component
+function EditSalesOrderForm({ salesOrder, onClose, onSave }: any) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const [formData, setFormData] = useState({
+    status: salesOrder.status || 'DRAFT',
+    creditCheckStatus: salesOrder.creditCheckStatus || 'PENDING',
+    expectedDeliveryDate: salesOrder.expectedDeliveryDate || '',
+    notes: salesOrder.notes || ''
+  });
+
+  const handleSave = async () => {
+    try {
+      const response = await fetch(`/api/sales-orders/${salesOrder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Sales order updated successfully."
+        });
+        onSave();
+      } else {
+        throw new Error('Failed to update');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update sales order.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium">Order Status</label>
+          <Select value={formData.status} onValueChange={(value) => setFormData({...formData, status: value})}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="DRAFT">Draft</SelectItem>
+              <SelectItem value="APPROVED">Approved</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div>
+          <label className="text-sm font-medium">Credit Check Status</label>
+          <Select value={formData.creditCheckStatus} onValueChange={(value) => setFormData({...formData, creditCheckStatus: value})}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select credit status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PENDING">Pending</SelectItem>
+              <SelectItem value="APPROVED">Approved</SelectItem>
+              <SelectItem value="REJECTED">Rejected</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Expected Delivery Date</label>
+        <Input
+          type="date"
+          value={formData.expectedDeliveryDate}
+          onChange={(e) => setFormData({...formData, expectedDeliveryDate: e.target.value})}
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Notes</label>
+        <Textarea
+          value={formData.notes}
+          onChange={(e) => setFormData({...formData, notes: e.target.value})}
+          placeholder="Add any notes..."
+          rows={3}
+        />
+      </div>
+
+      <div className="flex gap-2 justify-end">
+        <Button variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={handleSave}>
+          Save Changes
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function SalesOperationsPage() {
   const [activeTab, setActiveTab] = useState("leads");
 
@@ -3474,6 +3576,7 @@ function SalesOrderSection() {
 
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   
   // Dialog states
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -3486,7 +3589,7 @@ function SalesOrderSection() {
     return client ? client.name : 'Unknown Client';
   };
 
-  // WhatsApp functionality
+  // WhatsApp functionality - Send to chat without downloading
   const handleSendToWhatsApp = async (salesOrder: any) => {
     try {
       setWhatsappStatus('');
@@ -3510,32 +3613,31 @@ function SalesOrderSection() {
         formattedNumber = '91' + formattedNumber;
       }
       
-      // Generate PDF first if needed
-      let pdfGenerated = false;
-      try {
-        await handleDownloadSalesOrderPDF(salesOrder);
-        pdfGenerated = true;
-      } catch (error) {
-        toast({
-          title: "Warning", 
-          description: "PDF generation failed, opening WhatsApp without attachment",
-          variant: "destructive"
-        });
-      }
-      
-      // Create WhatsApp message
+      // Create WhatsApp message (NO PDF download)
       const clientName = getSalesOrderClientName(salesOrder);
-      const message = `Hello! Please find the Sales Order ${salesOrder.orderNumber} for ${clientName}. ${pdfGenerated ? 'PDF has been generated for download.' : ''}`;
+      const message = `Hello ${clientName}! 
+
+Sales Order Details:
+Order Number: ${salesOrder.orderNumber}
+Total Amount: ₹${parseFloat(salesOrder.totalAmount || 0).toFixed(2)}
+Status: ${salesOrder.status}
+
+Thank you for your business!
+
+Regards,
+M/S SRI HM BITUMEN CO
+📞 +91 8453059698
+📧 info.srihmbitumen@gmail.com`;
       
       // Open WhatsApp
       const whatsappUrl = `https://wa.me/${formattedNumber}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
       
       // Show success message
-      setWhatsappStatus(`WhatsApp opened with SO PDF for ${clientName}.`);
+      setWhatsappStatus(`WhatsApp chat opened for ${clientName} with order details.`);
       toast({
         title: "Success",
-        description: `WhatsApp opened with SO PDF for ${clientName}.`
+        description: `WhatsApp chat opened for ${clientName} with order details.`
       });
       
       // Clear status after 5 seconds
@@ -3554,6 +3656,54 @@ function SalesOrderSection() {
   const handleViewSalesOrder = (salesOrder: any) => {
     setSelectedSalesOrder(salesOrder);
     setIsViewDialogOpen(true);
+  };
+
+  // Email functionality - Send PDF to client email
+  const handleSendToEmail = async (salesOrder: any) => {
+    try {
+      // Get client details and email
+      const client = (clients as any[])?.find((c: any) => c.id === salesOrder.clientId);
+      const clientEmail = client?.email;
+      
+      if (!clientEmail) {
+        toast({
+          title: "Error",
+          description: "Client email not available. Please add it in client details.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Generate PDF and send via email
+      const quotation = (quotations as any[])?.find((q: any) => q.id === salesOrder.quotationId);
+      
+      const response = await fetch('/api/send-sales-order-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          salesOrder,
+          client,
+          quotation,
+          toEmail: clientEmail
+        })
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Email Sent",
+          description: `Sales order PDF sent to ${clientEmail} successfully.`
+        });
+      } else {
+        throw new Error('Failed to send email');
+      }
+      
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send email. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Edit functionality with permission check
@@ -3750,11 +3900,12 @@ function SalesOrderSection() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleDownloadSalesOrderPDF(salesOrder)}
-                          data-testid={`button-download-sales-order-${salesOrder.id}`}
-                          title="Download PDF"
+                          onClick={() => handleSendToEmail(salesOrder)}
+                          data-testid={`button-email-sales-order-${salesOrder.id}`}
+                          title="Send to Email"
+                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
                         >
-                          <Download className="h-4 w-4" />
+                          <Mail className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
@@ -3929,33 +4080,21 @@ function SalesOrderSection() {
           <DialogHeader>
             <DialogTitle>Edit Sales Order</DialogTitle>
             <DialogDescription>
-              Update sales order information and status
+              Update sales order status and delivery information
             </DialogDescription>
           </DialogHeader>
           
           {selectedSalesOrder && (
-            <div className="space-y-4">
-              <div className="text-center py-8">
-                <Edit className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-medium mb-2">Edit Sales Order</h3>
-                <p className="text-muted-foreground mb-4">
-                  Sales order editing functionality will be implemented based on your specific requirements.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Order Number: {selectedSalesOrder.orderNumber}
-                </p>
-              </div>
-            </div>
+            <EditSalesOrderForm 
+              salesOrder={selectedSalesOrder} 
+              onClose={() => setIsEditDialogOpen(false)}
+              onSave={() => {
+                setIsEditDialogOpen(false);
+                // Refresh data
+                queryClient.invalidateQueries({ queryKey: ['/api/sales-orders'] });
+              }}
+            />
           )}
-
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button>
-              Save Changes
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
