@@ -254,14 +254,34 @@ export default function Clients() {
 
   const clientMutation = useMutation({
     mutationFn: async (data: ExtendedClient) => {
-      // Separate shipping addresses from client data
-      const { shippingAddresses, ...clientData } = data;
+      // Remove non-backend fields and prepare data
+      const {
+        shippingAddresses,
+        lastContactDate,
+        nextFollowUpDate,
+        gstCertificateUploaded,
+        panCopyUploaded,
+        securityChequeUploaded,
+        aadharCardUploaded,
+        agreementUploaded,
+        poRateContractUploaded,
+        ...clientData
+      } = data;
+      
+      // Ensure numeric fields are properly formatted
+      const processedClientData = {
+        ...clientData,
+        creditLimit: clientData.creditLimit === "" ? null : clientData.creditLimit,
+        interestPercent: clientData.interestPercent === "" ? null : clientData.interestPercent,
+        primarySalesPersonId: clientData.primarySalesPersonId || null,
+        incorporationDate: clientData.incorporationDate || null,
+      };
       
       if (editingClient) {
-        const updatedClient = await apiCall(`/api/clients/${editingClient.id}`, "PUT", clientData);
+        const updatedClient = await apiCall(`/api/clients/${editingClient.id}`, "PUT", processedClientData);
         return updatedClient;
       } else {
-        const newClient = await apiCall("/api/clients", "POST", clientData);
+        const newClient = await apiCall("/api/clients", "POST", processedClientData);
         return newClient;
       }
     },
