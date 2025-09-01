@@ -2834,16 +2834,16 @@ function QuotationSection() {
           freight: 0,
           total: total,
           companyDetails: {
-            name: 'Your Company Name',
-            address: 'Address Line 1\nCity, State, ZIP',
-            gstNumber: 'GST_NUMBER_HERE',
-            mobile: '+91-XXXXXXXXXX',
-            email: 'info@company.com',
+            name: 'M/S SRI HM BITUMEN CO',
+            address: 'Dag No : 1071, Patta No : 264, Mkirpara, Chakardaigaon\nMouza - Ramcharani, Guwahati, Assam - 781035',
+            gstNumber: '18CGMPP6536N2ZG',
+            mobile: '+91 8453059698',
+            email: 'info.srihmbitumen@gmail.com',
             bankDetails: {
-              bankName: 'Your Bank Name',
-              accountNumber: 'ACCOUNT_NUMBER',
-              branch: 'Branch Name',
-              ifscCode: 'IFSC_CODE'
+              bankName: 'State Bank of India',
+              accountNumber: '40464693538',
+              branch: 'Guwahati Branch',
+              ifscCode: 'SBIN0040464'
             }
           }
         };
@@ -3534,16 +3534,16 @@ function SalesOrderSection() {
         freight: 0,
         total: total,
         companyDetails: {
-          name: 'Your Company Name',
-          address: 'Address Line 1\nCity, State, ZIP',
-          gstNumber: 'GST_NUMBER_HERE',
-          mobile: '+91-XXXXXXXXXX',
-          email: 'info@company.com',
+          name: 'M/S SRI HM BITUMEN CO',
+          address: 'Dag No : 1071, Patta No : 264, Mkirpara, Chakardaigaon\nMouza - Ramcharani, Guwahati, Assam - 781035',
+          gstNumber: '18CGMPP6536N2ZG',
+          mobile: '+91 8453059698',
+          email: 'info.srihmbitumen@gmail.com',
           bankDetails: {
-            bankName: 'Your Bank Name',
-            accountNumber: 'ACCOUNT_NUMBER',
-            branch: 'Branch Name',
-            ifscCode: 'IFSC_CODE'
+            bankName: 'State Bank of India',
+            accountNumber: '40464693538',
+            branch: 'Guwahati Branch',
+            ifscCode: 'SBIN0040464'
           }
         }
       };
