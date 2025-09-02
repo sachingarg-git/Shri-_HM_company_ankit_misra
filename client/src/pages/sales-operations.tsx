@@ -3206,28 +3206,14 @@ M/S SRI HM BITUMEN CO`;
                             <CheckCircle className="h-4 w-4 mr-1" />
                             Sales Order
                           </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                data-testid={`button-download-${quotation.id}`}
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem onClick={() => handleDownloadPDF(quotation, 'bitumen')}>
-                                🏭 Bitumen Industry Format
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDownloadPDF(quotation, 'professional')}>
-                                💼 Professional Format
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDownloadPDF(quotation, 'advanced')}>
-                                ⭐ Advanced Format
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownloadPDF(quotation, 'bitumen')}
+                            data-testid={`button-download-${quotation.id}`}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button size="sm" variant="outline" data-testid={`button-actions-${quotation.id}`}>
