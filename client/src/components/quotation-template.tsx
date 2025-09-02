@@ -48,10 +48,15 @@ export function generateBitumenQuotationPDF(quotationData: QuotationData) {
   
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 10;
-  const tableWidth = pageWidth - 2 * margin;
+  const margin = 15;
+  const contentWidth = pageWidth - 2 * margin;
   
-  // Helper function to add text with proper encoding
+  // Colors
+  const redAccent = [220, 50, 47]; // Red accent color
+  const lightGray = [240, 240, 240];
+  const black = [0, 0, 0];
+  
+  // Helper functions
   const addText = (text: string, x: number, y: number, options?: { align?: 'left' | 'center' | 'right' }) => {
     if (options?.align === 'center') {
       doc.text(text, x, y, { align: 'center' });
@@ -62,410 +67,359 @@ export function generateBitumenQuotationPDF(quotationData: QuotationData) {
     }
   };
 
-  // Helper function for white text on colored backgrounds
-  const addWhiteText = (text: string, x: number, y: number, options?: { align?: 'left' | 'center' | 'right' }) => {
-    doc.setTextColor(255, 255, 255);
+  const addRedText = (text: string, x: number, y: number, options?: { align?: 'left' | 'center' | 'right' }) => {
+    doc.setTextColor(redAccent[0], redAccent[1], redAccent[2]);
     addText(text, x, y, options);
+    doc.setTextColor(black[0], black[1], black[2]); // Reset to black
   };
   
-  let currentY = margin + 5;
+  let currentY = margin;
   
-  // Company Header Section - KEEP EXACTLY THE SAME AS SAMPLE
+  // Header Section - Company logo on left, details on right
   const headerHeight = 35;
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.5);
-  doc.rect(margin, currentY, tableWidth, headerHeight);
-
-  // Company Logo - Create orange HM logo matching sample
-  doc.setFillColor(255, 140, 0);
-  doc.circle(margin + 15, currentY + 17, 12, 'F');
   
-  // HM text in white on logo
+  // Company Logo (left side) - Simple HM logo
+  doc.setFillColor(redAccent[0], redAccent[1], redAccent[2]);
+  doc.circle(margin + 15, currentY + 17, 12, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   addText('HM', margin + 11, currentY + 20);
   
-  // Add "BITUMEN COMPANY" below logo
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(6);
-  addText('BITUMEN COMPANY', margin + 2, currentY + 30);
-
-  // Company name in RED/ORANGE - EXACTLY AS IN SAMPLE
-  doc.setTextColor(216, 69, 11);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  addText('M/S SRI HM BITUMEN CO', margin + 35, currentY + 12);
-  
-  // Company details in black - EXACTLY AS IN SAMPLE
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  addText('Dag No : 1071, Patta No : 264, Mkirpara, Chakardaigaon', margin + 35, currentY + 18);
-  addText('Mouza - Ramcharani, Guwahati, Assam - 781035', margin + 35, currentY + 22);
-  addText('GST No : 18CGMPP6536N2ZG', margin + 35, currentY + 26);
-  addText('Mobile No : +91 8453059698', margin + 35, currentY + 30);
-  addText('Email ID : info.srihmbitumen@gmail.com', margin + 35, currentY + 34);
-  
-  currentY += headerHeight + 5;
-  
-  // Sales Order Title - centered and styled like sample
-  doc.setTextColor(216, 69, 11);
+  // Company details (right side)
+  const detailsX = margin + contentWidth - 100;
+  doc.setTextColor(redAccent[0], redAccent[1], redAccent[2]);
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  addText('Sales Order', pageWidth/2, currentY, { align: 'center' });
-  currentY += 10;
-
-  // Row 1: Sales Order No, Date, Delivery Terms with orange headers - exact match
-  const boxHeight = 15;
-  const thirdWidth = tableWidth / 3;
+  addText('M/S SRI HM BITUMEN CO', detailsX, currentY + 8);
   
-  doc.setFillColor(216, 69, 11);
-  doc.rect(margin, currentY, thirdWidth, boxHeight, 'F');
-  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight, 'F');
-  doc.rect(margin + 2*thirdWidth, currentY, thirdWidth, boxHeight, 'F');
+  doc.setTextColor(black[0], black[1], black[2]);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  addText('Dag No: 1071, Patta No: 264, Mkirpara', detailsX, currentY + 14);
+  addText('Chakardaigaon, Guwahati, Assam - 781035', detailsX, currentY + 18);
+  addText('GST: 18CGMPP6536N2ZG', detailsX, currentY + 22);
+  addText('Mobile: +91 8453059698', detailsX, currentY + 26);
+  addText('Email: info.srihmbitumen@gmail.com', detailsX, currentY + 30);
   
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(margin, currentY, tableWidth, boxHeight);
-  doc.line(margin + thirdWidth, currentY, margin + thirdWidth, currentY + boxHeight);
-  doc.line(margin + 2*thirdWidth, currentY, margin + 2*thirdWidth, currentY + boxHeight);
+  currentY += headerHeight + 10;
+  
+  // Main title - centered
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  addRedText('Sales Order', pageWidth/2, currentY, { align: 'center' });
+  currentY += 15;
+  
+  // Top info boxes - 6 boxes in one row
+  const boxHeight = 20;
+  const boxWidth = contentWidth / 6;
+  const boxes = [
+    { label: 'Sales Order No', value: quotationData.quotationNumber },
+    { label: 'Sales Order Date', value: quotationData.quotationDate.toLocaleDateString('en-GB') },
+    { label: 'Delivery Terms', value: quotationData.deliveryTerms || 'Standard terms' },
+    { label: 'Destination', value: quotationData.destination || 'As per requirement' },
+    { label: 'Loading From', value: quotationData.loadingFrom || 'Kandla' },
+    { label: 'Payment Terms', value: quotationData.paymentTerms || '30 Days Credit' }
+  ];
+  
+  // Draw headers with red background
+  doc.setFillColor(redAccent[0], redAccent[1], redAccent[2]);
+  for (let i = 0; i < boxes.length; i++) {
+    const x = margin + i * boxWidth;
+    doc.rect(x, currentY, boxWidth, boxHeight/2, 'F');
+    doc.setDrawColor(black[0], black[1], black[2]);
+    doc.rect(x, currentY, boxWidth, boxHeight/2);
+  }
+  
+  // Add header text
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  for (let i = 0; i < boxes.length; i++) {
+    const x = margin + i * boxWidth;
+    addText(boxes[i].label, x + boxWidth/2, currentY + 7, { align: 'center' });
+  }
+  
+  currentY += boxHeight/2;
+  
+  // Draw value boxes
+  doc.setFillColor(255, 255, 255);
+  doc.setTextColor(black[0], black[1], black[2]);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  for (let i = 0; i < boxes.length; i++) {
+    const x = margin + i * boxWidth;
+    doc.rect(x, currentY, boxWidth, boxHeight/2, 'F');
+    doc.rect(x, currentY, boxWidth, boxHeight/2);
+    
+    // Wrap long text
+    const text = boxes[i].value;
+    if (text.length > 12) {
+      const words = text.split(' ');
+      if (words.length > 1) {
+        addText(words[0], x + boxWidth/2, currentY + 4, { align: 'center' });
+        addText(words.slice(1).join(' '), x + boxWidth/2, currentY + 8, { align: 'center' });
+      } else {
+        addText(text.substring(0, 12), x + boxWidth/2, currentY + 6, { align: 'center' });
+      }
+    } else {
+      addText(text, x + boxWidth/2, currentY + 6, { align: 'center' });
+    }
+  }
+  
+  currentY += boxHeight/2 + 10;
+  
+  // Bill To / Ship To section
+  const halfWidth = contentWidth / 2;
+  const clientSectionHeight = 45;
+  
+  // Headers
+  doc.setFillColor(redAccent[0], redAccent[1], redAccent[2]);
+  doc.rect(margin, currentY, halfWidth - 1, 12, 'F');
+  doc.rect(margin + halfWidth + 1, currentY, halfWidth - 1, 12, 'F');
   
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(9);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  addWhiteText('Sales Order No.', margin + thirdWidth/2, currentY + 9, { align: 'center' });
-  addWhiteText('Sales Order Date', margin + thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
-  addWhiteText('Delivery Terms', margin + 2*thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
-  currentY += boxHeight;
+  addText('Bill To', margin + 5, currentY + 8);
+  addText('Ship To', margin + halfWidth + 6, currentY + 8);
   
-  // Values row - USE REAL DATA HERE
-  doc.setFillColor(255, 255, 255);
-  doc.rect(margin, currentY, tableWidth, boxHeight, 'F');
-  doc.rect(margin, currentY, tableWidth, boxHeight);
-  doc.line(margin + thirdWidth, currentY, margin + thirdWidth, currentY + boxHeight);
-  doc.line(margin + 2*thirdWidth, currentY, margin + 2*thirdWidth, currentY + boxHeight);
+  currentY += 12;
   
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  addText(quotationData.quotationNumber, margin + thirdWidth/2, currentY + 9, { align: 'center' });
-  addText(quotationData.quotationDate.toLocaleDateString('en-GB'), margin + thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
-  addText(quotationData.deliveryTerms || 'Standard delivery terms', margin + 2*thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
-  currentY += boxHeight;
+  // Content boxes
+  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+  doc.rect(margin, currentY, halfWidth - 1, clientSectionHeight, 'F');
+  doc.rect(margin + halfWidth + 1, currentY, halfWidth - 1, clientSectionHeight, 'F');
+  doc.setDrawColor(black[0], black[1], black[2]);
+  doc.rect(margin, currentY, halfWidth - 1, clientSectionHeight);
+  doc.rect(margin + halfWidth + 1, currentY, halfWidth - 1, clientSectionHeight);
   
-  // Row 2: Payment Terms, Destination, Loading From with orange headers
-  const tallBoxHeight = 25;
-  doc.setFillColor(216, 69, 11);
-  doc.rect(margin, currentY, thirdWidth, boxHeight, 'F');
-  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight, 'F');
-  doc.rect(margin + 2*thirdWidth, currentY, thirdWidth, boxHeight, 'F');
-  
-  doc.rect(margin, currentY, tableWidth, tallBoxHeight);
-  doc.line(margin + thirdWidth, currentY, margin + thirdWidth, currentY + tallBoxHeight);
-  doc.line(margin + 2*thirdWidth, currentY, margin + 2*thirdWidth, currentY + tallBoxHeight);
-  
-  addWhiteText('Payment Terms', margin + thirdWidth/2, currentY + 9, { align: 'center' });
-  addWhiteText('Destination', margin + thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
-  addWhiteText('Loading From', margin + 2*thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
-  
-  // Values in white sections - USE REAL DATA HERE
-  doc.setFillColor(255, 255, 255);
-  const valueY = currentY + boxHeight;
-  const valueHeight = tallBoxHeight - boxHeight;
-  doc.rect(margin, valueY, thirdWidth, valueHeight, 'F');
-  doc.rect(margin + thirdWidth, valueY, thirdWidth, valueHeight, 'F');
-  doc.rect(margin + 2*thirdWidth, valueY, thirdWidth, valueHeight, 'F');
-  
-  doc.setTextColor(0, 0, 0);
+  doc.setTextColor(black[0], black[1], black[2]);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  addText(quotationData.paymentTerms || '30 Days Credit. Interest will be charged', margin + 2, currentY + 17);
-  addText('Day 1st Of Billing @18% P.A', margin + 2, currentY + 23);
-  addText(quotationData.destination || 'Kandla', margin + thirdWidth + 2, currentY + 20);
-  addText(quotationData.loadingFrom || 'Kandla', margin + 2*thirdWidth + 2, currentY + 20);
-  currentY += tallBoxHeight + 2;
   
-  // Bill To and Ship To sections side by side
-  const halfWidth = tableWidth / 2;
-  const clientSectionHeight = 50;
-  
-  // Bill To header
-  doc.setFillColor(216, 69, 11);
-  doc.rect(margin, currentY, halfWidth, boxHeight, 'F');
-  doc.rect(margin, currentY, halfWidth, boxHeight);
-  addWhiteText('Bill To :', margin + 2, currentY + 9);
-  
-  // Ship To header
-  doc.rect(margin + halfWidth, currentY, halfWidth, boxHeight, 'F');
-  doc.rect(margin + halfWidth, currentY, halfWidth, boxHeight);
-  addWhiteText('Ship To :', margin + halfWidth + 2, currentY + 9);
-  currentY += boxHeight;
-  
-  // Bill To and Ship To content - USE REAL CLIENT DATA HERE
-  doc.setFillColor(240, 240, 240);
-  doc.rect(margin, currentY, halfWidth, clientSectionHeight, 'F');
-  doc.rect(margin + halfWidth, currentY, halfWidth, clientSectionHeight, 'F');
-  doc.rect(margin, currentY, tableWidth, clientSectionHeight);
-  doc.line(margin + halfWidth, currentY, margin + halfWidth, currentY + clientSectionHeight);
-  
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
   let clientY = currentY + 6;
-  addText(`Name : ${quotationData.client.name}`, margin + 2, clientY);
-  addText(`Name : ${quotationData.client.name}`, margin + halfWidth + 2, clientY);
-  clientY += 7;
-  addText(`GST No : ${quotationData.client.gstNumber || 'N/A'}`, margin + 2, clientY);
-  addText(`GST No : ${quotationData.client.gstNumber || 'N/A'}`, margin + halfWidth + 2, clientY);
-  clientY += 7;
-  addText(`Address : ${quotationData.client.address || 'N/A'}`, margin + 2, clientY);
-  addText(`Address : ${quotationData.client.address || 'N/A'}`, margin + halfWidth + 2, clientY);
-  clientY += 7;
-  addText(`State : ${quotationData.client.state || 'N/A'}`, margin + 2, clientY);
-  addText(`State : ${quotationData.client.state || 'N/A'}`, margin + halfWidth + 2, clientY);
-  clientY += 7;
-  addText(`Pin Code : ${quotationData.client.pinCode || 'N/A'}`, margin + 2, clientY);
-  addText(`Pin Code : ${quotationData.client.pinCode || 'N/A'}`, margin + halfWidth + 2, clientY);
-  clientY += 7;
-  addText(`Mobile No : ${quotationData.client.mobileNumber || '0000000000'}`, margin + 2, clientY);
-  addText(`Mobile No : ${quotationData.client.mobileNumber || '0000000000'}`, margin + halfWidth + 2, clientY);
-  clientY += 7;
-  addText(`Email ID : ${quotationData.client.email || 'notavailable@email.com'}`, margin + 2, clientY);
-  addText(`Email ID : ${quotationData.client.email || 'notavailable@email.com'}`, margin + halfWidth + 2, clientY);
+  const leftX = margin + 3;
+  const rightX = margin + halfWidth + 4;
   
-  currentY += clientSectionHeight + 3;
+  // Client details - both sides get same data
+  const clientFields = [
+    { label: 'Name', value: quotationData.client.name },
+    { label: 'Tax/GST No', value: quotationData.client.gstNumber || 'N/A' },
+    { label: 'Address', value: quotationData.client.address || 'N/A' },
+    { label: 'State', value: quotationData.client.state || 'N/A' },
+    { label: 'Pin Code', value: quotationData.client.pinCode || 'N/A' },
+    { label: 'Mobile', value: quotationData.client.mobileNumber || 'N/A' },
+    { label: 'Email', value: quotationData.client.email || 'N/A' }
+  ];
   
-  // Items table with exact layout from sample
-  const headerHeightTable = 12;
-  const colWidths = [80, 20, 20, 25, 30, 30, 35]; // Matching sample proportions
+  for (const field of clientFields) {
+    addText(`${field.label}: ${field.value}`, leftX, clientY);
+    addText(`${field.label}: ${field.value}`, rightX, clientY);
+    clientY += 6;
+  }
+  
+  currentY += clientSectionHeight + 10;
+  
+  // Items Table
+  const tableHeaders = ['Item #', 'Item Name/Description', 'Qty', 'Unit', 'Ex-Factory Rate', 'Amount (₹)', 'Tax %', 'Total Amount (₹)'];
+  const colWidths = [15, 50, 15, 15, 25, 25, 15, 30]; // Adjusted widths
   let colPositions = [margin];
   for (let i = 0; i < colWidths.length - 1; i++) {
     colPositions.push(colPositions[i] + colWidths[i]);
   }
   
-  // Table headers with orange background - EXACT AS SAMPLE
-  doc.setFillColor(216, 69, 11);
-  doc.rect(margin, currentY, tableWidth, headerHeightTable, 'F');
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(margin, currentY, tableWidth, headerHeightTable);
+  const tableHeaderHeight = 12;
   
-  // Draw column separators
-  colPositions.forEach(pos => {
-    doc.line(pos, currentY, pos, currentY + headerHeightTable);
-  });
-  doc.line(margin + tableWidth, currentY, margin + tableWidth, currentY + headerHeightTable);
+  // Table headers
+  doc.setFillColor(redAccent[0], redAccent[1], redAccent[2]);
+  doc.rect(margin, currentY, contentWidth, tableHeaderHeight, 'F');
+  doc.setDrawColor(black[0], black[1], black[2]);
+  doc.rect(margin, currentY, contentWidth, tableHeaderHeight);
+  
+  // Column separators
+  for (let i = 1; i < colPositions.length; i++) {
+    doc.line(colPositions[i], currentY, colPositions[i], currentY + tableHeaderHeight);
+  }
   
   doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  addWhiteText('Item #', colPositions[0] + 2, currentY + 8);
-  addWhiteText('Qty', colPositions[1] + 2, currentY + 8);
-  addWhiteText('Unit', colPositions[2] + 2, currentY + 8);
-  addWhiteText('Ex Factory Rate', colPositions[3] + 2, currentY + 5);
-  addWhiteText('Amount (₹)', colPositions[4] + 2, currentY + 5);
-  addWhiteText('GST@18% (₹)', colPositions[5] + 2, currentY + 5);
-  addWhiteText('Total Amount(₹)', colPositions[6] + 2, currentY + 5);
+  doc.setFont('helvetica', 'bold');
   
-  currentY += headerHeightTable;
+  for (let i = 0; i < tableHeaders.length; i++) {
+    const x = colPositions[i] + 2;
+    addText(tableHeaders[i], x, currentY + 8);
+  }
   
-  // Table data rows - USE REAL ITEM DATA HERE
-  doc.setTextColor(0, 0, 0);
+  currentY += tableHeaderHeight;
+  
+  // Table rows
+  doc.setTextColor(black[0], black[1], black[2]);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  
   const rowHeight = 12;
   
-  // Dynamic items from quotation data
   quotationData.items.forEach((item, index) => {
-    doc.setFillColor(255, 255, 255);
-    doc.rect(margin, currentY, tableWidth, rowHeight, 'F');
-    
-    // Draw borders for this row
-    doc.setDrawColor(0, 0, 0);
-    doc.rect(margin, currentY, tableWidth, rowHeight);
-    colPositions.forEach(pos => {
-      doc.line(pos, currentY, pos, currentY + rowHeight);
-    });
-    doc.line(margin + tableWidth, currentY, margin + tableWidth, currentY + rowHeight);
-    
-    // Split long descriptions into multiple lines
-    const description = item.description;
-    if (description.length > 25) {
-      const words = description.split(' ');
-      const midPoint = Math.ceil(words.length / 2);
-      addText(words.slice(0, midPoint).join(' '), colPositions[0] + 2, currentY + 5);
-      addText(words.slice(midPoint).join(' '), colPositions[0] + 2, currentY + 9);
-    } else {
-      addText(description, colPositions[0] + 2, currentY + 7);
+    // Alternate row colors
+    if (index % 2 === 0) {
+      doc.setFillColor(250, 250, 250);
+      doc.rect(margin, currentY, contentWidth, rowHeight, 'F');
     }
     
-    addText(item.quantity.toString(), colPositions[1] + 2, currentY + 7);
-    addText(item.unit, colPositions[2] + 2, currentY + 7);
-    addText(item.rate.toFixed(0), colPositions[3] + 2, currentY + 7);
-    addText(item.amount.toFixed(0), colPositions[4] + 2, currentY + 7);
-    addText((item.gstAmount || item.amount * 0.18).toFixed(0), colPositions[5] + 2, currentY + 7);
-    addText(item.totalAmount.toFixed(0), colPositions[6] + 2, currentY + 7);
+    doc.setDrawColor(black[0], black[1], black[2]);
+    doc.rect(margin, currentY, contentWidth, rowHeight);
+    
+    // Column separators
+    for (let i = 1; i < colPositions.length; i++) {
+      doc.line(colPositions[i], currentY, colPositions[i], currentY + rowHeight);
+    }
+    
+    // Data
+    addText((index + 1).toString(), colPositions[0] + 2, currentY + 7);
+    addText(item.description, colPositions[1] + 2, currentY + 7);
+    addText(item.quantity.toString(), colPositions[2] + 2, currentY + 7);
+    addText(item.unit, colPositions[3] + 2, currentY + 7);
+    addText(item.rate.toFixed(0), colPositions[4] + 2, currentY + 7);
+    addText(item.amount.toFixed(0), colPositions[5] + 2, currentY + 7);
+    addText('18%', colPositions[6] + 2, currentY + 7);
+    addText(item.totalAmount.toFixed(0), colPositions[7] + 2, currentY + 7);
     
     currentY += rowHeight;
   });
-
-  // Transport charges section if available
+  
+  // Transport charges row if present
   if (quotationData.transportCharges) {
-    doc.setFillColor(255, 255, 255);
-    doc.rect(margin, currentY, tableWidth, rowHeight, 'F');
+    doc.setFillColor(245, 245, 245);
+    doc.rect(margin, currentY, contentWidth, rowHeight, 'F');
+    doc.rect(margin, currentY, contentWidth, rowHeight);
     
-    // Draw borders for transport row
-    doc.rect(margin, currentY, tableWidth, rowHeight);
-    colPositions.forEach(pos => {
-      doc.line(pos, currentY, pos, currentY + rowHeight);
-    });
-    doc.line(margin + tableWidth, currentY, margin + tableWidth, currentY + rowHeight);
+    for (let i = 1; i < colPositions.length; i++) {
+      doc.line(colPositions[i], currentY, colPositions[i], currentY + rowHeight);
+    }
     
-    addText('Transport Charges', colPositions[0] + 2, currentY + 7);
-    addText(quotationData.transportCharges.quantity.toString(), colPositions[1] + 2, currentY + 7);
-    addText(quotationData.transportCharges.unit, colPositions[2] + 2, currentY + 7);
-    addText(quotationData.transportCharges.rate.toFixed(0), colPositions[3] + 2, currentY + 7);
-    addText(quotationData.transportCharges.amount.toFixed(0), colPositions[4] + 2, currentY + 7);
-    // Leave GST and total blank for transport
+    addText((quotationData.items.length + 1).toString(), colPositions[0] + 2, currentY + 7);
+    addText('Transport Charges', colPositions[1] + 2, currentY + 7);
+    addText(quotationData.transportCharges.quantity.toString(), colPositions[2] + 2, currentY + 7);
+    addText(quotationData.transportCharges.unit, colPositions[3] + 2, currentY + 7);
+    addText(quotationData.transportCharges.rate.toFixed(0), colPositions[4] + 2, currentY + 7);
+    addText(quotationData.transportCharges.amount.toFixed(0), colPositions[5] + 2, currentY + 7);
+    addText('-', colPositions[6] + 2, currentY + 7);
+    addText(quotationData.transportCharges.amount.toFixed(0), colPositions[7] + 2, currentY + 7);
     
-    currentY += rowHeight + 2;
+    currentY += rowHeight;
   }
-
-  // Sales Person Name and Totals section - side by side layout
-  const leftSectionWidth = tableWidth * 0.6;
-  const rightSectionWidth = tableWidth * 0.4;
-  const rightSectionX = margin + leftSectionWidth;
   
-  // Sales Person Name section - left side
-  doc.setFillColor(216, 69, 11);
-  doc.rect(margin, currentY, leftSectionWidth, boxHeight, 'F');
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(margin, currentY, leftSectionWidth, boxHeight);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
+  currentY += 10;
+  
+  // Summary block - right aligned
+  const summaryWidth = 60;
+  const summaryX = margin + contentWidth - summaryWidth;
+  const summaryRowHeight = 10;
+  
+  const summaryItems = [
+    { label: 'Sub-Total', value: quotationData.subtotal },
+    { label: 'Freight/Transport', value: quotationData.freight || 0 },
+    { label: 'Tax Total', value: quotationData.gstAmount },
+    { label: 'Grand Total', value: quotationData.total, isBold: true }
+  ];
+  
+  summaryItems.forEach((item, index) => {
+    if (item.isBold) {
+      doc.setFillColor(redAccent[0], redAccent[1], redAccent[2]);
+      doc.rect(summaryX, currentY, summaryWidth, summaryRowHeight, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+    } else {
+      doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+      doc.rect(summaryX, currentY, summaryWidth, summaryRowHeight, 'F');
+      doc.setTextColor(black[0], black[1], black[2]);
+      doc.setFont('helvetica', 'normal');
+    }
+    
+    doc.rect(summaryX, currentY, summaryWidth, summaryRowHeight);
+    doc.setFontSize(9);
+    addText(item.label, summaryX + 2, currentY + 7);
+    addText(`₹${item.value.toFixed(0)}`, summaryX + summaryWidth - 2, currentY + 7, { align: 'right' });
+    
+    currentY += summaryRowHeight;
+  });
+  
+  currentY += 10;
+  
+  // Sales person & notes
+  doc.setTextColor(black[0], black[1], black[2]);
   doc.setFontSize(9);
-  addWhiteText('Sales Person Name:', margin + 2, currentY + 9);
+  doc.setFont('helvetica', 'bold');
+  addText('Sales Person Name:', margin, currentY);
+  addText(quotationData.salesPersonName || 'System Administrator', margin + 35, currentY);
+  currentY += 8;
   
-  // SubTotal header - right side
-  doc.setFillColor(216, 69, 11);
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight, 'F');
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight);
-  addWhiteText('SubTotal', rightSectionX + 2, currentY + 9);
-  currentY += boxHeight;
-  
-  // Sales Person value - USE REAL DATA
-  doc.setFillColor(255, 255, 255);
-  doc.rect(margin, currentY, leftSectionWidth, boxHeight, 'F');
-  doc.rect(margin, currentY, leftSectionWidth, boxHeight);
-  doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
-  addText(quotationData.salesPersonName || 'System Administrator', margin + 2, currentY + 9);
-  
-  // SubTotal value - USE REAL DATA
-  doc.setFillColor(255, 255, 255);
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight, 'F');
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight);
-  addText(quotationData.subtotal.toFixed(0), rightSectionX + 2, currentY + 9);
-  currentY += boxHeight;
-  
-  // Description header
-  doc.setFillColor(216, 69, 11);
-  doc.rect(margin, currentY, leftSectionWidth, boxHeight, 'F');
-  doc.rect(margin, currentY, leftSectionWidth, boxHeight);
-  addWhiteText('Description :', margin + 2, currentY + 9);
-  
-  // Freight header
-  doc.setFillColor(216, 69, 11);
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight, 'F');
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight);
-  addWhiteText('Freight', rightSectionX + 2, currentY + 9);
-  currentY += boxHeight;
-  
-  // Description content - left side - KEEP SAME AS SAMPLE
-  const descriptionHeight = 25;
-  doc.setFillColor(255, 255, 255);
-  doc.rect(margin, currentY, leftSectionWidth, descriptionHeight, 'F');
-  doc.rect(margin, currentY, leftSectionWidth, descriptionHeight);
-  doc.setTextColor(0, 0, 0);
-  doc.setFont('helvetica', 'normal');
+  addText('Description/Notes:', margin, currentY);
+  currentY += 5;
   doc.setFontSize(7);
-  addText('Note- Above Payment terms Not included in Transportation. Transportation payment', margin + 2, currentY + 8);
-  addText('should be made on before unloading.', margin + 2, currentY + 15);
+  addText('Payment terms shown here do not include transport unless stated.', margin, currentY);
+  currentY += 10;
   
-  // Freight value - USE REAL DATA
-  doc.setFillColor(255, 255, 255);
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight, 'F');
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight);
-  addText((quotationData.freight || 0).toFixed(0), rightSectionX + 2, currentY + 9);
-  currentY += Math.max(descriptionHeight, boxHeight);
-  
-  // Total header and value
-  doc.setFillColor(216, 69, 11);
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight, 'F');
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  addWhiteText('Total', rightSectionX + 2, currentY + 9);
-  currentY += boxHeight;
-  
-  doc.setFillColor(255, 255, 255);
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight, 'F');
-  doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight);
-  doc.setTextColor(0, 0, 0);
-  doc.setFont('helvetica', 'normal');
-  addText(quotationData.total.toFixed(0), rightSectionX + 2, currentY + 9);
-  currentY += boxHeight + 5;
-
-  // Terms and Bank Details section with orange headers - KEEP SAME AS SAMPLE
-  const leftTermsWidth = tableWidth * 0.65;
-  const rightBankWidth = tableWidth * 0.35;
-  const rightBankX = margin + leftTermsWidth;
-  
-  // Terms and Conditions header
-  doc.setFillColor(216, 69, 11);
-  doc.rect(margin, currentY, leftTermsWidth, boxHeight, 'F');
-  doc.rect(margin, currentY, leftTermsWidth, boxHeight);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
+  // Terms & Conditions
   doc.setFontSize(9);
-  addWhiteText('Terms and Conditions', margin + 2, currentY + 9);
+  doc.setFont('helvetica', 'bold');
+  addRedText('Terms & Conditions', margin, currentY);
+  currentY += 8;
   
-  // Bank Details header
-  doc.setFillColor(216, 69, 11);
-  doc.rect(rightBankX, currentY, rightBankWidth, boxHeight, 'F');
-  doc.rect(rightBankX, currentY, rightBankWidth, boxHeight);
-  addWhiteText('Bank Details', rightBankX + 2, currentY + 9);
-  currentY += boxHeight;
-  
-  // Terms and Conditions content - KEEP SAME AS SAMPLE
-  const termsHeight = 50;
-  doc.setFillColor(255, 255, 255);
-  doc.rect(margin, currentY, leftTermsWidth, termsHeight, 'F');
-  doc.rect(margin, currentY, leftTermsWidth, termsHeight);
-  
-  doc.setTextColor(0, 0, 0);
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  addText('- Payment Should be made within One of the Day of Billing.', margin + 2, currentY + 8);
-  addText('- Incase Of Late Payment, Credit Limit will be Reduced by 10%.', margin + 2, currentY + 14);
-  addText('- After the Payment of Interest to Late. Interest of 24% per annum i.e 2% per month', margin + 2, currentY + 20);
-  addText('  would be charged on due amount.', margin + 2, currentY + 26);
-  addText('- All Goverment Tax, Duty payment of bills must be charged "A/C Payee Only" and Drawn in Favour of', margin + 2, currentY + 32);
-  addText('  "M/s SRI HM BITUMEN CO" Only.', margin + 2, currentY + 38);
-  addText('- Subject to Guwahati Jurisdiction Only.', margin + 2, currentY + 44);
+  doc.setFont('helvetica', 'normal');
+  const terms = [
+    '• Payment should be made within one day of billing',
+    '• In case of late payment, credit limit will be reduced by 10%',
+    '• Interest of 24% per annum (2% per month) charged on overdue amounts',
+    '• All payments must be made by A/C Payee cheque only',
+    '• Subject to Guwahati jurisdiction only'
+  ];
   
-  // Bank Details content - KEEP SAME AS SAMPLE
-  doc.setFillColor(255, 255, 255);
-  doc.rect(rightBankX, currentY, rightBankWidth, termsHeight, 'F');
-  doc.rect(rightBankX, currentY, rightBankWidth, termsHeight);
+  terms.forEach(term => {
+    addText(term, margin, currentY);
+    currentY += 5;
+  });
   
-  addText('Bank Name : State Bank of India', rightBankX + 2, currentY + 8);
-  addText('Account No. : 40464693538', rightBankX + 2, currentY + 14);
-  addText('Branch : Paltan Bazar', rightBankX + 2, currentY + 20);
-  addText('IFSC Code : SBIN0040464', rightBankX + 2, currentY + 26);
+  currentY += 5;
   
-  // Save and download
+  // Bank Details - boxed
+  const bankWidth = 80;
+  const bankHeight = 25;
+  
+  doc.setFillColor(redAccent[0], redAccent[1], redAccent[2]);
+  doc.rect(margin, currentY, bankWidth, 8, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  addText('Bank Details', margin + 2, currentY + 6);
+  
+  currentY += 8;
+  doc.setFillColor(lightGray[0], lightGray[1], lightGray[2]);
+  doc.rect(margin, currentY, bankWidth, bankHeight - 8, 'F');
+  doc.rect(margin, currentY, bankWidth, bankHeight - 8);
+  
+  doc.setTextColor(black[0], black[1], black[2]);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  
+  addText('Bank Name: State Bank of India', margin + 2, currentY + 5);
+  addText('Account No: 40464693538', margin + 2, currentY + 9);
+  addText('Branch: Paltan Bazar', margin + 2, currentY + 13);
+  addText('IFSC Code: SBIN0040464', margin + 2, currentY + 17);
+  
+  currentY += bankHeight + 10;
+  
+  // Footer
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'italic');
+  addText('Email: info.srihmbitumen@gmail.com | Phone: +91 8453059698', margin, currentY);
+  
+  const signatureY = currentY + 15;
+  addText('Authorized Signatory: ________________', margin + contentWidth - 60, signatureY, { align: 'right' });
+  
+  // Save PDF
   const fileName = `Sales_Order_${quotationData.quotationNumber.replace(/[\/\\]/g, '_')}.pdf`;
   doc.save(fileName);
 }

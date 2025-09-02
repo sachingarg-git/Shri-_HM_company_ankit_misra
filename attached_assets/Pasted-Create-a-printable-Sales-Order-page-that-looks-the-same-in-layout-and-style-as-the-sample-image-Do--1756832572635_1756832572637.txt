@@ -1,0 +1,135 @@
+Create a printable Sales Order page that looks the same in layout and style as the sample image.
+Do not copy any text from the image. Use my own data. The page must pull details for the selected client from the database and fill every field automatically.
+
+Page style & look
+
+Clean, professional, single A4 page.
+
+Top header with my company logo on the left and company name + address + contact on the right.
+
+Main title centered: “Sales Order” in bold. Use a red accent color for titles and table headers, black for normal text, light gray for divider lines.
+
+Consistent spacing, neat borders, and equal padding inside all boxes.
+
+Ready for print and PDF download, with proper margins and page break if the items table is long.
+
+Top info boxes (one row, boxed)
+
+Box 1: Sales Order No → [OrderNumber]
+
+Box 2: Sales Order Date → [OrderDate]
+
+Box 3: Delivery Terms → [DeliveryTerms]
+
+Box 4: Destination → [Destination]
+
+Box 5: Loading From → [LoadingFrom]
+
+Box 6: Payment Terms → [PaymentTerms]
+
+Bill To / Ship To section (two columns)
+
+Left column title: Bill To
+
+Name → [BillToName]
+
+Tax/GST No → [BillToTaxNo]
+
+Address → [BillToAddress]
+
+State → [BillToState]
+
+Pin Code → [BillToPin]
+
+Mobile → [BillToPhone]
+
+Email → [BillToEmail]
+
+Right column title: Ship To
+
+Name → [ShipToName]
+
+Tax/GST No → [ShipToTaxNo]
+
+Address → [ShipToAddress]
+
+State → [ShipToState]
+
+Pin Code → [ShipToPin]
+
+Mobile → [ShipToPhone]
+
+Email → [ShipToEmail]
+
+Items table (full width, clear borders)
+Columns in this order:
+
+Item # (auto number)
+
+Item Name/Description → from [Items] list
+
+Qty → [Qty]
+
+Unit → [Unit]
+
+Ex-Factory Rate → [Rate]
+
+Amount (₹) = Qty × Rate
+
+Tax % → [TaxPercent] (e.g., GST)
+
+Total Amount (₹) = Amount + Tax
+
+Allow multiple item rows from the database.
+
+Add a row for Transport Charges when present, same formatting.
+
+Summary block (right aligned, boxed)
+
+Sub-Total → [SubTotal]
+
+Freight/Transport → [Freight]
+
+Tax Total → [TaxTotal]
+
+Grand Total (bold, larger) → [GrandTotal]
+
+Sales person & notes (simple text area)
+
+Sales Person Name → [SalesPerson]
+
+Description / Notes → [Notes]
+
+Small note: “Payment terms shown here do not include transport unless stated.”
+
+Terms & Conditions (bulleted list)
+
+Show 5–8 short points pulled from [TermsList].
+
+Keep the text small and tidy.
+
+Bank Details (boxed)
+
+Bank Name → [BankName]
+
+Account No → [AccountNumber]
+
+Branch → [BankBranch]
+
+IFSC Code → [IFSC]
+
+Footer
+
+Company email/phone again in small text.
+
+Space for Authorized Signatory.
+
+Behavior
+
+When I select a client or order, fill all fields from the database.
+
+All totals must calculate automatically from the items.
+
+If any field is missing, show a blank line instead of an error.
+
+Keep the exact layout and styling consistent every time.
