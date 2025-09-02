@@ -722,37 +722,25 @@ function ClientAttachmentsSection() {
                     {isUploaded ? (
                       <div className="space-y-2">
                         <Badge className="bg-green-100 text-green-800">Uploaded</Badge>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => {
-                              // View file in browser
-                              window.open(`/objects/uploads/${selectedClient.id}/${type}`, '_blank');
-                            }}
-                            data-testid={`button-view-${type}`}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => {
-                              // Download file
-                              const link = document.createElement('a');
-                              link.href = `/objects/uploads/${selectedClient.id}/${type}`;
-                              link.download = `${getAttachmentDisplayName(type)}_${selectedClient.name}`;
-                              link.click();
-                            }}
-                            data-testid={`button-download-${type}`}
-                          >
-                            <Download className="h-4 w-4 mr-1" />
-                            Download
-                          </Button>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => {
+                            // Direct download without preview
+                            const link = document.createElement('a');
+                            link.href = `/objects/uploads/${selectedClient.id}/${type}`;
+                            link.download = `${getAttachmentDisplayName(type)}_${selectedClient.name}`;
+                            link.target = '_blank';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                          data-testid={`button-download-${type}`}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Download Document
+                        </Button>
                       </div>
                     ) : (
                       <ObjectUploader
