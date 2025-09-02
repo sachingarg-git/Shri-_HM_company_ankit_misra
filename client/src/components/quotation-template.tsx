@@ -173,9 +173,9 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  addText(`SRIHM-SO/93/25-26`, margin + thirdWidth/2, currentY + 9, { align: 'center' });
+  addText(quotationData.quotationNumber, margin + thirdWidth/2, currentY + 9, { align: 'center' });
   addText(quotationData.quotationDate.toLocaleDateString('en-GB'), margin + thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
-  addText('Within 10 to 12 Days', margin + 2*thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
+  addText(quotationData.deliveryTerms || 'Within 10 to 12 Days', margin + 2*thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
   currentY += boxHeight;
   
   // Row 2: Payment Terms, Destination, Loading From with orange headers
@@ -212,10 +212,10 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  addText('30 Days Credit. Interest will be charged', margin + 2, currentY + 7);
+  addText(quotationData.paymentTerms || '30 Days Credit. Interest will be charged', margin + 2, currentY + 7);
   addText('Day 1st Of Billing @18% P.A', margin + 2, currentY + 13);
-  addText('Dhemaji', margin + thirdWidth + 2, currentY + 10);
-  addText('Kandla', margin + 2*thirdWidth + 2, currentY + 10);
+  addText(quotationData.destination || 'Dhemaji', margin + thirdWidth + 2, currentY + 10);
+  addText(quotationData.loadingFrom || 'Kandla', margin + 2*thirdWidth + 2, currentY + 10);
   currentY += tallBoxHeight + 2;
   
   // Bill To and Ship To sections side by side
@@ -256,23 +256,23 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   addText(`Name : ${quotationData.client.name}`, margin + 2, clientY);
   addText(`Name : ${quotationData.client.name}`, margin + halfWidth + 2, clientY);
   clientY += 7;
-  addText(`GST No : ${quotationData.client.gstNumber || '18CTQPK1818R3ZQ'}`, margin + 2, clientY);
-  addText(`GST No : ${quotationData.client.gstNumber || '18CTQPK1818R3ZQ'}`, margin + halfWidth + 2, clientY);
+  addText(`GST No : ${quotationData.client.gstNumber || 'N/A'}`, margin + 2, clientY);
+  addText(`GST No : ${quotationData.client.gstNumber || 'N/A'}`, margin + halfWidth + 2, clientY);
   clientY += 7;
-  addText(`Address : ${quotationData.client.address || 'WARD NO 5, 2 NO BHARALICHUK, DHEMAJI, Dhemaji.'}`, margin + 2, clientY);
-  addText(`Address : ${quotationData.client.address || 'WARD NO 5, 2 NO BHARALICHUK, DHEMAJI, Dhemaji.'}`, margin + halfWidth + 2, clientY);
+  addText(`Address : ${quotationData.client.address || 'N/A'}`, margin + 2, clientY);
+  addText(`Address : ${quotationData.client.address || 'N/A'}`, margin + halfWidth + 2, clientY);
   clientY += 7;
-  addText(`State : ${quotationData.client.state || 'ASSAM'}`, margin + 2, clientY);
-  addText(`State : ${quotationData.client.state || 'ASSAM'}`, margin + halfWidth + 2, clientY);
+  addText(`State : ${quotationData.client.state || 'N/A'}`, margin + 2, clientY);
+  addText(`State : ${quotationData.client.state || 'N/A'}`, margin + halfWidth + 2, clientY);
   clientY += 7;
-  addText(`Pin Code : ${quotationData.client.pinCode || '787057'}`, margin + 2, clientY);
-  addText(`Pin Code : ${quotationData.client.pinCode || '787057'}`, margin + halfWidth + 2, clientY);
+  addText(`Pin Code : ${quotationData.client.pinCode || 'N/A'}`, margin + 2, clientY);
+  addText(`Pin Code : ${quotationData.client.pinCode || 'N/A'}`, margin + halfWidth + 2, clientY);
   clientY += 7;
-  addText(`Mobile No : ${quotationData.client.mobileNumber || '9954307310'}`, margin + 2, clientY);
-  addText(`Mobile No : ${quotationData.client.mobileNumber || '9954307310'}`, margin + halfWidth + 2, clientY);
+  addText(`Mobile No : ${quotationData.client.mobileNumber || 'N/A'}`, margin + 2, clientY);
+  addText(`Mobile No : ${quotationData.client.mobileNumber || 'N/A'}`, margin + halfWidth + 2, clientY);
   clientY += 7;
-  addText(`Email ID : ${quotationData.client.email || 'bitupankonch9@gmail.com'}`, margin + 2, clientY);
-  addText(`Email ID : ${quotationData.client.email || 'bitupankonch9@gmail.com'}`, margin + halfWidth + 2, clientY);
+  addText(`Email ID : ${quotationData.client.email || 'N/A'}`, margin + 2, clientY);
+  addText(`Email ID : ${quotationData.client.email || 'N/A'}`, margin + halfWidth + 2, clientY);
   
   currentY += clientSectionHeight + 3;
   
@@ -333,48 +333,61 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   
   const rowHeight = 12;
   
-  // Main item - BITUMEN VG-30 PHONEIX EMBOSSED exactly like sample
-  doc.setFillColor(255, 255, 255);
-  doc.rect(margin, currentY, tableWidth, rowHeight, 'F');
-  
-  // Draw borders for this row
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(margin, currentY, tableWidth, rowHeight);
-  colPositions.forEach(pos => {
-    doc.line(pos, currentY, pos, currentY + rowHeight);
+  // Dynamic items from quotation data
+  quotationData.items.forEach((item, index) => {
+    doc.setFillColor(255, 255, 255);
+    doc.rect(margin, currentY, tableWidth, rowHeight, 'F');
+    
+    // Draw borders for this row
+    doc.setDrawColor(0, 0, 0);
+    doc.rect(margin, currentY, tableWidth, rowHeight);
+    colPositions.forEach(pos => {
+      doc.line(pos, currentY, pos, currentY + rowHeight);
+    });
+    doc.line(margin + tableWidth, currentY, margin + tableWidth, currentY + rowHeight);
+    
+    // Split long descriptions into multiple lines
+    const description = item.description;
+    if (description.length > 25) {
+      const words = description.split(' ');
+      const midPoint = Math.ceil(words.length / 2);
+      addText(words.slice(0, midPoint).join(' '), colPositions[0] + 2, currentY + 5);
+      addText(words.slice(midPoint).join(' '), colPositions[0] + 2, currentY + 9);
+    } else {
+      addText(description, colPositions[0] + 2, currentY + 7);
+    }
+    
+    addText(item.quantity.toString(), colPositions[1] + 2, currentY + 7);
+    addText(item.unit, colPositions[2] + 2, currentY + 7);
+    addText(item.rate.toFixed(0), colPositions[3] + 2, currentY + 7);
+    addText(item.amount.toFixed(0), colPositions[4] + 2, currentY + 7);
+    addText((item.gstAmount || item.amount * 0.18).toFixed(0), colPositions[5] + 2, currentY + 7);
+    addText(item.totalAmount.toFixed(0), colPositions[6] + 2, currentY + 7);
+    
+    currentY += rowHeight;
   });
-  doc.line(margin + tableWidth, currentY, margin + tableWidth, currentY + rowHeight);
-  
-  addText('BITUMEN VG-30 PHONEIX', colPositions[0] + 2, currentY + 5);
-  addText('EMBOSSED', colPositions[0] + 2, currentY + 9);
-  addText('40.7', colPositions[1] + 2, currentY + 7);
-  addText('MT', colPositions[2] + 2, currentY + 7);
-  addText('37300', colPositions[3] + 2, currentY + 7);
-  addText('1518110', colPositions[4] + 2, currentY + 7);
-  addText('273260', colPositions[5] + 2, currentY + 7);
-  addText('1791370', colPositions[6] + 2, currentY + 7);
-  
-  currentY += rowHeight;
 
-  // Transport charges section exactly like sample
-  doc.setFillColor(255, 255, 255);
-  doc.rect(margin, currentY, tableWidth, rowHeight, 'F');
-  
-  // Draw borders for transport row
-  doc.rect(margin, currentY, tableWidth, rowHeight);
-  colPositions.forEach(pos => {
-    doc.line(pos, currentY, pos, currentY + rowHeight);
-  });
-  doc.line(margin + tableWidth, currentY, margin + tableWidth, currentY + rowHeight);
-  
-  addText('Transport Charges', colPositions[0] + 2, currentY + 7);
-  addText('42', colPositions[1] + 2, currentY + 7);
-  addText('MT', colPositions[2] + 2, currentY + 7);
-  addText('7800', colPositions[3] + 2, currentY + 7);
-  addText('327600', colPositions[4] + 2, currentY + 7);
-  // Leave GST and total blank for transport
-  
-  currentY += rowHeight + 2;
+  // Transport charges section if available
+  if (quotationData.transportCharges) {
+    doc.setFillColor(255, 255, 255);
+    doc.rect(margin, currentY, tableWidth, rowHeight, 'F');
+    
+    // Draw borders for transport row
+    doc.rect(margin, currentY, tableWidth, rowHeight);
+    colPositions.forEach(pos => {
+      doc.line(pos, currentY, pos, currentY + rowHeight);
+    });
+    doc.line(margin + tableWidth, currentY, margin + tableWidth, currentY + rowHeight);
+    
+    addText('Transport Charges', colPositions[0] + 2, currentY + 7);
+    addText(quotationData.transportCharges.quantity.toString(), colPositions[1] + 2, currentY + 7);
+    addText(quotationData.transportCharges.unit, colPositions[2] + 2, currentY + 7);
+    addText(quotationData.transportCharges.rate.toFixed(0), colPositions[3] + 2, currentY + 7);
+    addText(quotationData.transportCharges.amount.toFixed(0), colPositions[4] + 2, currentY + 7);
+    // Leave GST and total blank for transport
+    
+    currentY += rowHeight + 2;
+  }
 
   // Sales Person Name and Totals section - side by side layout
   const leftSectionWidth = tableWidth * 0.6;
@@ -404,13 +417,13 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   doc.rect(margin, currentY, leftSectionWidth, boxHeight);
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
-  addText('Pradeep Bhuyan', margin + 2, currentY + 9);
+  addText(quotationData.salesPersonName || 'Sales Executive', margin + 2, currentY + 9);
   
-  // SubTotal value - exactly like sample
+  // SubTotal value - use actual data
   doc.setFillColor(255, 255, 255);
   doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight, 'F');
   doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight);
-  addText('1791370', rightSectionX + 2, currentY + 9);
+  addText(quotationData.subtotal.toFixed(0), rightSectionX + 2, currentY + 9);
   currentY += boxHeight;
   
   // Description header
@@ -443,7 +456,7 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   doc.setFillColor(255, 255, 255);
   doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight, 'F');
   doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight);
-  addText('327600', rightSectionX + 2, currentY + 9);
+  addText(quotationData.freight.toFixed(0), rightSectionX + 2, currentY + 9);
   currentY += Math.max(descriptionHeight, boxHeight);
   
   // Total header and value
@@ -460,7 +473,7 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight);
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
-  addText('2118970', rightSectionX + 2, currentY + 9);
+  addText(quotationData.total.toFixed(0), rightSectionX + 2, currentY + 9);
   currentY += boxHeight + 5;
 
   // Terms and Bank Details section with orange headers like sample
