@@ -62,10 +62,16 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
   const margin = 10;
-  let currentY = 15;
+  let currentY = margin;
 
-  // Helper function to add text with proper spacing
+  // Helper function to add text
   const addText = (text: string, x: number, y: number, options?: any) => {
+    doc.text(text, x, y, options);
+  };
+
+  // Helper function to add white text on dark background
+  const addWhiteText = (text: string, x: number, y: number, options?: any) => {
+    doc.setTextColor(255, 255, 255);
     doc.text(text, x, y, options);
   };
 
@@ -76,232 +82,323 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
     doc.setFont('helvetica', 'normal');
   };
 
-  // Helper function to draw rectangle with border
-  const drawRect = (x: number, y: number, width: number, height: number, fill = false) => {
-    if (fill) {
-      doc.setFillColor(240, 240, 240);
-      doc.rect(x, y, width, height, 'FD');
-    } else {
-      doc.rect(x, y, width, height);
-    }
-  };
-
-  // Set document background
-  doc.setFillColor(245, 245, 245);
+  // Set white background
+  doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-  // Header section with company logo placeholder and details
+  // Header section with logo and company details
   doc.setFillColor(255, 255, 255);
-  doc.rect(margin, margin, pageWidth - 2 * margin, 35, 'F');
+  doc.rect(margin, currentY, pageWidth - 2 * margin, 35, 'F');
   doc.setDrawColor(0, 0, 0);
-  doc.rect(margin, margin, pageWidth - 2 * margin, 35);
+  doc.setLineWidth(0.5);
+  doc.rect(margin, currentY, pageWidth - 2 * margin, 35);
 
-  // Company logo placeholder (orange circle)
+  // Company logo placeholder (orange circle with HM)
   doc.setFillColor(255, 165, 0);
-  doc.circle(margin + 15, margin + 17, 12, 'F');
+  doc.circle(margin + 15, currentY + 17, 12, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  addText('HM', margin + 11, margin + 20);
+  addText('HM', margin + 11, currentY + 20);
 
-  // Company name and details
-  doc.setTextColor(0, 0, 0);
+  // Company name in RED and details
+  doc.setTextColor(220, 20, 20); // Red color matching the image
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  addText('M/S SRI HM BITUMEN CO', margin + 35, margin + 12);
+  addText('M/S SRI HM BITUMEN CO', margin + 35, currentY + 12);
   
+  doc.setTextColor(0, 0, 0);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  addText('Dag No : 1071, Patta No : 264, Mkirpara, Chakardaigaon', margin + 35, margin + 18);
-  addText('Mouza - Ramcharani, Guwahati, Assam - 781035', margin + 35, margin + 22);
-  addText('GST No : 18CGMPP6536N2ZG', margin + 35, margin + 26);
-  addText('Mobile No : +91 8453059698', margin + 35, margin + 30);
-  addText('Email ID : info.srihmbitumen@gmail.com', margin + 35, margin + 34);
+  addText('Dag No : 1071, Patta No : 264, Mkirpara, Chakardaigaon', margin + 35, currentY + 18);
+  addText('Mouza - Ramcharani, Guwahati, Assam - 781035', margin + 35, currentY + 22);
+  addText('GST No : 18CGMPP6536N2ZG', margin + 35, currentY + 26);
+  addText('Mobile No : +91 8453059698', margin + 35, currentY + 30);
+  addText('Email ID : info.srihmbitumen@gmail.com', margin + 35, currentY + 34);
 
-  currentY = margin + 50;
+  currentY += 40;
 
-  // Quotation title in red
-  doc.setTextColor(200, 0, 0);
+  // Quotation title in red with dark background
+  doc.setFillColor(70, 70, 70); // Dark background
+  doc.rect(margin, currentY, pageWidth - 2 * margin, 12, 'F');
+  doc.setTextColor(220, 20, 20); // Red text
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  addText('Quotation', pageWidth / 2, currentY, { align: 'center' });
+  addText('Quotation', pageWidth / 2, currentY + 8, { align: 'center' });
   
-  currentY += 15;
+  currentY += 17;
 
-  // Details table header with colored background
-  const detailsTableStartY = currentY;
+  // Professional structured layout matching the sample image
   const tableWidth = pageWidth - 2 * margin;
-  const rowHeight = 8;
+  const boxHeight = 10;
+  const thirdWidth = tableWidth / 3;
   
-  // First row with quotation details
-  doc.setFillColor(100, 100, 100);
-  doc.rect(margin, currentY, tableWidth, rowHeight, 'F');
+  // Top section with 3 boxes: Quotation No, Date, Delivery Terms
+  // Dark headers
+  doc.setFillColor(70, 70, 70);
+  doc.rect(margin, currentY, thirdWidth, boxHeight, 'F');
+  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight, 'F');
+  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, boxHeight, 'F');
+  
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
+  addWhiteText('Quotation No.', margin + 2, currentY + 7);
+  addWhiteText('Quotation Date', margin + thirdWidth + 2, currentY + 7);
+  addWhiteText('Delivery Terms', margin + 2 * thirdWidth + 2, currentY + 7);
+  currentY += boxHeight;
   
-  const col1 = margin + 2;
-  const col2 = margin + 65;
-  const col3 = margin + 130;
-  
-  addText('Quotation No.', col1, currentY + 5);
-  addText('Quotation Date', col2, currentY + 5);
-  addText('Valid Until', col3, currentY + 5);
-  currentY += rowHeight;
-  
-  // Values row
+  // Values
   doc.setFillColor(255, 255, 255);
-  doc.rect(margin, currentY, tableWidth, rowHeight, 'F');
+  doc.rect(margin, currentY, thirdWidth, boxHeight, 'F');
+  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight, 'F');
+  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, boxHeight, 'F');
+  
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
-  addText(quotationData.quotationNumber, col1, currentY + 5);
-  addText(quotationData.quotationDate.toLocaleDateString('en-GB'), col2, currentY + 5);
-  addText(quotationData.validUntil.toLocaleDateString('en-GB'), col3, currentY + 5);
-  currentY += rowHeight;
+  addText(quotationData.quotationNumber, margin + 2, currentY + 7);
+  addText(quotationData.quotationDate.toLocaleDateString('en-GB'), margin + thirdWidth + 2, currentY + 7);
+  addText(quotationData.deliveryTerms || 'Within 10 to 12 Days', margin + 2 * thirdWidth + 2, currentY + 7);
+  currentY += boxHeight + 3;
   
-  // Second header row
-  doc.setFillColor(100, 100, 100);
-  doc.rect(margin, currentY, tableWidth, rowHeight, 'F');
+  // Second row: Payment Terms, Destination, Loading From
+  doc.setFillColor(70, 70, 70);
+  doc.rect(margin, currentY, thirdWidth, boxHeight, 'F');
+  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight, 'F');
+  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, boxHeight, 'F');
+  
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  addText('Payment Terms', col1, currentY + 5);
-  addText('Destination', col2, currentY + 5);
-  addText('Loading From', col3, currentY + 5);
-  currentY += rowHeight;
+  addWhiteText('Payment Terms', margin + 2, currentY + 7);
+  addWhiteText('Destination', margin + thirdWidth + 2, currentY + 7);
+  addWhiteText('Loading From', margin + 2 * thirdWidth + 2, currentY + 7);
+  currentY += boxHeight;
   
-  // Values row
+  // Values
   doc.setFillColor(255, 255, 255);
-  doc.rect(margin, currentY, tableWidth, rowHeight * 2, 'F');
+  doc.rect(margin, currentY, thirdWidth, boxHeight * 2, 'F');
+  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight * 2, 'F');
+  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, boxHeight * 2, 'F');
+  
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
-  addText(`${quotationData.paymentTerms || '30'} days`, col1, currentY + 5);
-  addText(quotationData.destination || '', col2, currentY + 5);
-  addText(quotationData.loadingFrom || 'Kandla', col3, currentY + 5);
-  currentY += rowHeight * 2;
+  addText(quotationData.paymentTerms || '30 Days Credit', margin + 2, currentY + 7);
+  addText(quotationData.destination || '', margin + thirdWidth + 2, currentY + 7);
+  addText(quotationData.loadingFrom || 'Kandla', margin + 2 * thirdWidth + 2, currentY + 7);
+  currentY += boxHeight * 2 + 3;
   
   // Bill To and Ship To sections
-  const sectionHeight = 35;
   const halfWidth = tableWidth / 2;
+  const sectionHeight = 40;
   
-  // Bill To section
-  doc.setFillColor(100, 100, 100);
-  doc.rect(margin, currentY, halfWidth, rowHeight, 'F');
+  // Headers
+  doc.setFillColor(70, 70, 70);
+  doc.rect(margin, currentY, halfWidth, boxHeight, 'F');
+  doc.rect(margin + halfWidth, currentY, halfWidth, boxHeight, 'F');
+  
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
-  addText('Bill To :', col1, currentY + 5);
+  addWhiteText('Bill To :', margin + 2, currentY + 7);
+  addWhiteText('Ship To :', margin + halfWidth + 2, currentY + 7);
+  currentY += boxHeight;
   
-  // Ship To section
-  doc.rect(margin + halfWidth, currentY, halfWidth, rowHeight, 'F');
-  addText('Ship To :', margin + halfWidth + 2, currentY + 5);
-  currentY += rowHeight;
-  
-  // Client details
+  // Client details sections
   doc.setFillColor(255, 255, 255);
   doc.rect(margin, currentY, halfWidth, sectionHeight, 'F');
   doc.rect(margin + halfWidth, currentY, halfWidth, sectionHeight, 'F');
+  
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
   
   const clientY = currentY + 3;
-  addText(`Name : ${quotationData.client.name}`, col1, clientY);
-  addText(`Name : ${quotationData.client.name}`, margin + halfWidth + 2, clientY);
-  addText(`GST No : ${quotationData.client.gstNumber || ''}`, col1, clientY + 5);
-  addText(`GST No : ${quotationData.client.gstNumber || ''}`, margin + halfWidth + 2, clientY + 5);
-  addText(`Address : ${quotationData.client.address || ''}`, col1, clientY + 10);
-  addText(`Address : ${quotationData.client.address || ''}`, margin + halfWidth + 2, clientY + 10);
-  addText(`State : ${quotationData.client.state || ''}`, col1, clientY + 15);
-  addText(`State : ${quotationData.client.state || ''}`, margin + halfWidth + 2, clientY + 15);
-  addText(`Pin Code : ${quotationData.client.pinCode || ''}`, col1, clientY + 20);
-  addText(`Pin Code : ${quotationData.client.pinCode || ''}`, margin + halfWidth + 2, clientY + 20);
-  addText(`Mobile No : ${quotationData.client.mobileNumber || ''}`, col1, clientY + 25);
-  addText(`Mobile No : ${quotationData.client.mobileNumber || ''}`, margin + halfWidth + 2, clientY + 25);
-  addText(`Email ID : ${quotationData.client.email || ''}`, col1, clientY + 30);
-  addText(`Email ID : ${quotationData.client.email || ''}`, margin + halfWidth + 2, clientY + 30);
+  addText(`Name: ${quotationData.client.name}`, margin + 2, clientY);
+  addText(`Name: ${quotationData.client.name}`, margin + halfWidth + 2, clientY);
+  addText(`GST No: ${quotationData.client.gstNumber || ''}`, margin + 2, clientY + 6);
+  addText(`GST No: ${quotationData.client.gstNumber || ''}`, margin + halfWidth + 2, clientY + 6);
+  addText(`Address: ${quotationData.client.address || ''}`, margin + 2, clientY + 12);
+  addText(`Address: ${quotationData.client.address || ''}`, margin + halfWidth + 2, clientY + 12);
+  addText(`State: ${quotationData.client.state || ''}`, margin + 2, clientY + 18);
+  addText(`State: ${quotationData.client.state || ''}`, margin + halfWidth + 2, clientY + 18);
+  addText(`Pin Code: ${quotationData.client.pinCode || ''}`, margin + 2, clientY + 24);
+  addText(`Pin Code: ${quotationData.client.pinCode || ''}`, margin + halfWidth + 2, clientY + 24);
+  addText(`Mobile No: ${quotationData.client.mobileNumber || ''}`, margin + 2, clientY + 30);
+  addText(`Mobile No: ${quotationData.client.mobileNumber || ''}`, margin + halfWidth + 2, clientY + 30);
+  addText(`Email ID: ${quotationData.client.email || ''}`, margin + 2, clientY + 36);
+  addText(`Email ID: ${quotationData.client.email || ''}`, margin + halfWidth + 2, clientY + 36);
   
   currentY += sectionHeight + 5;
-
-  currentY += 10;
-
-  // Items Table Header
-  const tableStartY = currentY;
-  const colPositions = [margin, margin + 50, margin + 70, margin + 90, margin + 120, margin + 150, margin + 175];
-
-  // Table headers
-  doc.setFillColor(240, 240, 240);
-  doc.rect(margin, currentY - 3, pageWidth - (margin * 2), 8, 'F');
   
-  addBoldText('Item #', colPositions[0], currentY);
-  addBoldText('Qty', colPositions[1], currentY);
-  addBoldText('Unit', colPositions[2], currentY);
-  addBoldText('Ex Factory Rate', colPositions[3], currentY);
-  addBoldText('Amount', colPositions[4], currentY);
-  addBoldText('GST@18%', colPositions[5], currentY);
-  addBoldText('Total Amount(₹)', colPositions[6], currentY);
-  currentY += 8;
+  // Items Table with dark header
+  doc.setFontSize(8);
+  const itemsTableStartY = currentY;
+  const colWidths = [25, 15, 15, 30, 25, 25, 35];
+  let colX = margin;
 
-  // Table content
+  // Table header with dark background
+  doc.setFillColor(70, 70, 70);
+  doc.rect(margin, currentY, tableWidth, 12, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  addWhiteText('Item #', colX + 1, currentY + 8);
+  colX += colWidths[0];
+  addWhiteText('Qty', colX + 1, currentY + 8);
+  colX += colWidths[1];
+  addWhiteText('Unit', colX + 1, currentY + 8);
+  colX += colWidths[2];
+  addWhiteText('Ex Factory Rate', colX + 1, currentY + 8);
+  colX += colWidths[3];
+  addWhiteText('Amount', colX + 1, currentY + 8);
+  colX += colWidths[4];
+  addWhiteText('GST@18%', colX + 1, currentY + 8);
+  colX += colWidths[5];
+  addWhiteText('Total Amount(₹)', colX + 1, currentY + 8);
+  
+  currentY += 12;
+
+  // Items table content
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  
   quotationData.items.forEach((item, index) => {
-    addText(item.description, colPositions[0], currentY);
-    addText(item.quantity.toString(), colPositions[1], currentY);
-    addText(item.unit, colPositions[2], currentY);
-    addText('₹' + item.rate.toFixed(2), colPositions[3], currentY);
-    addText('₹' + item.amount.toFixed(2), colPositions[4], currentY);
-    addText('₹' + (item.amount * 0.18).toFixed(2), colPositions[5], currentY);
-    addText('₹' + (item.amount * 1.18).toFixed(2), colPositions[6], currentY);
-    currentY += 7;
+    colX = margin;
+    
+    // Item description
+    addText(item.description, colX + 1, currentY + 4);
+    colX += colWidths[0];
+    
+    // Quantity
+    addText(item.quantity.toString(), colX + 1, currentY + 4);
+    colX += colWidths[1];
+    
+    // Unit
+    addText(item.unit, colX + 1, currentY + 4);
+    colX += colWidths[2];
+    
+    // Rate
+    addText('₹' + item.rate.toFixed(2), colX + 1, currentY + 4);
+    colX += colWidths[3];
+    
+    // Amount
+    addText('₹' + item.amount.toFixed(2), colX + 1, currentY + 4);
+    colX += colWidths[4];
+    
+    // GST
+    addText('₹' + (item.amount * 0.18).toFixed(2), colX + 1, currentY + 4);
+    colX += colWidths[5];
+    
+    // Total
+    addText('₹' + (item.amount * 1.18).toFixed(2), colX + 1, currentY + 4);
+    
+    // Add border for row
+    doc.setDrawColor(0, 0, 0);
+    doc.rect(margin, currentY, tableWidth, 8);
+    
+    currentY += 8;
   });
 
   // Transport charges if applicable
   if (quotationData.transportCharges) {
-    addText('Transport Charges', colPositions[0], currentY);
-    addText(quotationData.transportCharges.quantity.toString(), colPositions[1], currentY);
-    addText(quotationData.transportCharges.unit, colPositions[2], currentY);
-    addText(quotationData.transportCharges.rate.toString(), colPositions[3], currentY);
-    addText(quotationData.transportCharges.amount.toString(), colPositions[4], currentY);
+    colX = margin;
+    addText('Transport Charges', colX + 1, currentY + 4);
+    colX += colWidths[0];
+    addText(quotationData.transportCharges.quantity.toString(), colX + 1, currentY + 4);
+    colX += colWidths[1];
+    addText(quotationData.transportCharges.unit, colX + 1, currentY + 4);
+    colX += colWidths[2];
+    addText(quotationData.transportCharges.rate.toString(), colX + 1, currentY + 4);
+    colX += colWidths[3];
+    addText(quotationData.transportCharges.amount.toString(), colX + 1, currentY + 4);
+    
+    doc.rect(margin, currentY, tableWidth, 8);
     currentY += 10;
   }
 
-  // Sales Person
-  addText(`Sales Person Name:`, margin, currentY);
   currentY += 5;
-  addBoldText(quotationData.salesPersonName || '', margin, currentY);
-  currentY += 10;
 
-  // Description and Note
+  // Sales Person Name section with dark header
+  doc.setFillColor(70, 70, 70);
+  doc.rect(margin, currentY, halfWidth, boxHeight, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  addWhiteText('Sales Person Name:', margin + 2, currentY + 7);
+  currentY += boxHeight;
+  
+  doc.setFillColor(255, 255, 255);
+  doc.rect(margin, currentY, halfWidth, boxHeight, 'F');
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'normal');
+  addText(quotationData.salesPersonName || '', margin + 2, currentY + 7);
+  currentY += boxHeight + 5;
+
+  // Description section if available
   if (quotationData.description) {
-    addBoldText('Description :', margin, currentY);
-    currentY += 5;
-    addText(quotationData.description, margin, currentY);
-    currentY += 5;
+    doc.setFillColor(70, 70, 70);
+    doc.rect(margin, currentY, tableWidth, boxHeight, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    addWhiteText('Description :', margin + 2, currentY + 7);
+    currentY += boxHeight;
+    
+    doc.setFillColor(255, 255, 255);
+    doc.rect(margin, currentY, tableWidth, boxHeight, 'F');
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    addText(quotationData.description, margin + 2, currentY + 7);
+    currentY += boxHeight + 5;
   }
 
-  if (quotationData.note) {
-    addText(quotationData.note, margin, currentY);
-    currentY += 15;
-  }
-
-  // Totals section (right aligned)
-  const totalsX = pageWidth - 100;
-  const totalsValueX = pageWidth - 30;
+  // Totals section with professional boxes (right aligned)
+  const totalsBoxWidth = 60;
+  const totalsX = pageWidth - margin - totalsBoxWidth;
   
-  addBoldText('SubTotal', totalsX, currentY);
-  addText('₹' + quotationData.subtotal.toFixed(2), totalsValueX, currentY, { align: 'right' });
-  currentY += 6;
-
-  addBoldText('GST (18%)', totalsX, currentY);
-  addText('₹' + (quotationData.subtotal * 0.18).toFixed(2), totalsValueX, currentY, { align: 'right' });
-  currentY += 6;
-
-  addBoldText('Freight', totalsX, currentY);
-  addText('₹' + quotationData.freight.toFixed(2), totalsValueX, currentY, { align: 'right' });
-  currentY += 6;
-
-  doc.setLineWidth(0.5);
-  doc.line(totalsX, currentY - 2, pageWidth - margin, currentY - 2);
+  // SubTotal
+  doc.setFillColor(70, 70, 70);
+  doc.rect(totalsX, currentY, totalsBoxWidth, boxHeight, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  addWhiteText('SubTotal', totalsX + 2, currentY + 7);
+  currentY += boxHeight;
   
-  addBoldText('Total', totalsX, currentY);
-  addBoldText('₹' + (quotationData.subtotal * 1.18 + quotationData.freight).toFixed(2), totalsValueX, currentY, { align: 'right' });
-  currentY += 15;
+  doc.setFillColor(255, 255, 255);
+  doc.rect(totalsX, currentY, totalsBoxWidth, boxHeight, 'F');
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'normal');
+  addText('₹' + quotationData.subtotal.toFixed(2), totalsX + 2, currentY + 7);
+  currentY += boxHeight + 2;
+
+  // GST
+  doc.setFillColor(70, 70, 70);
+  doc.rect(totalsX, currentY, totalsBoxWidth, boxHeight, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  addWhiteText('GST (18%)', totalsX + 2, currentY + 7);
+  currentY += boxHeight;
+  
+  doc.setFillColor(255, 255, 255);
+  doc.rect(totalsX, currentY, totalsBoxWidth, boxHeight, 'F');
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'normal');
+  addText('₹' + (quotationData.subtotal * 0.18).toFixed(2), totalsX + 2, currentY + 7);
+  currentY += boxHeight + 2;
+
+  // Total
+  doc.setFillColor(70, 70, 70);
+  doc.rect(totalsX, currentY, totalsBoxWidth, boxHeight, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  addWhiteText('Total', totalsX + 2, currentY + 7);
+  currentY += boxHeight;
+  
+  doc.setFillColor(255, 255, 255);
+  doc.rect(totalsX, currentY, totalsBoxWidth, boxHeight, 'F');
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  addBoldText('₹' + (quotationData.subtotal * 1.18).toFixed(2), totalsX + 2, currentY + 7);
+  currentY += boxHeight + 15;
 
   // Terms and Conditions (Left side)
   const termsX = margin;
