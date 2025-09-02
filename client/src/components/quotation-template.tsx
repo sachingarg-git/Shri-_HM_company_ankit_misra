@@ -93,10 +93,6 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   doc.setFillColor(255, 140, 0); // Orange color
   doc.circle(margin + 15, currentY + 17, 12, 'F');
   
-  // Add decorative elements around logo
-  doc.setFillColor(255, 165, 0);
-  doc.arc(margin + 15, currentY + 17, 10, 0, Math.PI * 2, 'S');
-  
   // HM text in white on logo
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
