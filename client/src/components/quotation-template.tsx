@@ -1,15 +1,11 @@
-import React from "react";
-import { jsPDF } from "jspdf";
+import jsPDF from 'jspdf';
 
 interface QuotationData {
+  id: string;
   quotationNumber: string;
   quotationDate: Date;
-  validUntil: Date;
-  deliveryTerms?: string;
-  paymentTerms?: string;
-  destination?: string;
-  loadingFrom?: string;
   client: {
+    id: string;
     name: string;
     gstNumber?: string;
     address?: string;
@@ -19,78 +15,70 @@ interface QuotationData {
     email?: string;
   };
   items: Array<{
+    id: string;
     description: string;
     quantity: number;
     unit: string;
     rate: number;
     amount: number;
-    gstRate?: number;
     gstAmount?: number;
     totalAmount: number;
   }>;
+  subtotal: number;
+  gstAmount: number;
+  total: number;
+  validityPeriod: number;
+  termsAndConditions?: string;
+  salesPersonName?: string;
+  paymentTerms?: string;
+  deliveryTerms?: string;
+  destination?: string;
+  loadingFrom?: string;
+  freight?: number;
   transportCharges?: {
     quantity: number;
     unit: string;
     rate: number;
     amount: number;
   };
-  salesPersonName?: string;
-  description?: string;
-  note?: string;
-  subtotal: number;
-  freight: number;
-  total: number;
-  companyDetails: {
-    name: string;
-    address: string;
-    gstNumber: string;
-    mobile: string;
-    email: string;
-    bankDetails: {
-      bankName: string;
-      accountNumber: string;
-      branch: string;
-      ifscCode: string;
-    };
-  };
 }
 
-export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
-  const doc = new jsPDF();
+export function generateBitumenQuotationPDF(quotationData: QuotationData) {
+  const doc = new jsPDF('p', 'mm', 'a4');
   
-  // Page setup
-  const pageWidth = doc.internal.pageSize.width;
-  const pageHeight = doc.internal.pageSize.height;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 10;
-  let currentY = margin;
-
-  // Helper functions
-  const addText = (text: string, x: number, y: number, options?: any) => {
-    doc.text(text, x, y, options);
+  const tableWidth = pageWidth - 2 * margin;
+  
+  // Helper function to add text with proper encoding
+  const addText = (text: string, x: number, y: number, options?: { align?: 'left' | 'center' | 'right' }) => {
+    if (options?.align === 'center') {
+      doc.text(text, x, y, { align: 'center' });
+    } else if (options?.align === 'right') {
+      doc.text(text, x, y, { align: 'right' });
+    } else {
+      doc.text(text, x, y);
+    }
   };
 
-  const addWhiteText = (text: string, x: number, y: number, options?: any) => {
+  // Helper function for white text on colored backgrounds
+  const addWhiteText = (text: string, x: number, y: number, options?: { align?: 'left' | 'center' | 'right' }) => {
     doc.setTextColor(255, 255, 255);
-    doc.text(text, x, y, options);
+    addText(text, x, y, options);
   };
-
-  const addBoldText = (text: string, x: number, y: number, options?: any) => {
-    doc.setFont('helvetica', 'bold');
-    doc.text(text, x, y, options);
-    doc.setFont('helvetica', 'normal');
-  };
-
-  // White background
+  
+  let currentY = margin + 5;
+  
+  // Company Header Section - matching exact layout from sample
+  const headerHeight = 35;
   doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-
-  // Header section with border
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.5);
-  doc.rect(margin, currentY, pageWidth - 2 * margin, 35);
+  doc.rect(margin, currentY, tableWidth, headerHeight);
 
-  // Company Logo - Create a circular orange logo with HM text
-  doc.setFillColor(255, 140, 0); // Orange color
+  // Company Logo - Create orange HM logo matching sample
+  doc.setFillColor(255, 140, 0);
   doc.circle(margin + 15, currentY + 17, 12, 'F');
   
   // HM text in white on logo
@@ -104,51 +92,44 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   doc.setFontSize(6);
   addText('BITUMEN COMPANY', margin + 2, currentY + 30);
 
-  // Company name in RED/ORANGE - exactly like sample
-  doc.setTextColor(216, 69, 11); // Matching orange-red color from sample
+  // Company name in RED/ORANGE - matching sample exactly
+  doc.setTextColor(216, 69, 11);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  addText('M/S SRI HM BITUMEN CO', margin + 35, currentY + 10);
+  addText('M/S SRI HM BITUMEN CO', margin + 35, currentY + 12);
   
-  // Company details in black - exactly positioned like sample
+  // Company details in black - matching sample format
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  addText('Dag No : 1071, Patta No : 264, Mkirpara, Chakardaigaon', margin + 35, currentY + 16);
-  addText('Mouza - Ramcharani, Guwahati, Assam - 781035', margin + 35, currentY + 20);
-  addText('GST No : 18CGMPP6536N2ZG', margin + 35, currentY + 24);
-  addText('Mobile No : +91 8453059698', margin + 35, currentY + 28);
-  addText('Email ID : info.srihmbitumen@gmail.com', margin + 35, currentY + 32);
-
-  currentY += 38;
-
-  // "Sales Order" title with orange background - exactly like sample
-  doc.setFillColor(216, 69, 11);
-  doc.rect(margin, currentY, pageWidth - 2 * margin, 12, 'F');
-  doc.setTextColor(255, 255, 255);
+  addText('Dag No : 1071, Patta No : 264, Mkirpara, Chakardaigaon', margin + 35, currentY + 18);
+  addText('Mouza - Ramcharani, Guwahati, Assam - 781035', margin + 35, currentY + 22);
+  addText('GST No : 18CGMPP6536N2ZG', margin + 35, currentY + 26);
+  addText('Mobile No : +91 8453059698', margin + 35, currentY + 30);
+  addText('Email ID : info.srihmbitumen@gmail.com', margin + 35, currentY + 34);
+  
+  currentY += headerHeight + 5;
+  
+  // Sales Order Title - centered and styled like sample
+  doc.setTextColor(216, 69, 11);
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  addText('Sales Order', pageWidth / 2, currentY + 8, { align: 'center' });
-  
-  currentY += 14;
+  addText('Sales Order', pageWidth/2, currentY, { align: 'center' });
+  currentY += 10;
 
-  // EXACT LAYOUT matching the sample image
-  const tableWidth = pageWidth - 2 * margin;
-  const boxHeight = 14; // Slightly taller for better readability
+  // Row 1: Sales Order No, Date, Delivery Terms with orange headers - exact match
+  const boxHeight = 15;
   const thirdWidth = tableWidth / 3;
   
-  // Row 1: Three boxes - Sales Order No, Date, Delivery Terms with orange headers
-  doc.setFillColor(216, 69, 11); // Orange background like sample
+  doc.setFillColor(216, 69, 11);
   doc.rect(margin, currentY, thirdWidth, boxHeight, 'F');
-  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight, 'F');  
-  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, boxHeight, 'F');
+  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight, 'F');
+  doc.rect(margin + 2*thirdWidth, currentY, thirdWidth, boxHeight, 'F');
   
-  // Draw black borders
   doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.5);
-  doc.rect(margin, currentY, thirdWidth, boxHeight);
-  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight);
-  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, boxHeight);
+  doc.rect(margin, currentY, tableWidth, boxHeight);
+  doc.line(margin + thirdWidth, currentY, margin + thirdWidth, currentY + boxHeight);
+  doc.line(margin + 2*thirdWidth, currentY, margin + 2*thirdWidth, currentY + boxHeight);
   
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(9);
@@ -158,17 +139,12 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   addWhiteText('Delivery Terms', margin + 2*thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
   currentY += boxHeight;
   
-  // Values for row 1 - white background with black text
+  // Values row
   doc.setFillColor(255, 255, 255);
-  doc.rect(margin, currentY, thirdWidth, boxHeight, 'F');
-  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight, 'F');
-  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, boxHeight, 'F');
-  
-  // Draw borders
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(margin, currentY, thirdWidth, boxHeight);
-  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight);
-  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, boxHeight);
+  doc.rect(margin, currentY, tableWidth, boxHeight, 'F');
+  doc.rect(margin, currentY, tableWidth, boxHeight);
+  doc.line(margin + thirdWidth, currentY, margin + thirdWidth, currentY + boxHeight);
+  doc.line(margin + 2*thirdWidth, currentY, margin + 2*thirdWidth, currentY + boxHeight);
   
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(9);
@@ -179,79 +155,63 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   currentY += boxHeight;
   
   // Row 2: Payment Terms, Destination, Loading From with orange headers
+  const tallBoxHeight = 25;
   doc.setFillColor(216, 69, 11);
   doc.rect(margin, currentY, thirdWidth, boxHeight, 'F');
   doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight, 'F');
-  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, boxHeight, 'F');
+  doc.rect(margin + 2*thirdWidth, currentY, thirdWidth, boxHeight, 'F');
   
-  // Draw borders
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(margin, currentY, thirdWidth, boxHeight);
-  doc.rect(margin + thirdWidth, currentY, thirdWidth, boxHeight);
-  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, boxHeight);
+  doc.rect(margin, currentY, tableWidth, tallBoxHeight);
+  doc.line(margin + thirdWidth, currentY, margin + thirdWidth, currentY + tallBoxHeight);
+  doc.line(margin + 2*thirdWidth, currentY, margin + 2*thirdWidth, currentY + tallBoxHeight);
   
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
   addWhiteText('Payment Terms', margin + thirdWidth/2, currentY + 9, { align: 'center' });
   addWhiteText('Destination', margin + thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
   addWhiteText('Loading From', margin + 2*thirdWidth + thirdWidth/2, currentY + 9, { align: 'center' });
-  currentY += boxHeight;
   
-  // Values for row 2 (taller boxes for payment terms)
-  const tallBoxHeight = boxHeight * 1.2;
+  // Values in white sections
   doc.setFillColor(255, 255, 255);
-  doc.rect(margin, currentY, thirdWidth, tallBoxHeight, 'F');
-  doc.rect(margin + thirdWidth, currentY, thirdWidth, tallBoxHeight, 'F');
-  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, tallBoxHeight, 'F');
-  
-  // Draw borders
-  doc.rect(margin, currentY, thirdWidth, tallBoxHeight);
-  doc.rect(margin + thirdWidth, currentY, thirdWidth, tallBoxHeight);
-  doc.rect(margin + 2 * thirdWidth, currentY, thirdWidth, tallBoxHeight);
+  const valueY = currentY + boxHeight;
+  const valueHeight = tallBoxHeight - boxHeight;
+  doc.rect(margin, valueY, thirdWidth, valueHeight, 'F');
+  doc.rect(margin + thirdWidth, valueY, thirdWidth, valueHeight, 'F');
+  doc.rect(margin + 2*thirdWidth, valueY, thirdWidth, valueHeight, 'F');
   
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  addText(quotationData.paymentTerms || '30 Days Credit. Interest will be charged', margin + 2, currentY + 7);
-  addText('Day 1st Of Billing @18% P.A', margin + 2, currentY + 13);
-  addText(quotationData.destination || 'Dhemaji', margin + thirdWidth + 2, currentY + 10);
-  addText(quotationData.loadingFrom || 'Kandla', margin + 2*thirdWidth + 2, currentY + 10);
+  addText(quotationData.paymentTerms || '30 Days Credit. Interest will be charged', margin + 2, currentY + 17);
+  addText('Day 1st Of Billing @18% P.A', margin + 2, currentY + 23);
+  addText(quotationData.destination || 'As per requirement', margin + thirdWidth + 2, currentY + 20);
+  addText(quotationData.loadingFrom || 'As per requirement', margin + 2*thirdWidth + 2, currentY + 20);
   currentY += tallBoxHeight + 2;
   
   // Bill To and Ship To sections side by side
   const halfWidth = tableWidth / 2;
-  const clientSectionHeight = 60;
+  const clientSectionHeight = 50;
   
-  // Headers with orange background
+  // Bill To header
   doc.setFillColor(216, 69, 11);
   doc.rect(margin, currentY, halfWidth, boxHeight, 'F');
-  doc.rect(margin + halfWidth, currentY, halfWidth, boxHeight, 'F');
-  
-  // Draw borders
-  doc.setDrawColor(0, 0, 0);
   doc.rect(margin, currentY, halfWidth, boxHeight);
-  doc.rect(margin + halfWidth, currentY, halfWidth, boxHeight);
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
   addWhiteText('Bill To :', margin + 2, currentY + 9);
+  
+  // Ship To header
+  doc.rect(margin + halfWidth, currentY, halfWidth, boxHeight, 'F');
+  doc.rect(margin + halfWidth, currentY, halfWidth, boxHeight);
   addWhiteText('Ship To :', margin + halfWidth + 2, currentY + 9);
   currentY += boxHeight;
   
-  // Client details with white background
-  doc.setFillColor(255, 255, 255);
+  // Bill To and Ship To content
+  doc.setFillColor(240, 240, 240);
   doc.rect(margin, currentY, halfWidth, clientSectionHeight, 'F');
   doc.rect(margin + halfWidth, currentY, halfWidth, clientSectionHeight, 'F');
-  
-  // Draw borders
-  doc.rect(margin, currentY, halfWidth, clientSectionHeight);
-  doc.rect(margin + halfWidth, currentY, halfWidth, clientSectionHeight);
+  doc.rect(margin, currentY, tableWidth, clientSectionHeight);
+  doc.line(margin + halfWidth, currentY, margin + halfWidth, currentY + clientSectionHeight);
   
   doc.setTextColor(0, 0, 0);
-  doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  
+  doc.setFont('helvetica', 'normal');
   let clientY = currentY + 6;
   addText(`Name : ${quotationData.client.name}`, margin + 2, clientY);
   addText(`Name : ${quotationData.client.name}`, margin + halfWidth + 2, clientY);
@@ -277,56 +237,39 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   currentY += clientSectionHeight + 3;
   
   // Items table with exact layout from sample
-  doc.setFontSize(8);
+  const headerHeightTable = 12;
+  const colWidths = [80, 20, 20, 25, 30, 30, 35]; // Matching sample proportions
+  let colPositions = [margin];
+  for (let i = 0; i < colWidths.length - 1; i++) {
+    colPositions.push(colPositions[i] + colWidths[i]);
+  }
   
-  // Table header with orange background like sample
+  // Table headers with orange background
   doc.setFillColor(216, 69, 11);
-  doc.rect(margin, currentY, tableWidth, boxHeight, 'F');
-  
-  // Draw border
+  doc.rect(margin, currentY, tableWidth, headerHeightTable, 'F');
   doc.setDrawColor(0, 0, 0);
-  doc.rect(margin, currentY, tableWidth, boxHeight);
+  doc.rect(margin, currentY, tableWidth, headerHeightTable);
   
-  // Column widths matching sample exactly
-  const col1Width = 55; // Item # - wider for description
-  const col2Width = 20; // Qty
-  const col3Width = 15; // Unit
-  const col4Width = 30; // Ex Factory Rate
-  const col5Width = 30; // Amount
-  const col6Width = 30; // GST@18%
-  const col7Width = tableWidth - col1Width - col2Width - col3Width - col4Width - col5Width - col6Width; // Total Amount
-  
-  const colPositions = [
-    margin,
-    margin + col1Width, 
-    margin + col1Width + col2Width,
-    margin + col1Width + col2Width + col3Width,
-    margin + col1Width + col2Width + col3Width + col4Width,
-    margin + col1Width + col2Width + col3Width + col4Width + col5Width,
-    margin + col1Width + col2Width + col3Width + col4Width + col5Width + col6Width
-  ];
-  
-  // Draw vertical lines for columns
+  // Draw column separators
   colPositions.forEach(pos => {
-    doc.line(pos, currentY, pos, currentY + boxHeight);
+    doc.line(pos, currentY, pos, currentY + headerHeightTable);
   });
-  doc.line(margin + tableWidth, currentY, margin + tableWidth, currentY + boxHeight);
+  doc.line(margin + tableWidth, currentY, margin + tableWidth, currentY + headerHeightTable);
   
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  addWhiteText('Item #', colPositions[0] + 2, currentY + 9);
-  addWhiteText('Qty', colPositions[1] + 2, currentY + 9);
-  addWhiteText('Unit', colPositions[2] + 2, currentY + 9);
-  addWhiteText('Ex Factory', colPositions[3] + 2, currentY + 5);
-  addWhiteText('Rate', colPositions[3] + 2, currentY + 11);
-  addWhiteText('Amount', colPositions[4] + 2, currentY + 9);
-  addWhiteText('GST@18%', colPositions[5] + 2, currentY + 9);
-  addWhiteText('Total Amount(₹)', colPositions[6] + 2, currentY + 9);
+  doc.setFontSize(8);
+  addWhiteText('Item #', colPositions[0] + 2, currentY + 8);
+  addWhiteText('Qty', colPositions[1] + 2, currentY + 8);
+  addWhiteText('Unit', colPositions[2] + 2, currentY + 8);
+  addWhiteText('Ex Factory Rate', colPositions[3] + 2, currentY + 5);
+  addWhiteText('Amount (₹)', colPositions[4] + 2, currentY + 5);
+  addWhiteText('GST@18% (₹)', colPositions[5] + 2, currentY + 5);
+  addWhiteText('Total Amount(₹)', colPositions[6] + 2, currentY + 5);
   
-  currentY += boxHeight;
-
-  // Table content - exactly like sample
+  currentY += headerHeightTable;
+  
+  // Table data rows
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
@@ -430,8 +373,6 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   doc.setFillColor(216, 69, 11);
   doc.rect(margin, currentY, leftSectionWidth, boxHeight, 'F');
   doc.rect(margin, currentY, leftSectionWidth, boxHeight);
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
   addWhiteText('Description :', margin + 2, currentY + 9);
   
   // Freight header
@@ -441,22 +382,22 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   addWhiteText('Freight', rightSectionX + 2, currentY + 9);
   currentY += boxHeight;
   
-  // Description content
-  const descriptionHeight = 20;
+  // Description content - left side
+  const descriptionHeight = 25;
   doc.setFillColor(255, 255, 255);
   doc.rect(margin, currentY, leftSectionWidth, descriptionHeight, 'F');
   doc.rect(margin, currentY, leftSectionWidth, descriptionHeight);
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  addText('Note- Above Payment terms Not included in Transportation. Transportation payment', margin + 2, currentY + 6);
-  addText('should be made on before unloading.', margin + 2, currentY + 12);
+  addText('Note- Above Payment terms Not included in Transportation. Transportation payment', margin + 2, currentY + 8);
+  addText('should be made on before unloading.', margin + 2, currentY + 15);
   
   // Freight value
   doc.setFillColor(255, 255, 255);
   doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight, 'F');
   doc.rect(rightSectionX, currentY, rightSectionWidth, boxHeight);
-  addText(quotationData.freight.toFixed(0), rightSectionX + 2, currentY + 9);
+  addText((quotationData.freight || 0).toFixed(0), rightSectionX + 2, currentY + 9);
   currentY += Math.max(descriptionHeight, boxHeight);
   
   // Total header and value
@@ -484,7 +425,6 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   // Terms and Conditions header
   doc.setFillColor(216, 69, 11);
   doc.rect(margin, currentY, leftTermsWidth, boxHeight, 'F');
-  doc.setDrawColor(0, 0, 0);
   doc.rect(margin, currentY, leftTermsWidth, boxHeight);
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
@@ -497,106 +437,35 @@ export const generateBitumenQuotationPDF = (quotationData: QuotationData) => {
   doc.rect(rightBankX, currentY, rightBankWidth, boxHeight);
   addWhiteText('Bank Details', rightBankX + 2, currentY + 9);
   currentY += boxHeight;
-
-  const termsAndConditions = [
-    "* Payment Should be made on or before 30th day of the Day of Billing.",
-    "* Incase Of Late Payment, Credit Limit will be Reduced by 10%.",
-    "* If the Payment is not done within the due terms of invoice then an interest of 24% per annum i.e 2% per month",
-    "  would be charged on due amount.",
-    "* All Cheques/Demand Drafts for payment of bills must be crossed \"A/C Payee Only\" and Drawn in Favour of",
-    "  \"M/S SRI HM BITUMEN CO\".",
-    "* In case of Cheque Returned/Bounced, All the Penalties Will Be Bear by Buyer.",
-    "* Disputes are subject to jurisdiction of Guwahati courts and all the legal fees will be borne by the buyer.",
-    "* If the Payment is Not Done within the 30 days of the due date then the rest of the pending order will be on hold.",
-    "* Telephonic Conversations Can be recorded for training and other official purposes.",
-    "* If Payment Received Before 30 Days Then a Special Discount will be given to you 200 / Per Ton.",
-    "* Detention of Rs 4000 per day will be charged, if the vehicle is not unloaded within 48 hrs of Reporting."
-  ];
-
-  const bankDetails = [
-    'Bank Name : State Bank of India',
-    'Account No. : 40464693538',
-    'Branch : Paltan Bazar',
-    'IFSC Code : SBIN0040464'
-  ];
-
-  // White backgrounds for content
-  const termsHeight = termsAndConditions.length * 4 + 10;
+  
+  // Terms and Conditions content
+  const termsHeight = 50;
   doc.setFillColor(255, 255, 255);
   doc.rect(margin, currentY, leftTermsWidth, termsHeight, 'F');
   doc.rect(margin, currentY, leftTermsWidth, termsHeight);
-  doc.rect(rightBankX, currentY, rightBankWidth, 35, 'F');
-  doc.rect(rightBankX, currentY, rightBankWidth, 35);
-
-  // Add terms with smaller font like sample
+  
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6);
-  let termsY = currentY + 4;
-  termsAndConditions.forEach(term => {
-    addText(term, margin + 2, termsY);
-    termsY += 4;
-  });
-
-  // Add bank details
   doc.setFontSize(7);
-  let bankY = currentY + 4;
-  bankDetails.forEach(detail => {
-    addText(detail, rightBankX + 2, bankY);
-    bankY += 6;
-  });
-
-  // Company signature section
-  currentY += Math.max(termsHeight, 35) + 5;
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  addText('For M/S SRI HM BITUMEN CO', rightBankX + 2, currentY);
-  currentY += 20;
-  addText('Authorized Signatory', rightBankX + 2, currentY);
-  currentY += 15;
-
-  return doc;
-};
-
-// React component for displaying quotation
-interface QuotationTemplateProps {
-  quotationData: QuotationData;
-  onDownload?: () => void;
-  onPrint?: () => void;
+  addText('- Payment Should be made within One of the Day of Billing.', margin + 2, currentY + 8);
+  addText('- Incase Of Late Payment, Credit Limit will be Reduced by 10%.', margin + 2, currentY + 14);
+  addText('- After the Payment of Interest to Late. Interest of 24% per annum i.e 2% per month', margin + 2, currentY + 20);
+  addText('  would be charged on due amount.', margin + 2, currentY + 26);
+  addText('- All Goverment Tax, Duty payment of bills must be charged "A/C Payee Only" and Drawn in Favour of', margin + 2, currentY + 32);
+  addText('  "M/s SRI HM BITUMEN CO" Only.', margin + 2, currentY + 38);
+  addText('- Subject to Guwahati Jurisdiction Only.', margin + 2, currentY + 44);
+  
+  // Bank Details content
+  doc.setFillColor(255, 255, 255);
+  doc.rect(rightBankX, currentY, rightBankWidth, termsHeight, 'F');
+  doc.rect(rightBankX, currentY, rightBankWidth, termsHeight);
+  
+  addText('Bank Name : State Bank of India', rightBankX + 2, currentY + 8);
+  addText('Account No. : 40464693538', rightBankX + 2, currentY + 14);
+  addText('Branch : Paltan Bazar', rightBankX + 2, currentY + 20);
+  addText('IFSC Code : SBIN0040464', rightBankX + 2, currentY + 26);
+  
+  // Save and download
+  const fileName = `Sales_Order_${quotationData.quotationNumber.replace(/[\/\\]/g, '_')}.pdf`;
+  doc.save(fileName);
 }
-
-export const QuotationTemplate: React.FC<QuotationTemplateProps> = ({
-  quotationData,
-  onDownload,
-  onPrint
-}) => {
-  const handleDownload = () => {
-    const doc = generateBitumenQuotationPDF(quotationData);
-    doc.save(`quotation-${quotationData.quotationNumber}.pdf`);
-    onDownload?.();
-  };
-
-  const handlePrint = () => {
-    const doc = generateBitumenQuotationPDF(quotationData);
-    doc.autoPrint();
-    window.open(doc.output('bloburl'), '_blank');
-    onPrint?.();
-  };
-
-  return (
-    <div className="flex gap-2">
-      <button
-        onClick={handleDownload}
-        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-      >
-        Download PDF
-      </button>
-      <button
-        onClick={handlePrint}
-        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-      >
-        Print
-      </button>
-    </div>
-  );
-};
