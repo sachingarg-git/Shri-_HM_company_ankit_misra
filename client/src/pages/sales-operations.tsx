@@ -2553,6 +2553,166 @@ function QuotationSection() {
     updateQuotationStatusMutation.mutate({ id: quotationId, status });
   };
 
+  // WhatsApp functionality for quotations
+  const handleSendQuotationToWhatsApp = (quotation: any) => {
+    try {
+      // Get client details
+      const client = (clients as any[])?.find((c: any) => c.id === quotation.clientId);
+      
+      if (!client?.mobileNumber) {
+        toast({
+          title: "Error",
+          description: "Client mobile number not available. Please add it in client details.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Validate and format phone number
+      let phoneNumber = client.mobileNumber.replace(/\D/g, '');
+      if (!phoneNumber.startsWith('91')) {
+        phoneNumber = '91' + phoneNumber;
+      }
+
+      // Create message content
+      const itemsText = quotation.items?.map((item: any) => 
+        `• ${item.description || 'Product'}: ${item.quantity} ${item.unit} @ ₹${parseFloat(item.unitPrice || item.rate || 0).toFixed(2)}`
+      ).join('\n') || '';
+
+      const message = `Hi ${client.name}!
+
+Your quotation is ready:
+
+*QUOTATION ${quotation.quotationNumber}*
+Date: ${new Date(quotation.quotationDate || quotation.createdAt).toLocaleDateString()}
+Valid Until: ${quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString() : 'TBD'}
+
+*ITEMS:*
+${itemsText}
+
+*TOTAL AMOUNT: ₹${parseFloat(quotation.grandTotal || 0).toFixed(2)}*
+
+Payment Terms: ${quotation.paymentTerms} days
+Delivery Terms: ${quotation.deliveryTerms || 'Standard delivery'}
+
+Thank you for your business!
+
+*M/S SRI HM BITUMEN CO*
+📞 +91 8453059698
+📧 info.srihmbitumen@gmail.com`;
+
+      // Create WhatsApp URL
+      const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+      
+      // Open WhatsApp
+      window.open(whatsappUrl, '_blank');
+      
+      toast({
+        title: "WhatsApp Opened",
+        description: `WhatsApp chat opened for ${client.name} with quotation details.`,
+      });
+      
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to open WhatsApp. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Email functionality for quotations
+  const handleSendQuotationToEmail = async (quotation: any) => {
+    try {
+      // Get client details and email
+      const client = (clients as any[])?.find((c: any) => c.id === quotation.clientId);
+      const clientEmail = client?.email;
+      
+      if (!clientEmail) {
+        toast({
+          title: "Error",
+          description: "Client email not available. Please add it in client details.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      try {
+        // Download PDF first
+        await handleDownloadPDF(quotation, 'bitumen');
+        
+        // Short delay to ensure PDF download starts
+        setTimeout(() => {
+          // Create Gmail compose URL with pre-filled data
+          const subject = `Quotation ${quotation.quotationNumber} - M/S SRI HM BITUMEN CO`;
+          const body = `Dear ${client.name},
+
+Thank you for your inquiry! Please find the attached quotation for the following:
+
+Quotation Number: ${quotation.quotationNumber}
+Quotation Date: ${new Date(quotation.quotationDate || quotation.createdAt).toLocaleDateString()}
+Valid Until: ${quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString() : 'TBD'}
+Total Amount: ₹${parseFloat(quotation.grandTotal || 0).toFixed(2)}
+
+The detailed quotation document is attached to this email.
+
+If you have any questions or need further clarification, please don't hesitate to contact us.
+
+Best regards,
+M/S SRI HM BITUMEN CO
+Dag No: 1071, Patta No: 264, Mkirpara
+Chakardaigaon, Mouza - Ramcharani
+Guwahati, Assam - 781035
+
+Phone: +91 8453059698
+Email: info.srihmbitumen@gmail.com
+GST: 18CGMPP6536N2ZG`;
+
+          // Gmail compose URL
+          const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(clientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+          
+          // Open Gmail compose in new tab
+          window.open(gmailComposeUrl, '_blank');
+          
+          toast({
+            title: "Gmail Opened",
+            description: `Gmail compose opened for ${client.name}. Please attach the downloaded PDF file to the email.`,
+          });
+        }, 1000);
+        
+      } catch (pdfError) {
+        // If PDF generation fails, still open Gmail
+        const subject = `Quotation ${quotation.quotationNumber} - M/S SRI HM BITUMEN CO`;
+        const body = `Dear ${client.name},
+
+Thank you for your inquiry! Here are your quotation details:
+
+Quotation Number: ${quotation.quotationNumber}
+Quotation Date: ${new Date(quotation.quotationDate || quotation.createdAt).toLocaleDateString()}
+Total Amount: ₹${parseFloat(quotation.grandTotal || 0).toFixed(2)}
+
+Best regards,
+M/S SRI HM BITUMEN CO`;
+
+        const gmailComposeUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(clientEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.open(gmailComposeUrl, '_blank');
+        
+        toast({
+          title: "Gmail Opened",
+          description: `Gmail compose opened for ${client.name}. PDF generation failed - please create manually if needed.`,
+          variant: "destructive"
+        });
+      }
+      
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to open Gmail. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleEditQuotation = (quotation: any) => {
     // Set up editing mode - populate form with existing quotation data
     setSelectedClient(quotation.clientId);
@@ -3538,6 +3698,25 @@ function QuotationSection() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                
+                <Button 
+                  variant="outline"
+                  onClick={() => handleSendQuotationToWhatsApp(selectedQuotation)}
+                  className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                >
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Send To WhatsApp
+                </Button>
+                
+                <Button 
+                  variant="outline"
+                  onClick={() => handleSendQuotationToEmail(selectedQuotation)}
+                  className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send To Email
+                </Button>
+                
                 {selectedQuotation.status === 'DRAFT' && (
                   <Button onClick={() => {
                     handleUpdateStatus(selectedQuotation.id, 'SENT');
