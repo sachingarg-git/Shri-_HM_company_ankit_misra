@@ -40,7 +40,7 @@ export function FileUploadButton({ label, documentType, onFileSelected, isUpload
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif"
+        accept=".pdf,.jpg,.jpeg,.png"
         onChange={handleFileChange}
         style={{ display: 'none' }}
         data-testid={`file-input-${documentType}`}

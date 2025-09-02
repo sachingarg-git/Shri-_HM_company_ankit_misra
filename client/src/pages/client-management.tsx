@@ -544,13 +544,21 @@ function DocumentStatus({ client }: { client: any }) {
     { key: 'poRateContractUploaded', label: 'PO', type: 'poRateContract' }
   ];
 
-  const handleViewDocument = async (documentType: string) => {
+  const handleDownloadDocument = async (documentType: string, docLabel: string) => {
     try {
-      // Open the document in a new tab
+      // Direct download without opening a preview
       const documentUrl = `/objects/uploads/${client.id}/${documentType}`;
-      window.open(documentUrl, '_blank');
+      
+      // Create a temporary link element to trigger download
+      const link = document.createElement('a');
+      link.href = documentUrl;
+      link.download = `${client.name}_${docLabel}_${documentType}`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
-      console.error('Error viewing document:', error);
+      console.error('Error downloading document:', error);
     }
   };
 
@@ -563,11 +571,11 @@ function DocumentStatus({ client }: { client: any }) {
             <div className="flex items-center gap-1">
               <span className="text-green-600">✓</span>
               <button
-                onClick={() => handleViewDocument(doc.type)}
+                onClick={() => handleDownloadDocument(doc.type, doc.label)}
                 className="text-blue-600 hover:text-blue-800 transition-colors"
-                title={`View ${doc.label} document`}
+                title={`Download ${doc.label} document`}
               >
-                <Eye size={12} />
+                <Download size={12} />
               </button>
             </div>
           ) : (
