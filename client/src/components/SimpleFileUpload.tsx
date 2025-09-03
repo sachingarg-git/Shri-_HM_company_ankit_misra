@@ -34,10 +34,13 @@ export function SimpleFileUpload({ documentType, onUploadComplete }: SimpleFileU
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    console.log('File selected:', file.name, 'Type:', file.type, 'Size:', file.size);
+
+    // Validate file type - be more flexible with MIME types
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    const allowedExtensions = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif'];
     
-    if (!allowedTypes.includes(file.type)) {
+    if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
       toast({
         title: "Invalid File Type",
         description: "Please upload PDF, Word documents, or images only",
@@ -57,33 +60,43 @@ export function SimpleFileUpload({ documentType, onUploadComplete }: SimpleFileU
 
     setIsUploading(true);
     setFileName(file.name);
+    setUploadSuccess(false);
 
     try {
+      console.log('Getting upload URL...');
+      
       // Get upload URL from backend
       const response = await fetch('/api/objects/upload', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({}),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get upload URL');
+        const errorText = await response.text();
+        console.error('Failed to get upload URL:', response.status, errorText);
+        throw new Error(`Failed to get upload URL: ${response.status} ${errorText}`);
       }
 
       const { uploadURL } = await response.json();
+      console.log('Got upload URL, starting upload...');
 
-      // Upload file to object storage
+      // Upload file to object storage with simplified headers
       const uploadResult = await fetch(uploadURL, {
         method: 'PUT',
         body: file,
         headers: {
-          'Content-Type': file.type,
+          'Content-Type': file.type || 'application/octet-stream',
         },
       });
 
+      console.log('Upload response status:', uploadResult.status);
+
       if (uploadResult.ok) {
+        console.log('Upload successful!');
         setUploadSuccess(true);
         onUploadComplete(documentType, true);
         toast({
@@ -91,20 +104,32 @@ export function SimpleFileUpload({ documentType, onUploadComplete }: SimpleFileU
           description: `${getDisplayName(documentType)} uploaded successfully`,
         });
       } else {
-        throw new Error('Upload failed');
+        let errorText = 'Unknown error';
+        try {
+          errorText = await uploadResult.text();
+        } catch (e) {
+          errorText = `HTTP ${uploadResult.status} ${uploadResult.statusText}`;
+        }
+        console.error('Upload failed:', uploadResult.status, errorText);
+        throw new Error(`Upload failed: ${errorText}`);
       }
     } catch (error) {
-      console.error('Upload error:', error);
+      console.error('Upload error details:', error);
       onUploadComplete(documentType, false);
       setUploadSuccess(false);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown upload error';
       toast({
-        title: "Error",
-        description: `Failed to upload ${getDisplayName(documentType)}`,
+        title: "Upload Failed",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
       setIsUploading(false);
     }
+    
+    // Reset the input to allow re-uploading the same file
+    e.target.value = '';
   };
 
   return (

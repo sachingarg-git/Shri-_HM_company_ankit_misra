@@ -17,13 +17,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, Filter, Users, Edit, Eye, Upload, Download, FileText, Shield, CreditCard, Building, FileCheck, ScrollText, Trash2, MoreVertical } from "lucide-react";
 import { useState } from "react";
 import { ObjectUploader } from "@/components/ObjectUploader";
-import { FileUploadButton } from "@/components/FileUploadButton";
+import { SimpleFileUpload } from "@/components/SimpleFileUpload";
 
 export default function ClientManagement() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [documentUploads, setDocumentUploads] = useState<Record<string, { uploaded: boolean; fileUrl?: string; uploading?: boolean }>>({});
+  const [documentUploads, setDocumentUploads] = useState<Record<string, boolean>>({});
   const [editingClient, setEditingClient] = useState<any>(null);
   const [viewingClient, setViewingClient] = useState<any>(null);
 
@@ -96,127 +96,11 @@ export default function ClientManagement() {
     }
   });
 
-  const handleFileSelected = async (file: File, documentType: string, clientId?: string) => {
-    console.log(`File selected for ${documentType}:`, file.name);
-    
-    // Set uploading state
+  const handleUploadComplete = (documentType: string, success: boolean) => {
     setDocumentUploads(prev => ({
       ...prev,
-      [documentType]: { uploaded: false, uploading: true }
+      [documentType]: success
     }));
-    
-    try {
-      // Use client documents upload endpoint if we have a clientId, otherwise general upload
-      let uploadURL;
-      if (clientId) {
-        console.log(`Getting upload URL for existing client: ${clientId}, document: ${documentType}`);
-        const response = await apiRequest('POST', '/api/clients/documents/upload', {
-          clientId,
-          documentType
-        });
-        const data = await response.json();
-        uploadURL = data.uploadURL;
-      } else {
-        console.log(`Getting upload URL for new client, document: ${documentType}`);
-        const response = await apiRequest('POST', '/api/objects/upload', {});
-        const data = await response.json();
-        uploadURL = data.uploadURL;
-      }
-      
-      console.log(`Upload URL received: ${uploadURL}`);
-      console.log(`File details:`, {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        lastModified: file.lastModified
-      });
-      
-      // Validate the upload URL
-      if (!uploadURL || !uploadURL.startsWith('https://storage.googleapis.com/')) {
-        throw new Error(`Invalid upload URL received: ${uploadURL}`);
-      }
-      
-      // Upload file to object storage with proper CORS handling
-      let uploadResponse;
-      try {
-        console.log('Starting file upload to:', uploadURL.substring(0, 100) + '...');
-        
-        uploadResponse = await fetch(uploadURL, {
-          method: 'PUT',
-          body: file,
-          headers: {
-            'Content-Type': file.type || 'application/octet-stream',
-          },
-          mode: 'cors',
-          credentials: 'omit', // Don't send credentials to external domain
-        });
-        
-        console.log(`Upload response status: ${uploadResponse.status}`);
-        console.log(`Upload response OK: ${uploadResponse.ok}`);
-        
-        if (uploadResponse.ok) {
-          console.log('Upload successful!');
-          setDocumentUploads(prev => ({
-            ...prev,
-            [documentType]: { uploaded: true, fileUrl: uploadURL, uploading: false }
-          }));
-          
-          toast({
-            title: "Success",
-            description: `${file.name} uploaded successfully`,
-          });
-        } else {
-          let errorText = 'Unknown error';
-          try {
-            errorText = await uploadResponse.text();
-          } catch (textError) {
-            console.error('Could not read error response:', textError);
-            errorText = `HTTP ${uploadResponse.status} ${uploadResponse.statusText}`;
-          }
-          console.error(`Upload failed with status ${uploadResponse.status}: ${errorText}`);
-          throw new Error(`Upload failed: ${errorText}`);
-        }
-      } catch (fetchError) {
-        console.error('Network error during upload:', fetchError);
-        
-        if (fetchError instanceof TypeError && fetchError.message.includes('CORS')) {
-          throw new Error('Upload blocked by CORS policy. Please contact support.');
-        } else if (fetchError instanceof TypeError && fetchError.message.includes('network')) {
-          throw new Error('Network error. Please check your connection and try again.');
-        } else {
-          throw new Error(`Upload failed: ${fetchError instanceof Error ? fetchError.message : 'Unknown network error'}`);
-        }
-      }
-    } catch (error) {
-      console.error('File upload error:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        name: error instanceof Error ? error.name : undefined,
-        toString: error?.toString(),
-        type: typeof error
-      });
-      
-      setDocumentUploads(prev => ({
-        ...prev,
-        [documentType]: { uploaded: false, uploading: false }
-      }));
-      
-      let errorMessage = 'Unknown error occurred';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error?.toString) {
-        errorMessage = error.toString();
-      }
-      
-      toast({
-        title: "Error",
-        description: `Failed to upload ${file.name}: ${errorMessage}`,
-        variant: "destructive"
-      });
-    }
   };
 
   const onSubmit = (data: any) => {
@@ -230,12 +114,12 @@ export default function ClientManagement() {
       ...data,
       creditLimit: creditLimit || null,
       // Add document upload status
-      gstCertificateUploaded: documentUploads.gstCertificate?.uploaded || false,
-      panCopyUploaded: documentUploads.panCopy?.uploaded || false,
-      securityChequeUploaded: documentUploads.securityCheque?.uploaded || false,
-      aadharCardUploaded: documentUploads.aadharCard?.uploaded || false,
-      agreementUploaded: documentUploads.agreement?.uploaded || false,
-      poRateContractUploaded: documentUploads.poRateContract?.uploaded || false,
+      gstCertificateUploaded: documentUploads.gstCertificate || false,
+      panCopyUploaded: documentUploads.panCopy || false,
+      securityChequeUploaded: documentUploads.securityCheque || false,
+      aadharCardUploaded: documentUploads.aadharCard || false,
+      agreementUploaded: documentUploads.agreement || false,
+      poRateContractUploaded: documentUploads.poRateContract || false,
     };
 
     if (editingClient) {
@@ -517,47 +401,29 @@ export default function ClientManagement() {
                                 Documents Upload (Checklist)
                               </h3>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <FileUploadButton
-                                  label="GST Certificate"
+                                <SimpleFileUpload
                                   documentType="gstCertificate"
-                                  onFileSelected={(file, docType) => handleFileSelected(file, docType, editingClient?.id)}
-                                  isUploading={documentUploads.gstCertificate?.uploading}
-                                  isUploaded={documentUploads.gstCertificate?.uploaded}
+                                  onUploadComplete={handleUploadComplete}
                                 />
-                                <FileUploadButton
-                                  label="PAN Copy"
+                                <SimpleFileUpload
                                   documentType="panCopy"
-                                  onFileSelected={(file, docType) => handleFileSelected(file, docType, editingClient?.id)}
-                                  isUploading={documentUploads.panCopy?.uploading}
-                                  isUploaded={documentUploads.panCopy?.uploaded}
+                                  onUploadComplete={handleUploadComplete}
                                 />
-                                <FileUploadButton
-                                  label="Security Cheque"
+                                <SimpleFileUpload
                                   documentType="securityCheque"
-                                  onFileSelected={(file, docType) => handleFileSelected(file, docType, editingClient?.id)}
-                                  isUploading={documentUploads.securityCheque?.uploading}
-                                  isUploaded={documentUploads.securityCheque?.uploaded}
+                                  onUploadComplete={handleUploadComplete}
                                 />
-                                <FileUploadButton
-                                  label="Aadhar Card"
+                                <SimpleFileUpload
                                   documentType="aadharCard"
-                                  onFileSelected={(file, docType) => handleFileSelected(file, docType, editingClient?.id)}
-                                  isUploading={documentUploads.aadharCard?.uploading}
-                                  isUploaded={documentUploads.aadharCard?.uploaded}
+                                  onUploadComplete={handleUploadComplete}
                                 />
-                                <FileUploadButton
-                                  label="Agreement"
+                                <SimpleFileUpload
                                   documentType="agreement"
-                                  onFileSelected={(file, docType) => handleFileSelected(file, docType, editingClient?.id)}
-                                  isUploading={documentUploads.agreement?.uploading}
-                                  isUploaded={documentUploads.agreement?.uploaded}
+                                  onUploadComplete={handleUploadComplete}
                                 />
-                                <FileUploadButton
-                                  label="PO / Rate Contract"
+                                <SimpleFileUpload
                                   documentType="poRateContract"
-                                  onFileSelected={(file, docType) => handleFileSelected(file, docType, editingClient?.id)}
-                                  isUploading={documentUploads.poRateContract?.uploading}
-                                  isUploaded={documentUploads.poRateContract?.uploaded}
+                                  onUploadComplete={handleUploadComplete}
                                 />
                               </div>
                               
