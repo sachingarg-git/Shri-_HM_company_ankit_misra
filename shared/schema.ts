@@ -104,6 +104,14 @@ export const clients = pgTable("clients", {
   agreementUploaded: boolean("agreement_uploaded").default(false),
   poRateContractUploaded: boolean("po_rate_contract_uploaded").default(false),
   
+  // Document URLs
+  gstCertificateUrl: text("gst_certificate_url"),
+  panCopyUrl: text("pan_copy_url"),
+  securityChequeUrl: text("security_cheque_url"),
+  aadharCardUrl: text("aadhar_card_url"),
+  agreementUrl: text("agreement_url"),
+  poRateContractUrl: text("po_rate_contract_url"),
+  
   // Sales Assignment Fields
   primarySalesPersonId: varchar("primary_sales_person_id").references(() => users.id),
   lastContactDate: timestamp("last_contact_date"),
