@@ -263,6 +263,23 @@ export class ObjectStorageService {
           return file;
         }
       }
+      
+      // If no files in uploads directory, search the entire private directory
+      console.log(`No files in uploads directory, searching entire private directory...`);
+      const [allFiles] = await bucket.getFiles({
+        prefix: privateObjectDir.substring(1), // Remove leading slash for GCS
+      });
+      
+      console.log(`Found ${allFiles.length} total files in private directory`);
+      for (const file of allFiles) {
+        console.log(`Found file: ${file.name}`);
+        
+        // Check if this file might be for this client
+        if (file.name.includes(clientId)) {
+          console.log(`✅ Found potential client file: ${file.name}`);
+          return file;
+        }
+      }
     } catch (error) {
       console.log(`Error searching for document files: ${error}`);
     }
