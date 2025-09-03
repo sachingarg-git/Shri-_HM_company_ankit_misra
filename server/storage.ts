@@ -1574,6 +1574,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteQuotation(id: string): Promise<void> {
+    // First delete related sales orders and their items
+    const relatedSalesOrders = await db
+      .select({ id: salesOrders.id })
+      .from(salesOrders)
+      .where(eq(salesOrders.quotationId, id));
+    
+    for (const salesOrder of relatedSalesOrders) {
+      // Delete sales order items first
+      await db.delete(salesOrderItems).where(eq(salesOrderItems.salesOrderId, salesOrder.id));
+      // Then delete the sales order
+      await db.delete(salesOrders).where(eq(salesOrders.id, salesOrder.id));
+    }
+    
+    // Delete quotation items
+    await db.delete(quotationItems).where(eq(quotationItems.quotationId, id));
+    
+    // Finally delete the quotation
     await db.delete(quotations).where(eq(quotations.id, id));
   }
   
