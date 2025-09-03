@@ -630,8 +630,8 @@ const leadFollowUpFormSchema = z.object({
   remarks: z.string().min(1, "Remarks are required"),
   followUpDate: z.string().min(1, "Follow-up date is required"),
   nextFollowUpDate: z.string().optional(),
-  status: z.enum(["PENDING", "COMPLETED", "CANCELLED"], {
-    required_error: "Follow-up status is required",
+  status: z.enum(["NEW", "CONTACTED", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "CLOSED_WON", "CLOSED_LOST"], {
+    required_error: "Lead status is required",
   }),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"], {
     required_error: "Priority is required",
@@ -1351,7 +1351,7 @@ function LeadCRMSection() {
       remarks: "",
       followUpDate: getCurrentLocalDateTime(), // Auto-fill current date/time
       nextFollowUpDate: "",
-      status: "PENDING",
+      status: "NEW",
       priority: "MEDIUM",
       assignedUserId: "",
       outcome: "",
@@ -1371,7 +1371,7 @@ function LeadCRMSection() {
         remarks: "",
         followUpDate: getCurrentLocalDateTime(),
         nextFollowUpDate: "",
-        status: "PENDING",
+        status: "NEW",
         priority: "MEDIUM",
         assignedUserId: "",
         outcome: "",
@@ -1408,7 +1408,7 @@ function LeadCRMSection() {
     retry: false,
   });
 
-  const onLeadFollowUpSubmit = (data: LeadFollowUpFormData) => {
+  const onLeadFollowUpSubmit = async (data: LeadFollowUpFormData) => {
     if (!selectedLead) return;
     
     // Use the assigned user from the form, or default to current user
@@ -1421,10 +1421,16 @@ function LeadCRMSection() {
       return;
     }
 
+    // Create follow-up with the lead status update
     createLeadFollowUpMutation.mutate({
       ...data,
       leadId: selectedLead.id,
     });
+    
+    // Also update the lead status if it's different from current status
+    if (data.status !== selectedLead.leadStatus) {
+      updateLeadStatusMutation.mutate({ leadId: selectedLead.id, status: data.status });
+    }
   };
 
   const handleConvertToClient = (lead: Lead) => {
@@ -1988,6 +1994,8 @@ function LeadCRMSection() {
                           onClick={() => {
                             setSelectedLead(lead);
                             setIsFollowUpDialogOpen(true);
+                            // Pre-populate form with current lead status
+                            leadFollowUpForm.setValue("status", lead.leadStatus);
                           }}
                         >
                           {lead.companyName}
@@ -2136,6 +2144,8 @@ function LeadCRMSection() {
                             onClick={() => {
                               setSelectedLead(lead);
                               setIsFollowUpDialogOpen(true);
+                              // Pre-populate form with current lead status
+                              leadFollowUpForm.setValue("status", lead.leadStatus);
                             }}
                             data-testid={`button-followup-${lead.id}`}
                           >
@@ -2341,7 +2351,7 @@ function LeadCRMSection() {
                           name="status"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Follow-up Status</FormLabel>
+                              <FormLabel>Lead Status Update</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
@@ -2349,22 +2359,46 @@ function LeadCRMSection() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="PENDING" className="bg-yellow-50 hover:bg-yellow-100">
+                                  <SelectItem value="NEW" className="bg-blue-50 hover:bg-blue-100">
                                     <div className="flex items-center gap-2">
-                                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                      <span>Pending</span>
+                                      <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
+                                      <span>New</span>
                                     </div>
                                   </SelectItem>
-                                  <SelectItem value="COMPLETED" className="bg-green-50 hover:bg-green-100">
+                                  <SelectItem value="CONTACTED" className="bg-pink-50 hover:bg-pink-100">
                                     <div className="flex items-center gap-2">
-                                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                      <span>Completed</span>
+                                      <span className="text-pink-500">📞</span>
+                                      <span>Contacted</span>
                                     </div>
                                   </SelectItem>
-                                  <SelectItem value="CANCELLED" className="bg-red-50 hover:bg-red-100">
+                                  <SelectItem value="QUALIFIED" className="bg-green-50 hover:bg-green-100">
                                     <div className="flex items-center gap-2">
-                                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                                      <span>Cancelled</span>
+                                      <span className="text-green-500">✅</span>
+                                      <span>Qualified</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="PROPOSAL" className="bg-gray-50 hover:bg-gray-100">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-gray-500">📋</span>
+                                      <span>Proposal</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="NEGOTIATION" className="bg-yellow-50 hover:bg-yellow-100">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-yellow-500">🤝</span>
+                                      <span>Negotiation</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="CLOSED_WON" className="bg-purple-50 hover:bg-purple-100">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-purple-500">🎊</span>
+                                      <span>Closed Won</span>
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="CLOSED_LOST" className="bg-red-50 hover:bg-red-100">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-red-500">❌</span>
+                                      <span>Closed Lost</span>
                                     </div>
                                   </SelectItem>
                                 </SelectContent>
@@ -2490,7 +2524,7 @@ function LeadCRMSection() {
                               remarks: "",
                               followUpDate: getCurrentLocalDateTime(),
                               nextFollowUpDate: "",
-                              status: "PENDING",
+                              status: "NEW",
                               priority: "MEDIUM",
                               assignedUserId: "",
                               outcome: "",
