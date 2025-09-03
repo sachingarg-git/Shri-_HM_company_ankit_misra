@@ -2569,7 +2569,7 @@ function LeadCRMSection() {
                           .map((followUp) => (
                             <Card key={followUp.id} className="p-4">
                               <div className="flex items-start justify-between">
-                                <div className="space-y-2 flex-1">
+                                <div className="space-y-3 flex-1">
                                   <div className="flex items-center gap-2">
                                     <Badge variant="outline" className="bg-blue-50">
                                       {followUp.followUpType || 'FOLLOW_UP'}
@@ -2577,27 +2577,68 @@ function LeadCRMSection() {
                                     <span className="text-sm text-gray-500">
                                       {new Date(followUp.followUpDate || followUp.createdAt).toLocaleString()}
                                     </span>
+                                    {followUp.status && (
+                                      <Badge variant={followUp.status === 'COMPLETED' ? 'default' : followUp.status === 'CANCELLED' ? 'destructive' : 'secondary'}>
+                                        {followUp.status}
+                                      </Badge>
+                                    )}
                                   </div>
+                                  
                                   <p className="text-sm font-medium">
                                     {followUp.remarks || 'No details provided'}
                                   </p>
+
+                                  {/* Enhanced information grid */}
+                                  <div className="grid grid-cols-2 gap-4 text-xs">
+                                    {followUp.priority && (
+                                      <div>
+                                        <span className="font-medium text-gray-600">Priority:</span>
+                                        <Badge variant={followUp.priority === 'URGENT' ? 'destructive' : followUp.priority === 'HIGH' ? 'secondary' : 'outline'} className="ml-2">
+                                          {followUp.priority}
+                                        </Badge>
+                                      </div>
+                                    )}
+                                    
+                                    {followUp.assignedUser && (
+                                      <div>
+                                        <span className="font-medium text-gray-600">Assigned to:</span>
+                                        <span className="ml-2">{followUp.assignedUser.firstName} {followUp.assignedUser.lastName}</span>
+                                      </div>
+                                    )}
+                                  </div>
+
                                   {followUp.nextFollowUpDate && (
-                                    <p className="text-xs text-blue-600">
-                                      Next follow-up: {new Date(followUp.nextFollowUpDate).toLocaleString()}
-                                    </p>
+                                    <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                                      <Calendar className="h-3 w-3" />
+                                      <span><strong>Next follow-up:</strong> {new Date(followUp.nextFollowUpDate).toLocaleString()}</span>
+                                    </div>
                                   )}
-                                  {followUp.assignedUser && (
-                                    <p className="text-xs text-gray-500">
-                                      Assigned to: {followUp.assignedUser.firstName} {followUp.assignedUser.lastName}
-                                    </p>
+
+                                  {followUp.outcome && (
+                                    <div className="text-xs">
+                                      <span className="font-medium text-gray-600">Outcome:</span>
+                                      <p className="mt-1 text-gray-700 bg-gray-50 p-2 rounded">{followUp.outcome}</p>
+                                    </div>
                                   )}
-                                  <div className="mt-2 pt-2 border-t border-gray-100">
-                                    <p className="text-xs text-gray-500">
-                                      <span className="font-medium">Updated by:</span> {(() => {
-                                        const updatedUser = users.find(u => u.id === followUp.assignedUserId);
-                                        return updatedUser ? `${updatedUser.firstName} ${updatedUser.lastName}` : 'Unknown User';
-                                      })()}
-                                    </p>
+
+                                  <div className="mt-3 pt-3 border-t border-gray-100">
+                                    <div className="flex justify-between items-center text-xs text-gray-500">
+                                      <span>
+                                        <span className="font-medium">Updated by:</span> {(() => {
+                                          const updatedUser = users.find(u => u.id === followUp.assignedUserId);
+                                          return updatedUser ? `${updatedUser.firstName} ${updatedUser.lastName}` : 'Unknown User';
+                                        })()}
+                                      </span>
+                                      <span>
+                                        {new Date(followUp.createdAt).toLocaleDateString('en-US', { 
+                                          month: 'short', 
+                                          day: 'numeric', 
+                                          year: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })}
+                                      </span>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
