@@ -1450,6 +1450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get client document URL for viewing
   app.get("/api/clients/:clientId/documents/:documentType", requireAuth, async (req, res) => {
     try {
+      console.log(`🔧 Document download request: clientId=${req.params.clientId}, documentType=${req.params.documentType}`);
       const { clientId } = req.params;
       let { documentType } = req.params;
       
@@ -1466,15 +1467,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: "Client not found" });
       }
       
-      // Check if document is uploaded (documentType is already in camelCase)
-      const documentField = `${documentType}Uploaded` as keyof typeof client;
-      if (!client[documentField]) {
+      // Check if document is uploaded (convert to snake_case for database)
+      const documentFieldSnake = documentType.replace(/([A-Z])/g, '_$1').toLowerCase() + '_uploaded';
+      const urlFieldSnake = documentType.replace(/([A-Z])/g, '_$1').toLowerCase() + '_url';
+      
+      console.log(`🔧 Checking fields: ${documentFieldSnake}, ${urlFieldSnake}`);
+      
+      const isUploaded = (client as any)[documentFieldSnake];
+      if (!isUploaded) {
+          console.log(`🔧 Document not uploaded: ${documentFieldSnake} = ${isUploaded}`);
           return res.status(404).json({ error: "Document not uploaded" });
       }
       
       // First check if we have a stored URL for this document
-      const urlField = `${documentType}Url` as keyof typeof client;
-      const storedUrl = client[urlField] as string;
+      const storedUrl = (client as any)[urlFieldSnake] as string;
+      console.log(`🔧 Stored URL: ${storedUrl}`);
       
       if (storedUrl) {
         // Use the stored URL directly
