@@ -403,31 +403,37 @@ export default function ClientManagement() {
                                 <WorkingFileUpload
                                   documentType="gstCertificate"
                                   label="GST Certificate"
+                                  clientId={editingClient?.id}
                                   onUploadComplete={handleUploadComplete}
                                 />
                                 <WorkingFileUpload
                                   documentType="panCopy"
                                   label="PAN Copy"
+                                  clientId={editingClient?.id}
                                   onUploadComplete={handleUploadComplete}
                                 />
                                 <WorkingFileUpload
                                   documentType="securityCheque"
                                   label="Security Cheque"
+                                  clientId={editingClient?.id}
                                   onUploadComplete={handleUploadComplete}
                                 />
                                 <WorkingFileUpload
                                   documentType="aadharCard"
                                   label="Aadhar Card"
+                                  clientId={editingClient?.id}
                                   onUploadComplete={handleUploadComplete}
                                 />
                                 <WorkingFileUpload
                                   documentType="agreement"
                                   label="Agreement"
+                                  clientId={editingClient?.id}
                                   onUploadComplete={handleUploadComplete}
                                 />
                                 <WorkingFileUpload
                                   documentType="poRateContract"
                                   label="PO / Rate Contract"
+                                  clientId={editingClient?.id}
                                   onUploadComplete={handleUploadComplete}
                                 />
                               </div>
@@ -798,6 +804,7 @@ function ClientAttachmentsSection() {
                       <WorkingFileUpload
                         documentType={type}
                         label={getAttachmentDisplayName(type)}
+                        clientId={selectedClientId}
                         onUploadComplete={(docType, success, fileUrl) => {
                           if (success && selectedClientId && fileUrl) {
                             // Update client with uploaded document

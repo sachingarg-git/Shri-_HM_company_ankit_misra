@@ -6,10 +6,11 @@ import { useToast } from "@/hooks/use-toast";
 interface WorkingFileUploadProps {
   documentType: string;
   label: string;
+  clientId?: string;
   onUploadComplete: (documentType: string, success: boolean, fileUrl?: string) => void;
 }
 
-export function WorkingFileUpload({ documentType, label, onUploadComplete }: WorkingFileUploadProps) {
+export function WorkingFileUpload({ documentType, label, clientId, onUploadComplete }: WorkingFileUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
@@ -40,14 +41,22 @@ export function WorkingFileUpload({ documentType, label, onUploadComplete }: Wor
 
       console.log('1. Getting upload URL...');
       
-      // Get upload URL from backend
-      const response = await fetch('/api/objects/upload', {
+      // Get client-specific upload URL from backend
+      const uploadEndpoint = clientId 
+        ? '/api/clients/documents/upload'
+        : '/api/objects/upload';
+      
+      const requestBody = clientId 
+        ? { clientId, documentType }
+        : {};
+      
+      const response = await fetch(uploadEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({}),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -57,6 +66,7 @@ export function WorkingFileUpload({ documentType, label, onUploadComplete }: Wor
 
       const { uploadURL } = await response.json();
       console.log('2. Got upload URL, uploading file...');
+      console.log('Upload URL:', uploadURL.substring(0, 100) + '...');
 
       // Upload file to storage
       const uploadResponse = await fetch(uploadURL, {
@@ -71,6 +81,32 @@ export function WorkingFileUpload({ documentType, label, onUploadComplete }: Wor
 
       if (uploadResponse.ok) {
         console.log('✅ Upload successful!');
+        
+        // If we have a clientId, associate the document with the client
+        if (clientId) {
+          try {
+            console.log('3. Associating document with client...');
+            const documentTypeKebab = documentType.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+            
+            const associateResponse = await fetch(`/api/clients/${clientId}/documents/${documentTypeKebab}`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include',
+              body: JSON.stringify({ documentURL: uploadURL }),
+            });
+            
+            if (!associateResponse.ok) {
+              console.warn('Failed to associate document with client, but upload was successful');
+            } else {
+              console.log('✅ Document associated with client!');
+            }
+          } catch (error) {
+            console.warn('Failed to associate document with client:', error);
+          }
+        }
+        
         setUploadSuccess(true);
         onUploadComplete(documentType, true, uploadURL);
         toast({
