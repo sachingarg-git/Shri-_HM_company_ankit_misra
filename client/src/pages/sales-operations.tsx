@@ -2274,8 +2274,8 @@ function LeadCRMSection() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  <SelectItem value="PENDING">⏳ Pending</SelectItem>
-                                  <SelectItem value="COMPLETED">✅ Completed</SelectItem>
+                                  <SelectItem value="PENDING">🟡 Pending</SelectItem>
+                                  <SelectItem value="COMPLETED">🟢 Completed</SelectItem>
                                   <SelectItem value="CANCELLED">❌ Cancelled</SelectItem>
                                 </SelectContent>
                               </Select>
