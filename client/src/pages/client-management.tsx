@@ -16,7 +16,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Search, Plus, Filter, Users, Edit, Eye, Upload, Download, FileText, Shield, CreditCard, Building, FileCheck, ScrollText, Trash2, MoreVertical } from "lucide-react";
 import { useState } from "react";
-import { ObjectUploader } from "@/components/ObjectUploader";
 
 export default function ClientManagement() {
   const { toast } = useToast();
@@ -683,51 +682,6 @@ function ClientAttachmentsSection() {
     queryKey: ['/api/clients'],
   });
 
-  const handleGetUploadParameters = async () => {
-    const response = await apiRequest('POST', '/api/objects/upload', {}) as any;
-    return {
-      method: 'PUT' as const,
-      url: response.uploadURL,
-    };
-  };
-
-  const handleUploadComplete = async (attachmentType: string, result: any) => {
-    if (!selectedClientId) {
-      toast({
-        title: "Error",
-        description: "Please select a client first",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const uploadURL = result.successful[0]?.uploadURL;
-      if (!uploadURL) {
-        throw new Error("No upload URL found");
-      }
-
-      await apiRequest('PUT', `/api/clients/${selectedClientId}/attachments`, {
-        attachmentType,
-        fileURL: uploadURL
-      });
-
-      toast({
-        title: "Success",
-        description: `${getAttachmentDisplayName(attachmentType)} uploaded successfully`,
-      });
-
-      // Refresh clients data
-      queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
-    } catch (error) {
-      console.error("Upload completion error:", error);
-      toast({
-        title: "Error", 
-        description: "Failed to save attachment",
-        variant: "destructive"
-      });
-    }
-  };
 
   const getAttachmentDisplayName = (type: string) => {
     const names: Record<string, string> = {
@@ -830,16 +784,11 @@ function ClientAttachmentsSection() {
                         </Button>
                       </div>
                     ) : (
-                      <ObjectUploader
-                        maxNumberOfFiles={1}
-                        maxFileSize={10485760} // 10MB
-                        onGetUploadParameters={handleGetUploadParameters}
-                        onComplete={(result) => handleUploadComplete(type, result)}
-                        buttonClassName="w-full"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload {getAttachmentDisplayName(type)}
-                      </ObjectUploader>
+                      <div className="text-center p-4 border border-dashed border-gray-300 rounded">
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm text-gray-500">Document upload temporarily disabled</p>
+                        <p className="text-xs text-gray-400">Will be restored in next update</p>
+                      </div>
                     )}
                   </div>
                 </Card>

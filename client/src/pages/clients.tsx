@@ -697,76 +697,13 @@ export default function Clients() {
 
 
   const handleFileUpload = async (documentType: string, file: File) => {
-    setUploadingStates(prev => ({ ...prev, [documentType]: true }));
-    
-    try {
-      // Need clientId for upload - use currentClientId or editingClient.id
-      const clientId = currentClientId || editingClient?.id;
-      if (!clientId) {
-        throw new Error('Client ID is required for document upload');
-      }
-
-      // Get upload URL
-      const uploadParams = await handleGetUploadParameters(clientId, documentType);
-      
-      // Upload file directly
-      const uploadResponse = await fetch(uploadParams.url, {
-        method: uploadParams.method,
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error('Upload failed');
-      }
-
-      // Store file info temporarily
-      setUploadedFiles(prev => ({
-        ...prev,
-        [documentType]: {
-          name: file.name,
-          url: uploadParams.url,
-          size: file.size
-        } as any
-      }));
-
-      // Update form state
-      form.setValue(`${documentType}Uploaded` as any, true);
-
-      toast({
-        title: "Success",
-        description: `${file.name} uploaded successfully`,
-      });
-
-      // If we have a current client ID, immediately associate the document
-      if (currentClientId) {
-        try {
-          const apiDocumentType = documentType
-            .replace(/([A-Z])/g, '-$1')
-            .toLowerCase()
-            .replace(/^-/, '');
-
-          await apiCall(`/api/clients/${currentClientId}/documents/${apiDocumentType}`, "PUT", {
-            documentURL: uploadParams.url,
-          });
-
-          queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
-        } catch (error: any) {
-          console.error("Failed to update document status:", error);
-        }
-      }
-    } catch (error: any) {
-      console.error('File upload error:', error);
-      toast({
-        title: "Error",
-        description: `Failed to upload ${file.name}`,
-        variant: "destructive"
-      });
-    } finally {
-      setUploadingStates(prev => ({ ...prev, [documentType]: false }));
-    }
+    // Upload functionality temporarily disabled
+    toast({
+      title: "Upload Disabled",
+      description: "File upload functionality is temporarily disabled. Feature will be restored soon.",
+      variant: "destructive"
+    });
+    return;
   };
 
   const renderFileUpload = (documentType: string, label: string) => {
