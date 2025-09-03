@@ -124,6 +124,12 @@ export default function ClientManagement() {
       }
       
       console.log(`Upload URL received: ${uploadURL}`);
+      console.log(`File details:`, {
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        lastModified: file.lastModified
+      });
       
       // Upload file to object storage
       const uploadResponse = await fetch(uploadURL, {
@@ -135,6 +141,7 @@ export default function ClientManagement() {
       });
       
       console.log(`Upload response status: ${uploadResponse.status}`);
+      console.log(`Upload response headers:`, Object.fromEntries(uploadResponse.headers.entries()));
       
       if (uploadResponse.ok) {
         setDocumentUploads(prev => ({
@@ -153,12 +160,28 @@ export default function ClientManagement() {
       }
     } catch (error) {
       console.error('File upload error:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined,
+        toString: error?.toString(),
+        type: typeof error
+      });
+      
       setDocumentUploads(prev => ({
         ...prev,
         [documentType]: { uploaded: false, uploading: false }
       }));
       
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      let errorMessage = 'Unknown error occurred';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.toString) {
+        errorMessage = error.toString();
+      }
+      
       toast({
         title: "Error",
         description: `Failed to upload ${file.name}: ${errorMessage}`,
