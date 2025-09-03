@@ -220,23 +220,29 @@ export class ObjectStorageService {
       return null;
     }
 
+    console.log(`Searching for document: ${clientId}/${documentType}`);
+    console.log(`Private object dir: ${privateObjectDir}`);
+
     // Try new path structure first: uploads/{clientId}/{documentType}
     try {
       const newPath = `${privateObjectDir}/uploads/${clientId}/${documentType}`;
+      console.log(`Trying new path: ${newPath}`);
       const { bucketName, objectName } = parseObjectPath(newPath);
       const bucket = objectStorageClient.bucket(bucketName);
       const file = bucket.file(objectName);
       const [exists] = await file.exists();
       if (exists) {
+        console.log(`✅ Found document at new path: ${newPath}`);
         return file;
       }
     } catch (error) {
-      console.log(`New path structure not found for ${clientId}/${documentType}`);
+      console.log(`New path structure not found for ${clientId}/${documentType}:`, error);
     }
 
     // Try to find document in uploads directory by listing files
     try {
       const uploadsPath = `${privateObjectDir}/uploads/`;
+      console.log(`Searching in uploads directory: ${uploadsPath}`);
       const { bucketName } = parseObjectPath(uploadsPath);
       const bucket = objectStorageClient.bucket(bucketName);
       
@@ -245,21 +251,23 @@ export class ObjectStorageService {
         prefix: uploadsPath.substring(1), // Remove leading slash for GCS
       });
 
+      console.log(`Found ${files.length} files in uploads directory`);
+
       // Look for files that might match this client's documents
       for (const file of files) {
-        // Check if this file was uploaded for this client by checking metadata or filename patterns
-        try {
-          const [metadata] = await file.getMetadata();
-          // For now, we can't reliably match old documents without additional metadata
-          // This is a limitation of the old upload system
-        } catch (error) {
-          // Skip files we can't read metadata for
+        console.log(`Checking file: ${file.name}`);
+        
+        // Check if filename contains client ID and document type
+        if (file.name.includes(clientId) || file.name.includes(documentType.replace(/([A-Z])/g, '-$1').toLowerCase())) {
+          console.log(`✅ Potential match found: ${file.name}`);
+          return file;
         }
       }
     } catch (error) {
       console.log(`Error searching for document files: ${error}`);
     }
 
+    console.log(`❌ No document found for ${clientId}/${documentType}`);
     return null;
   }
 

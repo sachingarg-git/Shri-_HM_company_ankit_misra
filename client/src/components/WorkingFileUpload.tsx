@@ -50,6 +50,7 @@ export function WorkingFileUpload({ documentType, label, clientId, onUploadCompl
       
       const uploadEndpoint = '/api/clients/documents/upload';
       console.log('Using upload endpoint:', uploadEndpoint);
+      console.log('Request body:', { clientId, documentType });
       
       const requestBody = { clientId, documentType };
       
