@@ -115,10 +115,25 @@ export function SimpleFileUpload({ documentType, onUploadComplete }: SimpleFileU
       }
     } catch (error) {
       console.error('Upload error details:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error constructor:', error?.constructor?.name);
+      console.error('Error string:', String(error));
+      console.error('Error JSON:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      
       onUploadComplete(documentType, false);
       setUploadSuccess(false);
       
-      const errorMessage = error instanceof Error ? error.message : 'Unknown upload error';
+      let errorMessage = 'Unknown upload error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.toString) {
+        errorMessage = error.toString();
+      } else {
+        errorMessage = 'Network or CORS error - please check your connection';
+      }
+      
       toast({
         title: "Upload Failed",
         description: errorMessage,
