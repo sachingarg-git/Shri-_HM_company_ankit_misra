@@ -1439,13 +1439,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const documentFile = await objectStorageService.findClientDocumentFile(clientId, documentType);
       
       if (!documentFile) {
-        console.log(`Document not found in storage for ${clientId}/${documentType}, marking as not uploaded`);
-        // Reset the upload flag since the document is not actually available
-        await storage.updateClient(clientId, { [documentField]: false });
+        console.log(`Document not found in storage for ${clientId}/${documentType}, but keeping upload status`);
+        // Don't reset the upload flag - just return an error without removing the document from UI
         return res.status(404).json({ 
           error: "Document file not found", 
-          message: "Please re-upload this document",
-          needsReupload: true 
+          message: "Document may be uploading or in a different location. Please try again or re-upload.",
+          needsReupload: false 
         });
       }
       

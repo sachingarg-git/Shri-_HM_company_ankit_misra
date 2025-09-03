@@ -43,16 +43,15 @@ export function WorkingFileUpload({ documentType, label, clientId, onUploadCompl
       console.log('Client ID:', clientId);
       console.log('Document Type:', documentType);
       
-      // Get client-specific upload URL from backend
-      const uploadEndpoint = clientId 
-        ? '/api/clients/documents/upload'
-        : '/api/objects/upload';
+      // Always use client-specific upload when clientId is available
+      if (!clientId) {
+        throw new Error('Client ID is required for document upload');
+      }
       
+      const uploadEndpoint = '/api/clients/documents/upload';
       console.log('Using upload endpoint:', uploadEndpoint);
       
-      const requestBody = clientId 
-        ? { clientId, documentType }
-        : {};
+      const requestBody = { clientId, documentType };
       
       const response = await fetch(uploadEndpoint, {
         method: 'POST',
