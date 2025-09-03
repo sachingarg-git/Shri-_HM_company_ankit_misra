@@ -449,13 +449,48 @@ function AddLeadDialog({ open, onOpenChange, lead, users, onLeadSaved }: AddLead
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="NEW">New</SelectItem>
-                        <SelectItem value="CONTACTED">Contacted</SelectItem>
-                        <SelectItem value="QUALIFIED">Qualified</SelectItem>
-                        <SelectItem value="PROPOSAL">Proposal</SelectItem>
-                        <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
-                        <SelectItem value="CLOSED_WON">Closed Won</SelectItem>
-                        <SelectItem value="CLOSED_LOST">Closed Lost</SelectItem>
+                        <SelectItem value="NEW" className="bg-blue-50 hover:bg-blue-100">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
+                            <span>New</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="CONTACTED" className="bg-pink-50 hover:bg-pink-100">
+                          <div className="flex items-center gap-2">
+                            <span className="text-pink-500">📞</span>
+                            <span>Contacted</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="QUALIFIED" className="bg-green-50 hover:bg-green-100">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-500">✅</span>
+                            <span>Qualified</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="PROPOSAL" className="bg-gray-50 hover:bg-gray-100">
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500">📋</span>
+                            <span>Proposal</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="NEGOTIATION" className="bg-yellow-50 hover:bg-yellow-100">
+                          <div className="flex items-center gap-2">
+                            <span className="text-yellow-500">🤝</span>
+                            <span>Negotiation</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="CLOSED_WON" className="bg-purple-50 hover:bg-purple-100">
+                          <div className="flex items-center gap-2">
+                            <span className="text-purple-500">🎊</span>
+                            <span>Closed Won</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="CLOSED_LOST" className="bg-red-50 hover:bg-red-100">
+                          <div className="flex items-center gap-2">
+                            <span className="text-red-500">❌</span>
+                            <span>Closed Lost</span>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -2003,13 +2038,48 @@ function LeadCRMSection() {
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="NEW">🆕 New</SelectItem>
-                            <SelectItem value="CONTACTED">📞 Contacted</SelectItem>
-                            <SelectItem value="QUALIFIED">✅ Qualified</SelectItem>
-                            <SelectItem value="PROPOSAL">📋 Proposal</SelectItem>
-                            <SelectItem value="NEGOTIATION">🤝 Negotiation</SelectItem>
-                            <SelectItem value="CLOSED_WON">🎉 Closed Won</SelectItem>
-                            <SelectItem value="CLOSED_LOST">❌ Closed Lost</SelectItem>
+                            <SelectItem value="NEW" className="bg-blue-50 hover:bg-blue-100">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
+                                <span>New</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="CONTACTED" className="bg-pink-50 hover:bg-pink-100">
+                              <div className="flex items-center gap-2">
+                                <span className="text-pink-500">📞</span>
+                                <span>Contacted</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="QUALIFIED" className="bg-green-50 hover:bg-green-100">
+                              <div className="flex items-center gap-2">
+                                <span className="text-green-500">✅</span>
+                                <span>Qualified</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="PROPOSAL" className="bg-gray-50 hover:bg-gray-100">
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500">📋</span>
+                                <span>Proposal</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="NEGOTIATION" className="bg-yellow-50 hover:bg-yellow-100">
+                              <div className="flex items-center gap-2">
+                                <span className="text-yellow-500">🤝</span>
+                                <span>Negotiation</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="CLOSED_WON" className="bg-purple-50 hover:bg-purple-100">
+                              <div className="flex items-center gap-2">
+                                <span className="text-purple-500">🎊</span>
+                                <span>Closed Won</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="CLOSED_LOST" className="bg-red-50 hover:bg-red-100">
+                              <div className="flex items-center gap-2">
+                                <span className="text-red-500">❌</span>
+                                <span>Closed Lost</span>
+                              </div>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
