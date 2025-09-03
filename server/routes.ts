@@ -1351,12 +1351,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { clientId, documentType } = req.body;
       
+      console.log(`🔧 Upload URL request: clientId=${clientId}, documentType=${documentType}`);
+      
       if (!clientId || !documentType) {
         return res.status(400).json({ error: "clientId and documentType are required" });
       }
 
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getClientDocumentUploadURL(clientId, documentType);
+      
+      console.log(`🔧 Generated upload URL: ${uploadURL.substring(0, 100)}...`);
       
       res.json({ uploadURL });
     } catch (error: any) {
