@@ -1491,22 +1491,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`🔧 Client found: ${client.name}`);
       
-      // Check if document is uploaded (convert to snake_case for database)
-      const documentFieldSnake = documentType.replace(/([A-Z])/g, '_$1').toLowerCase() + '_uploaded';
-      const urlFieldSnake = documentType.replace(/([A-Z])/g, '_$1').toLowerCase() + '_url';
+      // Check if document is uploaded using camelCase property names (as returned by Drizzle ORM)
+      const fieldMap: Record<string, {uploaded: string, url: string}> = {
+        'gstCertificate': { uploaded: 'gstCertificateUploaded', url: 'gstCertificateUrl' },
+        'panCopy': { uploaded: 'panCopyUploaded', url: 'panCopyUrl' },
+        'securityCheque': { uploaded: 'securityChequeUploaded', url: 'securityChequeUrl' },
+        'aadharCard': { uploaded: 'aadharCardUploaded', url: 'aadharCardUrl' },
+        'agreement': { uploaded: 'agreementUploaded', url: 'agreementUrl' },
+        'poRateContract': { uploaded: 'poRateContractUploaded', url: 'poRateContractUrl' }
+      };
       
-      console.log(`🔧 Database fields: ${documentFieldSnake}, ${urlFieldSnake}`);
+      const fields = fieldMap[documentType];
+      if (!fields) {
+        return res.status(400).json({ error: "Invalid document type" });
+      }
       
-      const isUploaded = (client as any)[documentFieldSnake];
+      console.log(`🔧 Checking fields: ${fields.uploaded}, ${fields.url}`);
+      
+      const isUploaded = (client as any)[fields.uploaded];
       console.log(`🔧 Is uploaded: ${isUploaded}`);
       
       if (!isUploaded) {
-          console.log(`🔧 Document not uploaded: ${documentFieldSnake} = ${isUploaded}`);
+          console.log(`🔧 Document not uploaded: ${fields.uploaded} = ${isUploaded}`);
           return res.status(404).json({ error: "Document not uploaded" });
       }
       
       // First check if we have a stored URL for this document
-      const storedUrl = (client as any)[urlFieldSnake] as string;
+      const storedUrl = (client as any)[fields.url] as string;
       console.log(`🔧 Stored URL: ${storedUrl}`);
       
       if (storedUrl) {
