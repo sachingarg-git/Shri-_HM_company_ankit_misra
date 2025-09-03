@@ -487,23 +487,23 @@ export const registerSchema = insertUserSchema.extend({
 export const insertClientSchema = z.object({
   name: z.string().min(1, "Company name is required"),
   category: z.enum(['ALFA', 'BETA', 'GAMMA', 'DELTA', 'ALPHA']),
-  billingAddressLine: z.string().optional(),
-  billingCity: z.string().optional(),
-  billingPincode: z.string().optional(),
-  billingState: z.string().optional(),
-  billingCountry: z.string().default('India'),
-  gstNumber: z.string().optional(),
-  panNumber: z.string().optional(),
-  msmeNumber: z.string().optional(),
-  incorporationCertNumber: z.string().optional(),
+  billingAddressLine: z.string().nullable().optional().transform(val => val || ""),
+  billingCity: z.string().nullable().optional().transform(val => val || ""),
+  billingPincode: z.string().nullable().optional().transform(val => val || ""),
+  billingState: z.string().nullable().optional().transform(val => val || ""),
+  billingCountry: z.string().nullable().default('India').transform(val => val || 'India'),
+  gstNumber: z.string().nullable().optional().transform(val => val || ""),
+  panNumber: z.string().nullable().optional().transform(val => val || ""),
+  msmeNumber: z.string().nullable().optional().transform(val => val || ""),
+  incorporationCertNumber: z.string().nullable().optional().transform(val => val || ""),
   incorporationDate: z.union([z.string(), z.date()]).optional().transform(val => {
     if (!val) return undefined;
     return typeof val === 'string' ? new Date(val) : val;
   }),
-  companyType: z.enum(['PVT_LTD', 'PARTNERSHIP', 'PROPRIETOR', 'GOVT', 'OTHERS']).optional(),
-  contactPersonName: z.string().optional(),
-  mobileNumber: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
+  companyType: z.enum(['PVT_LTD', 'PARTNERSHIP', 'PROPRIETOR', 'GOVT', 'OTHERS']).nullable().optional(),
+  contactPersonName: z.string().nullable().optional().transform(val => val || ""),
+  mobileNumber: z.string().nullable().optional().transform(val => val || ""),
+  email: z.string().nullable().optional().transform(val => val || "").pipe(z.string().email().optional().or(z.literal(""))),
   communicationPreferences: z.array(z.string()).optional(),
   paymentTerms: z.union([z.string(), z.number()]).optional().transform(val => {
     if (val == null || val === "") return 30;
@@ -526,7 +526,7 @@ export const insertClientSchema = z.object({
   aadharCardUploaded: z.boolean().default(false),
   agreementUploaded: z.boolean().default(false),
   poRateContractUploaded: z.boolean().default(false),
-  primarySalesPersonId: z.string().optional(),
+  primarySalesPersonId: z.string().nullable().optional().transform(val => val || undefined),
   lastContactDate: z.union([z.string(), z.date()]).optional().transform(val => {
     if (!val) return undefined;
     return typeof val === 'string' ? new Date(val) : val;
