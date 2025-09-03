@@ -131,32 +131,61 @@ export default function ClientManagement() {
         lastModified: file.lastModified
       });
       
-      // Upload file to object storage
-      const uploadResponse = await fetch(uploadURL, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      });
+      // Validate the upload URL
+      if (!uploadURL || !uploadURL.startsWith('https://storage.googleapis.com/')) {
+        throw new Error(`Invalid upload URL received: ${uploadURL}`);
+      }
       
-      console.log(`Upload response status: ${uploadResponse.status}`);
-      console.log(`Upload response headers:`, Object.fromEntries(uploadResponse.headers.entries()));
-      
-      if (uploadResponse.ok) {
-        setDocumentUploads(prev => ({
-          ...prev,
-          [documentType]: { uploaded: true, fileUrl: uploadURL, uploading: false }
-        }));
+      // Upload file to object storage with proper CORS handling
+      let uploadResponse;
+      try {
+        console.log('Starting file upload to:', uploadURL.substring(0, 100) + '...');
         
-        toast({
-          title: "Success",
-          description: `${file.name} uploaded successfully`,
+        uploadResponse = await fetch(uploadURL, {
+          method: 'PUT',
+          body: file,
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+          },
+          mode: 'cors',
+          credentials: 'omit', // Don't send credentials to external domain
         });
-      } else {
-        const errorText = await uploadResponse.text();
-        console.error(`Upload failed with status ${uploadResponse.status}: ${errorText}`);
-        throw new Error(`Upload failed with status: ${uploadResponse.status} - ${errorText}`);
+        
+        console.log(`Upload response status: ${uploadResponse.status}`);
+        console.log(`Upload response OK: ${uploadResponse.ok}`);
+        
+        if (uploadResponse.ok) {
+          console.log('Upload successful!');
+          setDocumentUploads(prev => ({
+            ...prev,
+            [documentType]: { uploaded: true, fileUrl: uploadURL, uploading: false }
+          }));
+          
+          toast({
+            title: "Success",
+            description: `${file.name} uploaded successfully`,
+          });
+        } else {
+          let errorText = 'Unknown error';
+          try {
+            errorText = await uploadResponse.text();
+          } catch (textError) {
+            console.error('Could not read error response:', textError);
+            errorText = `HTTP ${uploadResponse.status} ${uploadResponse.statusText}`;
+          }
+          console.error(`Upload failed with status ${uploadResponse.status}: ${errorText}`);
+          throw new Error(`Upload failed: ${errorText}`);
+        }
+      } catch (fetchError) {
+        console.error('Network error during upload:', fetchError);
+        
+        if (fetchError instanceof TypeError && fetchError.message.includes('CORS')) {
+          throw new Error('Upload blocked by CORS policy. Please contact support.');
+        } else if (fetchError instanceof TypeError && fetchError.message.includes('network')) {
+          throw new Error('Network error. Please check your connection and try again.');
+        } else {
+          throw new Error(`Upload failed: ${fetchError instanceof Error ? fetchError.message : 'Unknown network error'}`);
+        }
       }
     } catch (error) {
       console.error('File upload error:', error);
