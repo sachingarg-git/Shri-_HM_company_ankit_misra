@@ -1365,14 +1365,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Set ACL policy for uploaded client documents
+  // Set ACL policy for uploaded client documents (supports both camelCase and kebab-case)
   app.put("/api/clients/:clientId/documents/:documentType", requireAuth, async (req, res) => {
     try {
       if (!req.body.documentURL) {
         return res.status(400).json({ error: "documentURL is required" });
       }
 
-      const { clientId, documentType } = req.params;
+      const { clientId } = req.params;
+      let { documentType } = req.params;
+      
+      // Convert kebab-case to camelCase if needed for consistency
+      if (documentType.includes('-')) {
+        documentType = documentType.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+      }
       const currentUser = (req as any).user;
       
       const objectStorageService = new ObjectStorageService();
@@ -1387,22 +1393,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update client document status in database
       const updateData: any = {};
       switch (documentType) {
-        case 'gst-certificate':
+        case 'gstCertificate':
           updateData.gstCertificateUploaded = true;
           break;
-        case 'pan-copy':
+        case 'panCopy':
           updateData.panCopyUploaded = true;
           break;
-        case 'security-cheque':
+        case 'securityCheque':
           updateData.securityChequeUploaded = true;
           break;
-        case 'aadhar-card':
+        case 'aadharCard':
           updateData.aadharCardUploaded = true;
           break;
         case 'agreement':
           updateData.agreementUploaded = true;
           break;
-        case 'po-rate-contract':
+        case 'poRateContract':
           updateData.poRateContractUploaded = true;
           break;
         default:
@@ -1421,7 +1427,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get client document URL for viewing
   app.get("/api/clients/:clientId/documents/:documentType", requireAuth, async (req, res) => {
     try {
-      const { clientId, documentType } = req.params;
+      const { clientId } = req.params;
+      let { documentType } = req.params;
+      
+      // Convert kebab-case to camelCase if needed for consistency
+      if (documentType.includes('-')) {
+        documentType = documentType.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+      }
       const currentUser = (req as any).user;
       
       // Get client to check if document is uploaded

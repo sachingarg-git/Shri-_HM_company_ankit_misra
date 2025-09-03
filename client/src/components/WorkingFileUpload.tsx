@@ -85,9 +85,8 @@ export function WorkingFileUpload({ documentType, label, clientId, onUploadCompl
         if (clientId) {
           try {
             console.log('3. Associating document with client...');
-            const documentTypeKebab = documentType.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
-            
-            const associateResponse = await fetch(`/api/clients/${clientId}/documents/${documentTypeKebab}`, {
+            // Use the original camelCase documentType for consistency
+            const associateResponse = await fetch(`/api/clients/${clientId}/documents/${documentType}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
