@@ -1379,6 +1379,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { clientId } = req.params;
       let { documentType } = req.params;
       
+      console.log(`🔧 Setting ACL for client ${clientId}, documentType: ${documentType}, URL: ${req.body.documentURL}`);
+      
       // Convert kebab-case to camelCase if needed for consistency
       if (documentType.includes('-')) {
         documentType = documentType.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
@@ -1393,6 +1395,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           visibility: "private",
         }
       );
+      
+      console.log(`🔧 Got normalized objectPath: ${objectPath}`);
 
       // Update client document status and URL in database
       const updateData: any = {};
@@ -1425,7 +1429,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "Invalid document type" });
       }
 
-      await storage.updateClient(clientId, updateData);
+      console.log(`🔧 Updating client ${clientId} with data:`, updateData);
+      
+      const updatedClient = await storage.updateClient(clientId, updateData);
+      
+      console.log(`🔧 Client updated successfully, checking saved URL...`);
+      console.log(`🔧 Updated client document URLs:`, {
+        gstCertificateUrl: updatedClient.gstCertificateUrl,
+        agreementUrl: updatedClient.agreementUrl,
+        panCopyUrl: updatedClient.panCopyUrl
+      });
 
       res.json({ objectPath, message: "Document uploaded successfully" });
     } catch (error: any) {
