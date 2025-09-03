@@ -795,11 +795,20 @@ function ClientAttachmentsSection() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="text-center p-4 border border-dashed border-gray-300 rounded">
-                        <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                        <p className="text-sm text-gray-500">Document upload temporarily disabled</p>
-                        <p className="text-xs text-gray-400">Will be restored in next update</p>
-                      </div>
+                      <WorkingFileUpload
+                        documentType={type}
+                        label={getAttachmentDisplayName(type)}
+                        onUploadComplete={(docType, success, fileUrl) => {
+                          if (success && selectedClientId && fileUrl) {
+                            // Update client with uploaded document
+                            queryClient.invalidateQueries({ queryKey: ['/api/clients'] });
+                            toast({
+                              title: "Success",
+                              description: `${getAttachmentDisplayName(type)} uploaded successfully`,
+                            });
+                          }
+                        }}
+                      />
                     )}
                   </div>
                 </Card>

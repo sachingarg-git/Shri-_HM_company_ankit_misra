@@ -697,13 +697,75 @@ export default function Clients() {
 
 
   const handleFileUpload = async (documentType: string, file: File) => {
-    // Upload functionality temporarily disabled
-    toast({
-      title: "Upload Disabled",
-      description: "File upload functionality is temporarily disabled. Feature will be restored soon.",
-      variant: "destructive"
-    });
-    return;
+    if (!file) return;
+
+    setUploadingStates(prev => ({ ...prev, [documentType]: true }));
+    
+    try {
+      // Get upload URL from backend
+      const response = await fetch('/api/objects/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get upload URL: ${response.status} ${errorText}`);
+      }
+
+      const { uploadURL } = await response.json();
+
+      // Upload file to storage
+      const uploadResponse = await fetch(uploadURL, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+        },
+      });
+
+      if (uploadResponse.ok) {
+        // Store file info temporarily
+        setUploadedFiles(prev => ({
+          ...prev,
+          [documentType]: {
+            name: file.name,
+            url: uploadURL,
+            size: file.size
+          } as any
+        }));
+
+        // Update form state
+        form.setValue(`${documentType}Uploaded` as any, true);
+
+        toast({
+          title: "Success",
+          description: `${file.name} uploaded successfully`,
+        });
+      } else {
+        let errorText = 'Upload failed';
+        try {
+          errorText = await uploadResponse.text();
+        } catch (e) {
+          errorText = `HTTP ${uploadResponse.status} ${uploadResponse.statusText}`;
+        }
+        throw new Error(errorText);
+      }
+
+    } catch (error: any) {
+      console.error('Upload failed:', error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || 'Failed to upload file',
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingStates(prev => ({ ...prev, [documentType]: false }));
+    }
   };
 
   const renderFileUpload = (documentType: string, label: string) => {
