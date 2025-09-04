@@ -522,6 +522,8 @@ function SuppliersSection() {
     queryKey: ['/api/suppliers'],
   });
 
+  const { toast } = useToast();
+
   const createMutation = useMutation({
     mutationFn: (data: InsertSupplier) => apiRequest('/api/suppliers', { method: 'POST', body: data }),
     onSuccess: () => {
@@ -673,7 +675,12 @@ function SupplierForm({
     contactEmail: z.string().email().optional().or(z.literal('')),
     contactPhone: z.string().optional(),
     fax: z.string().optional(),
-    website: z.string().url().optional().or(z.literal('')),
+    website: z.string().optional().refine((val) => {
+      if (!val || val === '') return true;
+      // Allow URLs with or without protocol
+      const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+      return urlPattern.test(val);
+    }, { message: "Please enter a valid website URL" }),
     registeredAddressStreet: z.string().optional(),
     registeredAddressCity: z.string().optional(),
     registeredAddressState: z.string().optional(),
