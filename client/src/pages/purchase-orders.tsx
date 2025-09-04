@@ -191,6 +191,9 @@ export default function PurchaseOrdersPage() {
     if (po.revisionNumber && po.revisionNumber > 0) {
       doc.text(`Revision: ${po.revisionNumber}`, 120, yPos);
     }
+    if (po.expectedDeliveryDate) {
+      doc.text(`Expected Delivery: ${formatDate(po.expectedDeliveryDate)}`, 120, yPos + 8);
+    }
     
     // Vendor Information Box
     yPos += 20;
@@ -377,13 +380,45 @@ export default function PurchaseOrdersPage() {
     const totalWidth = doc.getTextWidth(totalText);
     doc.text(totalText, summaryBoxX + summaryBoxWidth - totalWidth - 2, yPos);
     
+    // Terms and Additional Information Section
+    yPos += 20;
+    if (po.termsAndConditions) {
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text('Terms & Conditions:', leftMargin, yPos);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      const termsLines = doc.splitTextToSize(po.termsAndConditions, 160);
+      doc.text(termsLines, leftMargin, yPos + 8);
+      yPos += 8 + (termsLines.length * 4);
+    }
+    
+    if (po.internalNotes) {
+      yPos += 8;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text('Internal Notes:', leftMargin, yPos);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      const notesLines = doc.splitTextToSize(po.internalNotes, 160);
+      doc.text(notesLines, leftMargin, yPos + 8);
+      yPos += 8 + (notesLines.length * 4);
+    }
+    
     // Footer
     yPos = 270;
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
+    
+    // Add a separator line
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.line(leftMargin, yPos - 5, leftMargin + 170, yPos - 5);
+    
     doc.text('This is a computer generated document and does not require signature.', leftMargin, yPos);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, leftMargin, yPos + 5);
+    doc.text(`Page 1 of 1`, leftMargin + 140, yPos + 5);
     
     return doc;
   };
