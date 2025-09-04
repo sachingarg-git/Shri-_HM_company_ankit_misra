@@ -181,7 +181,123 @@ export default function Sales() {
   const discountAmount = parseFloat(form.watch("discountAmount")?.toString() || '0') || 0;
   const totalAmount = subtotal + taxAmount - discountAmount;
 
-  // PDF Generation Function
+  // PDF Generation Function for existing sales records
+  const generateInvoicePDFForSales = (salesRecord: Sales) => {
+    const doc = new jsPDF();
+    const selectedClient = clients.find(c => c.id === salesRecord.clientId);
+    const selectedTransporter = transporters.find(t => t.id === salesRecord.transporterId);
+    
+    // Company Header
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("BUSINESS INVOICE", 105, 20, { align: "center" });
+    
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text("Your Company Name", 105, 30, { align: "center" });
+    doc.text("Company Address Line 1", 105, 37, { align: "center" });
+    doc.text("Company Address Line 2", 105, 44, { align: "center" });
+    doc.text("Phone: +91-XXXXXXXXXX | Email: company@email.com", 105, 51, { align: "center" });
+    
+    // Line separator
+    doc.line(20, 58, 190, 58);
+    
+    // Invoice Info Section
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("Invoice Details:", 20, 70);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Invoice No: ${salesRecord.invoiceNumber}`, 20, 78);
+    doc.text(`Sales Order: ${salesRecord.salesOrderNumber}`, 20, 85);
+    doc.text(`Date: ${new Date(salesRecord.date).toLocaleDateString('en-IN')}`, 20, 92);
+    doc.text(`Status: ${salesRecord.deliveryStatus}`, 20, 99);
+    
+    // Client Info Section
+    doc.setFont("helvetica", "bold");
+    doc.text("Bill To:", 120, 70);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${selectedClient?.name || 'N/A'}`, 120, 78);
+    doc.text(`${selectedClient?.billingAddressLine || 'Address not available'}`, 120, 85);
+    doc.text(`Contact: ${selectedClient?.contactPersonName || 'N/A'}`, 120, 92);
+    doc.text(`Phone: ${selectedClient?.mobileNumber || 'N/A'}`, 120, 99);
+    
+    // Transport Details (if available)
+    if (salesRecord.transporterId && selectedTransporter) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Transport Details:", 20, 115);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Transporter: ${selectedTransporter.name}`, 20, 123);
+      doc.text(`Vehicle: ${salesRecord.vehicleNumber || 'N/A'}`, 20, 130);
+      doc.text(`Location: ${salesRecord.location || 'N/A'}`, 20, 137);
+    }
+    
+    // Items Table - Legacy format
+    const tableStartY = salesRecord.transporterId ? 150 : 115;
+    
+    // Prepare table data from legacy sales record
+    const tableData = [[
+      salesRecord.productId || 'N/A',
+      'Legacy Product',
+      salesRecord.drumQuantity || 0,
+      'PCS',
+      `₹${parseFloat(salesRecord.basicRate?.toString() || '0').toFixed(2)}`,
+      `₹${parseFloat(salesRecord.totalAmount?.toString() || '0').toFixed(2)}`
+    ]];
+    
+    // Add table
+    (doc as any).autoTable({
+      startY: tableStartY,
+      head: [['Item Code', 'Description', 'Qty', 'Unit', 'Rate', 'Amount']],
+      body: tableData,
+      theme: 'grid',
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 55 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 25 }
+      }
+    });
+    
+    // Get final Y position after table
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    
+    // Totals Section
+    const totalsX = 140;
+    const totalAmount = parseFloat(salesRecord.totalAmount?.toString() || '0');
+    const gstPercent = parseFloat(salesRecord.gstPercent?.toString() || '0');
+    const basicAmount = totalAmount / (1 + gstPercent / 100);
+    const gstAmount = totalAmount - basicAmount;
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(`Subtotal: ₹${basicAmount.toFixed(2)}`, totalsX, finalY);
+    doc.text(`GST (${gstPercent}%): ₹${gstAmount.toFixed(2)}`, totalsX, finalY + 7);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total: ₹${totalAmount.toFixed(2)}`, totalsX, finalY + 14);
+    
+    // Footer
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "italic");
+    doc.text("Thank you for your business!", 105, finalY + 30, { align: "center" });
+    doc.text("This is a computer generated invoice.", 105, finalY + 37, { align: "center" });
+    
+    // Save the PDF
+    const fileName = `Invoice_${salesRecord.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(fileName);
+  };
+  
+  // PDF Generation Function for form data
   const generateInvoicePDF = () => {
     const doc = new jsPDF();
     const formData = form.getValues();
@@ -448,14 +564,31 @@ export default function Sales() {
   const handleOpenForm = (sales?: Sales) => {
     if (sales) {
       setEditingSales(sales);
+      // Set basic form values
       Object.keys(sales).forEach((key) => {
         const value = sales[key as keyof Sales];
         if (key === 'date' && value instanceof Date) {
           form.setValue(key as any, format(value, 'yyyy-MM-dd'));
-        } else if (value !== null && value !== undefined) {
+        } else if (value !== null && value !== undefined && key !== 'items') {
           form.setValue(key as any, value as any);
         }
       });
+      
+      // For edit mode, create a dummy item from the sales data
+      // Since old sales format doesn't have items array, we'll reconstruct it
+      const legacyItem = {
+        productMasterId: "",
+        itemCode: sales.productId || "",
+        itemDescription: "Legacy Item",
+        productFamily: "",
+        productGrade: "",
+        hsnCode: "",
+        quantity: sales.drumQuantity || 1,
+        unit: "PCS",
+        unitPrice: parseFloat(sales.basicRate?.toString() || '0') || 0
+      };
+      
+      form.setValue("items", [legacyItem]);
     } else {
       setEditingSales(null);
       form.reset();
@@ -750,6 +883,15 @@ export default function Sales() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => generateInvoicePDFForSales(sales)}
+                              className="text-green-600 hover:text-green-700"
+                              title="Generate PDF"
+                            >
+                              <Download className="h-3 w-3" />
+                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
