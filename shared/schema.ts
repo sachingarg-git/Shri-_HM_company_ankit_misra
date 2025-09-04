@@ -1597,6 +1597,9 @@ export const tourAdvances = pgTable("tour_advances", {
   salesPersonId: varchar("sales_person_id").references(() => users.id),
   purposeOfTrip: text("purpose_of_trip"),
   
+  // Daily Expenses Tracking (JSON format)
+  dailyExpenses: text("daily_expenses", { mode: "json" }),
+  
   // Audit Fields
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   createdBy: varchar("created_by").notNull().references(() => users.id),

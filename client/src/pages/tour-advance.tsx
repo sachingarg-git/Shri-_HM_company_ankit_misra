@@ -321,11 +321,18 @@ export default function TourAdvance() {
         title: selectedTourAdvance ? "Tour Advance Updated" : "Tour Advance Created",
         description: `Tour advance has been ${selectedTourAdvance ? "updated" : "created"} successfully.`,
       });
-      setIsFormOpen(false);
-      setSelectedTourAdvance(null);
-      // Only reset form after create, not after update to preserve data
+      // Don't close form after update to preserve data
       if (!selectedTourAdvance) {
+        setIsFormOpen(false);
+        setSelectedTourAdvance(null);
         form.reset();
+      } else {
+        // Keep form open after update so user can see preserved data
+        toast({
+          title: "Tip",
+          description: "Form remains open. You can make more changes or close manually.",
+          variant: "default",
+        });
       }
     },
     onError: (error: any) => {
