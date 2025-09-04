@@ -6,7 +6,7 @@ import { loginSchema, registerSchema } from "@shared/schema";
 import { 
   insertUserSchema, insertClientSchema, insertOrderSchema, insertPaymentSchema,
   insertTaskSchema, insertEwayBillSchema, insertClientTrackingSchema, insertSalesRateSchema,
-  insertCreditAgreementSchema, insertPurchaseOrderSchema, insertSalesSchema,
+  insertCreditAgreementSchema, insertPurchaseOrderSchema, insertPurchaseOrderItemSchema, insertSalesSchema,
   insertShippingAddressSchema, insertFollowUpSchema, insertLeadFollowUpSchema, insertClientAssignmentSchema,
   insertNumberSeriesSchema, insertTransporterSchema, insertProductSchema,
   insertCompanyProfileSchema, insertBranchSchema, insertProductMasterSchema,

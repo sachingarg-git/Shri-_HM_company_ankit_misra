@@ -227,6 +227,13 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   unitPrice: decimal("unit_price", { precision: 15, scale: 2 }).notNull(),
   totalLineValue: decimal("total_line_value", { precision: 15, scale: 2 }).notNull(),
   
+  // Product Master Integration
+  productMasterId: varchar("product_master_id"),
+  productName: text("product_name"),
+  productFamily: text("product_family"),
+  productGrade: text("product_grade"),
+  hsnCode: text("hsn_code"),
+  
   // Additional item details
   specifications: text("specifications"),
   deliveryDate: timestamp("delivery_date"),

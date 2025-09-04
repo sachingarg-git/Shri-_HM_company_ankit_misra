@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Trash2, Calculator, Package, User, Building2, Calendar, DollarSign } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import type { Supplier, User as UserType, InsertPurchaseOrder, InsertPurchaseOrderItem } from "@shared/schema";
+import type { Supplier, User as UserType, InsertPurchaseOrder, InsertPurchaseOrderItem, ProductMaster } from "@shared/schema";
 
 // Comprehensive Purchase Order form schema
 const purchaseOrderSchema = z.object({
@@ -48,8 +48,13 @@ const purchaseOrderSchema = z.object({
   
   // Line Items
   items: z.array(z.object({
+    productMasterId: z.string().optional(),
     itemCode: z.string().min(1, "Item code is required"),
     itemDescription: z.string().min(1, "Item description is required"),
+    productName: z.string().optional(),
+    productFamily: z.string().optional(),
+    productGrade: z.string().optional(),
+    hsnCode: z.string().optional(),
     quantityOrdered: z.number().min(0.001, "Quantity must be greater than 0"),
     unitOfMeasure: z.string().min(1, "Unit of measure is required"),
     unitPrice: z.number().min(0.01, "Unit price must be greater than 0"),
@@ -79,6 +84,11 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
     queryKey: ['/api/users'],
   });
 
+  // Fetch product masters for item selection
+  const { data: productMasters } = useQuery<ProductMaster[]>({
+    queryKey: ['/api/product-master'],
+  });
+
   const form = useForm<PurchaseOrderFormData>({
     resolver: zodResolver(purchaseOrderSchema),
     defaultValues: {
@@ -90,8 +100,13 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
       taxAmount: 0,
       discountAmount: 0,
       items: [{
+        productMasterId: '',
         itemCode: '',
         itemDescription: '',
+        productName: '',
+        productFamily: '',
+        productGrade: '',
+        hsnCode: '',
         quantityOrdered: 1,
         unitOfMeasure: 'PCS',
         unitPrice: 0,
@@ -131,14 +146,44 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
 
   const addItem = () => {
     append({
+      productMasterId: '',
       itemCode: '',
       itemDescription: '',
+      productName: '',
+      productFamily: '',
+      productGrade: '',
+      hsnCode: '',
       quantityOrdered: 1,
       unitOfMeasure: 'PCS',
       unitPrice: 0,
       specifications: '',
       notes: ''
     });
+  };
+
+  const handleProductSelection = (index: number, productId: string) => {
+    if (productId === "manual") {
+      // Clear product master fields for manual entry
+      form.setValue(`items.${index}.productMasterId`, '');
+      form.setValue(`items.${index}.productName`, '');
+      form.setValue(`items.${index}.productFamily`, '');
+      form.setValue(`items.${index}.productGrade`, '');
+      form.setValue(`items.${index}.hsnCode`, '');
+      return;
+    }
+
+    const product = productMasters?.find(p => p.id === productId);
+    if (product) {
+      form.setValue(`items.${index}.productMasterId`, productId);
+      form.setValue(`items.${index}.itemCode`, product.productCode);
+      form.setValue(`items.${index}.itemDescription`, product.productName || '');
+      form.setValue(`items.${index}.productName`, product.productName || '');
+      form.setValue(`items.${index}.productFamily`, product.productFamily || '');
+      form.setValue(`items.${index}.productGrade`, product.productGrade || '');
+      form.setValue(`items.${index}.hsnCode`, product.hsnCode || '');
+      form.setValue(`items.${index}.unitOfMeasure`, product.baseUnitOfMeasure || 'PCS');
+      form.setValue(`items.${index}.unitPrice`, parseFloat(product.sellingPrice || '0'));
+    }
   };
 
   const handleSubmit = (data: PurchaseOrderFormData) => {
@@ -172,8 +217,13 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
 
     const items: InsertPurchaseOrderItem[] = data.items.map(item => ({
       purchaseOrderId: '', // Will be filled by backend
+      productMasterId: item.productMasterId || undefined,
       itemCode: item.itemCode,
       itemDescription: item.itemDescription,
+      productName: item.productName,
+      productFamily: item.productFamily,
+      productGrade: item.productGrade,
+      hsnCode: item.hsnCode,
       quantityOrdered: item.quantityOrdered.toString(),
       unitOfMeasure: item.unitOfMeasure,
       unitPrice: item.unitPrice.toString(),
@@ -436,12 +486,37 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
                     )}
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.productMasterId`}
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-3">
+                          <FormLabel>Select Product</FormLabel>
+                          <Select value={field.value} onValueChange={(value) => handleProductSelection(index, value)}>
+                            <FormControl>
+                              <SelectTrigger data-testid={`select-product-${index}`}>
+                                <SelectValue placeholder="Choose product" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="manual">Manual Entry</SelectItem>
+                              {productMasters?.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  {product.productCode} - {product.productName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormItem>
+                      )}
+                    />
+                    
                     <FormField
                       control={form.control}
                       name={`items.${index}.itemCode`}
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="md:col-span-2">
                           <FormLabel>Item Code *</FormLabel>
                           <FormControl>
                             <Input {...field} data-testid={`input-item-code-${index}`} />
@@ -455,7 +530,7 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
                       control={form.control}
                       name={`items.${index}.itemDescription`}
                       render={({ field }) => (
-                        <FormItem className="md:col-span-2">
+                        <FormItem className="md:col-span-3">
                           <FormLabel>Description *</FormLabel>
                           <FormControl>
                             <Input {...field} data-testid={`input-item-description-${index}`} />
@@ -469,8 +544,8 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
                       control={form.control}
                       name={`items.${index}.quantityOrdered`}
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Quantity *</FormLabel>
+                        <FormItem className="md:col-span-1">
+                          <FormLabel>Qty *</FormLabel>
                           <FormControl>
                             <Input 
                               type="number" 
@@ -490,7 +565,7 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
                       control={form.control}
                       name={`items.${index}.unitOfMeasure`}
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="md:col-span-1">
                           <FormLabel>Unit *</FormLabel>
                           <Select value={field.value} onValueChange={field.onChange}>
                             <FormControl>
@@ -501,6 +576,7 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
                             <SelectContent>
                               <SelectItem value="PCS">PCS</SelectItem>
                               <SelectItem value="KG">KG</SelectItem>
+                              <SelectItem value="KL">KL</SelectItem>
                               <SelectItem value="LTR">LTR</SelectItem>
                               <SelectItem value="MTR">MTR</SelectItem>
                               <SelectItem value="BOX">BOX</SelectItem>
@@ -516,7 +592,7 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
                       control={form.control}
                       name={`items.${index}.unitPrice`}
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="md:col-span-2">
                           <FormLabel>Unit Price *</FormLabel>
                           <FormControl>
                             <Input 
