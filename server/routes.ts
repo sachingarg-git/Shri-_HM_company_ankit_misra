@@ -716,14 +716,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/purchase-orders", async (req, res) => {
     try {
-      const poData = insertPurchaseOrderSchema.parse(req.body);
-      const purchaseOrder = await storage.createPurchaseOrder(poData);
-      res.status(201).json(purchaseOrder);
+      const { purchaseOrder, items } = req.body;
+      
+      // Validate purchase order data
+      const poData = insertPurchaseOrderSchema.parse(purchaseOrder);
+      
+      // Validate items data
+      const itemsData = items.map((item: any) => insertPurchaseOrderItemSchema.parse(item));
+      
+      // Create purchase order with items
+      const createdPO = await storage.createPurchaseOrderWithItems(poData, itemsData);
+      res.status(201).json(createdPO);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid purchase order data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create purchase order" });
+    }
+  });
+
+  app.get("/api/purchase-orders/:id", async (req, res) => {
+    try {
+      const purchaseOrder = await storage.getPurchaseOrderById(req.params.id);
+      if (!purchaseOrder) {
+        return res.status(404).json({ message: "Purchase order not found" });
+      }
+      res.json(purchaseOrder);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch purchase order" });
+    }
+  });
+
+  app.put("/api/purchase-orders/:id", async (req, res) => {
+    try {
+      const { purchaseOrder, items } = req.body;
+      
+      // Validate purchase order data
+      const poData = insertPurchaseOrderSchema.partial().parse(purchaseOrder);
+      
+      // Validate items data if provided
+      let itemsData;
+      if (items) {
+        itemsData = items.map((item: any) => insertPurchaseOrderItemSchema.parse(item));
+      }
+      
+      // Update purchase order with items
+      const updatedPO = await storage.updatePurchaseOrderWithItems(req.params.id, poData, itemsData);
+      res.json(updatedPO);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid purchase order data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update purchase order" });
+    }
+  });
+
+  app.delete("/api/purchase-orders/:id", async (req, res) => {
+    try {
+      await storage.deletePurchaseOrder(req.params.id);
+      res.json({ message: "Purchase order deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete purchase order" });
+    }
+  });
+
+  // Purchase Order Items API
+  app.get("/api/purchase-orders/:id/items", async (req, res) => {
+    try {
+      const items = await storage.getPurchaseOrderItems(req.params.id);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch purchase order items" });
     }
   });
 

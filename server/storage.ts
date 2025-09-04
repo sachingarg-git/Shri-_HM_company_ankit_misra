@@ -75,9 +75,19 @@ export interface IStorage {
 
   // Purchase Orders
   getPurchaseOrder(id: string): Promise<PurchaseOrder | undefined>;
+  getPurchaseOrderById(id: string): Promise<PurchaseOrder | undefined>;
   getAllPurchaseOrders(): Promise<PurchaseOrder[]>;
   getPurchaseOrdersByClient(clientId: string): Promise<PurchaseOrder[]>;
   createPurchaseOrder(po: InsertPurchaseOrder): Promise<PurchaseOrder>;
+  createPurchaseOrderWithItems(po: InsertPurchaseOrder, items: InsertPurchaseOrderItem[]): Promise<PurchaseOrder>;
+  updatePurchaseOrderWithItems(id: string, po: Partial<InsertPurchaseOrder>, items?: InsertPurchaseOrderItem[]): Promise<PurchaseOrder>;
+  deletePurchaseOrder(id: string): Promise<void>;
+  
+  // Purchase Order Items
+  getPurchaseOrderItems(purchaseOrderId: string): Promise<PurchaseOrderItem[]>;
+  createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem>;
+  updatePurchaseOrderItem(id: string, item: Partial<InsertPurchaseOrderItem>): Promise<PurchaseOrderItem>;
+  deletePurchaseOrderItem(id: string): Promise<void>;
 
   // Credit Agreements
   getCreditAgreement(id: string): Promise<CreditAgreement | undefined>;
@@ -623,9 +633,92 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(purchaseOrders).where(eq(purchaseOrders.clientId, clientId)).orderBy(desc(purchaseOrders.createdAt));
   }
 
+  async getPurchaseOrderById(id: string): Promise<PurchaseOrder | undefined> {
+    const [po] = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, id));
+    return po || undefined;
+  }
+
   async createPurchaseOrder(insertPO: InsertPurchaseOrder): Promise<PurchaseOrder> {
     const [po] = await db.insert(purchaseOrders).values(insertPO).returning();
     return po;
+  }
+
+  async createPurchaseOrderWithItems(insertPO: InsertPurchaseOrder, items: InsertPurchaseOrderItem[]): Promise<PurchaseOrder> {
+    return await db.transaction(async (tx) => {
+      // Create the purchase order
+      const [po] = await tx.insert(purchaseOrders).values(insertPO).returning();
+      
+      // Create the items with the purchase order ID
+      if (items && items.length > 0) {
+        const itemsWithPOId = items.map(item => ({
+          ...item,
+          purchaseOrderId: po.id
+        }));
+        await tx.insert(purchaseOrderItems).values(itemsWithPOId);
+      }
+      
+      return po;
+    });
+  }
+
+  async updatePurchaseOrderWithItems(id: string, updatePO: Partial<InsertPurchaseOrder>, items?: InsertPurchaseOrderItem[]): Promise<PurchaseOrder> {
+    return await db.transaction(async (tx) => {
+      // Update the purchase order
+      const [po] = await tx.update(purchaseOrders)
+        .set({ ...updatePO, updatedAt: sql`now()` })
+        .where(eq(purchaseOrders.id, id))
+        .returning();
+      
+      // If items are provided, replace all items
+      if (items) {
+        // Delete existing items
+        await tx.delete(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, id));
+        
+        // Insert new items
+        if (items.length > 0) {
+          const itemsWithPOId = items.map(item => ({
+            ...item,
+            purchaseOrderId: id
+          }));
+          await tx.insert(purchaseOrderItems).values(itemsWithPOId);
+        }
+      }
+      
+      return po;
+    });
+  }
+
+  async deletePurchaseOrder(id: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Delete items first (cascade should handle this, but being explicit)
+      await tx.delete(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, id));
+      // Delete the purchase order
+      await tx.delete(purchaseOrders).where(eq(purchaseOrders.id, id));
+    });
+  }
+
+  // Purchase Order Items
+  async getPurchaseOrderItems(purchaseOrderId: string): Promise<PurchaseOrderItem[]> {
+    return await db.select().from(purchaseOrderItems)
+      .where(eq(purchaseOrderItems.purchaseOrderId, purchaseOrderId))
+      .orderBy(purchaseOrderItems.createdAt);
+  }
+
+  async createPurchaseOrderItem(insertItem: InsertPurchaseOrderItem): Promise<PurchaseOrderItem> {
+    const [item] = await db.insert(purchaseOrderItems).values(insertItem).returning();
+    return item;
+  }
+
+  async updatePurchaseOrderItem(id: string, updateItem: Partial<InsertPurchaseOrderItem>): Promise<PurchaseOrderItem> {
+    const [item] = await db.update(purchaseOrderItems)
+      .set(updateItem)
+      .where(eq(purchaseOrderItems.id, id))
+      .returning();
+    return item;
+  }
+
+  async deletePurchaseOrderItem(id: string): Promise<void> {
+    await db.delete(purchaseOrderItems).where(eq(purchaseOrderItems.id, id));
   }
 
   // Credit Agreements

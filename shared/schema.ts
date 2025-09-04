@@ -166,16 +166,72 @@ export const orders = pgTable("orders", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
-// Purchase Orders table
+// Purchase Orders table - Comprehensive PO Management
 export const purchaseOrders = pgTable("purchase_orders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // 1. PO Identification
   poNumber: text("po_number").notNull().unique(),
-  orderId: varchar("order_id").notNull().references(() => orders.id),
-  clientId: varchar("client_id").notNull().references(() => clients.id),
-  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
-  issuedAt: timestamp("issued_at").notNull().default(sql`now()`),
-  validUntil: timestamp("valid_until"),
+  poDate: timestamp("po_date").notNull().default(sql`now()`),
+  revisionNumber: integer("revision_number").default(0),
+  status: text("status").notNull().default('OPEN'), // OPEN, APPROVED, PARTIALLY_RECEIVED, CLOSED, CANCELLED
+  
+  // 2. Supplier Information
+  supplierId: varchar("supplier_id").notNull().references(() => suppliers.id),
+  supplierName: text("supplier_name").notNull(),
+  supplierContactPerson: text("supplier_contact_person"),
+  supplierEmail: text("supplier_email"),
+  supplierPhone: text("supplier_phone"),
+  
+  // 3. Buyer / Internal Information
+  buyerName: text("buyer_name").notNull(),
+  department: text("department"),
+  costCenter: text("cost_center"),
+  approverName: text("approver_name"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  
+  // 4. Order Details & Financial
+  currency: text("currency").notNull().default('INR'),
+  totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
+  taxAmount: decimal("tax_amount", { precision: 15, scale: 2 }),
+  discountAmount: decimal("discount_amount", { precision: 15, scale: 2 }),
+  
+  // Additional Fields
+  deliveryDate: timestamp("delivery_date"),
+  deliveryAddress: text("delivery_address"),
+  notes: text("notes"),
   terms: text("terms"),
+  
+  // Legacy fields for compatibility
+  orderId: varchar("order_id").references(() => orders.id),
+  clientId: varchar("client_id").references(() => clients.id),
+  amount: decimal("amount", { precision: 15, scale: 2 }),
+  issuedAt: timestamp("issued_at"),
+  validUntil: timestamp("valid_until"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
+});
+
+// Purchase Order Items table - Line items for each PO
+export const purchaseOrderItems = pgTable("purchase_order_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  purchaseOrderId: varchar("purchase_order_id").notNull().references(() => purchaseOrders.id, { onDelete: 'cascade' }),
+  
+  // Item Details
+  itemCode: text("item_code").notNull(),
+  itemDescription: text("item_description").notNull(),
+  quantityOrdered: decimal("quantity_ordered", { precision: 15, scale: 3 }).notNull(),
+  unitOfMeasure: text("unit_of_measure").notNull(),
+  unitPrice: decimal("unit_price", { precision: 15, scale: 2 }).notNull(),
+  totalLineValue: decimal("total_line_value", { precision: 15, scale: 2 }).notNull(),
+  
+  // Additional item details
+  specifications: text("specifications"),
+  deliveryDate: timestamp("delivery_date"),
+  notes: text("notes"),
+  
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
@@ -456,7 +512,18 @@ export const salesRatesRelations = relations(salesRates, ({ one }) => ({
   }),
 }));
 
-export const purchaseOrdersRelations = relations(purchaseOrders, ({ one }) => ({
+export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
+  supplier: one(suppliers, {
+    fields: [purchaseOrders.supplierId],
+    references: [suppliers.id],
+  }),
+  createdByUser: one(users, {
+    fields: [purchaseOrders.createdBy],
+    references: [users.id],
+  }),
+  items: many(purchaseOrderItems),
+  
+  // Legacy relations for compatibility
   order: one(orders, {
     fields: [purchaseOrders.orderId],
     references: [orders.id],
@@ -464,6 +531,13 @@ export const purchaseOrdersRelations = relations(purchaseOrders, ({ one }) => ({
   client: one(clients, {
     fields: [purchaseOrders.clientId],
     references: [clients.id],
+  }),
+}));
+
+export const purchaseOrderItemsRelations = relations(purchaseOrderItems, ({ one }) => ({
+  purchaseOrder: one(purchaseOrders, {
+    fields: [purchaseOrderItems.purchaseOrderId],
+    references: [purchaseOrders.id],
   }),
 }));
 
@@ -571,6 +645,12 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
 export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertPaymentSchema = createInsertSchema(payments).omit({
@@ -637,6 +717,9 @@ export type Order = typeof orders.$inferSelect;
 
 export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
 export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+
+export type InsertPurchaseOrderItem = z.infer<typeof insertPurchaseOrderItemSchema>;
+export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
 
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
