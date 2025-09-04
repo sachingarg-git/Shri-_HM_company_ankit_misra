@@ -3023,14 +3023,19 @@ M/S SRI HM BITUMEN CO
   // Create new tour advance
   app.post("/api/tour-advances", requireAuth, async (req, res) => {
     try {
+      const user = (req as any).user;
+      if (!user || !user.id) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
       const tourAdvanceData = insertTourAdvanceSchema.parse(req.body);
       
       // Add created/updated by from authenticated user
       const fullTourAdvanceData = {
         ...tourAdvanceData,
-        createdBy: req.user.id,
-        updatedBy: req.user.id,
-        submittedBy: req.user.id  // Default to current user as submitter
+        createdBy: user.id,
+        updatedBy: user.id,
+        submittedBy: user.id  // Default to current user as submitter
       };
 
       const tourAdvance = await storage.createTourAdvance(fullTourAdvanceData);
@@ -3047,12 +3052,17 @@ M/S SRI HM BITUMEN CO
   // Update tour advance
   app.put("/api/tour-advances/:id", requireAuth, async (req, res) => {
     try {
+      const user = (req as any).user;
+      if (!user || !user.id) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+
       const tourAdvanceData = insertTourAdvanceSchema.partial().parse(req.body);
       
       // Add updated by from authenticated user
       const updateData = {
         ...tourAdvanceData,
-        updatedBy: req.user.id,
+        updatedBy: user.id,
         updatedAt: new Date()
       };
 
