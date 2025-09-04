@@ -473,9 +473,25 @@ export default function Sales() {
   // CRUD Operations - Updated for billing format
   const salesMutation = useMutation({
     mutationFn: async (data: BillingFormData) => {
-      // For now, convert billing format to legacy sales format
-      // This maintains compatibility with existing backend
-      const firstItem = data.items[0];
+      // Convert billing format to legacy sales format
+      // Aggregate all items into totals for backend compatibility
+      const items = data.items || [];
+      
+      // Calculate aggregated values from all items
+      const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      const totalValue = items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.unitPrice || 0)), 0);
+      
+      // Create combined description from all items
+      const itemDescriptions = items
+        .filter(item => item.itemDescription)
+        .map(item => `${item.itemCode || ''} ${item.itemDescription || ''}`.trim())
+        .join(', ');
+      
+      // Use first item for product reference, or find best match
+      const firstItem = items[0];
+      const productMatch = products.find(p => 
+        items.some(item => item.itemDescription?.includes(p.name || ''))
+      ) || products.find(p => p.name === firstItem?.itemDescription) || products[0];
       
       const legacyData = {
         date: data.date,
@@ -488,18 +504,20 @@ export default function Sales() {
         location: data.location || "",
         transporterId: data.transporterId || transporters[0]?.id || "",
         
-        // Calculate totals from line items
+        // Aggregated values from all line items
         grossWeight: "0",
         tareWeight: "0", 
-        netWeight: firstItem?.quantity?.toString() || "0",
+        netWeight: totalQuantity.toString(),
         entireWeight: "0",
-        drumQuantity: Math.ceil(firstItem?.quantity || 1),
-        perDrumWeight: "0",
-        basicRate: firstItem?.unitPrice?.toString() || "0",
+        drumQuantity: Math.ceil(totalQuantity),
+        perDrumWeight: totalQuantity > 0 ? (totalValue / totalQuantity).toFixed(2) : "0",
+        basicRate: totalQuantity > 0 ? (totalValue / totalQuantity).toFixed(2) : "0",
         gstPercent: "18",
         totalAmount: totalAmount.toFixed(2),
         basicRatePurchase: "0",
-        productId: products.find(p => p.name === firstItem?.itemDescription)?.id || products[0]?.id || ""
+        productId: productMatch?.id || "",
+        // Store item descriptions for reference
+        notes: `Items: ${itemDescriptions}`
       };
 
       if (editingSales) {
