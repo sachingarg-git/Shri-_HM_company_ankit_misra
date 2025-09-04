@@ -620,21 +620,50 @@ export default function Sales() {
         }
       });
       
-      // For edit mode, create a dummy item from the sales data
-      // Since old sales format doesn't have items array, we'll reconstruct it
-      const legacyItem = {
-        productMasterId: "",
-        itemCode: sales.productId || "",
-        itemDescription: "Legacy Item",
-        productFamily: "",
-        productGrade: "",
-        hsnCode: "",
-        quantity: sales.drumQuantity || 1,
-        unit: "PCS",
-        unitPrice: parseFloat(sales.basicRate?.toString() || '0') || 0
-      };
+      // Parse multiple items from notes field if available, otherwise create legacy item
+      let items = [];
       
-      form.setValue("items", [legacyItem]);
+      if (sales.notes && sales.notes.startsWith('Items: ')) {
+        // Parse multiple items from notes
+        const itemDescriptions = sales.notes.replace('Items: ', '').split(', ');
+        const totalQuantity = sales.drumQuantity || 1;
+        const totalAmount = parseFloat(sales.totalAmount?.toString() || '0') || 0;
+        const avgPrice = totalQuantity > 0 ? (totalAmount / 1.18) / totalQuantity : 0; // Remove GST and calculate avg
+        
+        items = itemDescriptions.map((desc, index) => {
+          const parts = desc.trim().split(' ');
+          const itemCode = parts[0] || '';
+          const itemDescription = parts.slice(1).join(' ') || desc.trim();
+          
+          return {
+            productMasterId: "",
+            itemCode: itemCode,
+            itemDescription: itemDescription,
+            productFamily: "",
+            productGrade: "",
+            hsnCode: "",
+            quantity: Math.floor(totalQuantity / itemDescriptions.length), // Distribute quantity evenly
+            unit: "PCS",
+            unitPrice: avgPrice
+          };
+        });
+      } else {
+        // Create single legacy item for old records
+        const legacyItem = {
+          productMasterId: "",
+          itemCode: sales.productId || "",
+          itemDescription: "Legacy Item",
+          productFamily: "",
+          productGrade: "",
+          hsnCode: "",
+          quantity: sales.drumQuantity || 1,
+          unit: "PCS",
+          unitPrice: parseFloat(sales.basicRate?.toString() || '0') || 0
+        };
+        items = [legacyItem];
+      }
+      
+      form.setValue("items", items);
     } else {
       setEditingSales(null);
       form.reset();
