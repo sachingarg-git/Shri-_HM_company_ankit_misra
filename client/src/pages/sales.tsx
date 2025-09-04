@@ -627,11 +627,20 @@ export default function Sales() {
         const totalQuantity = sales.drumQuantity || 1;
         const totalAmount = parseFloat(sales.totalAmount?.toString() || '0') || 0;
         const avgPrice = totalQuantity > 0 ? (totalAmount / 1.18) / totalQuantity : 0; // Remove GST and calculate avg
+        const quantityPerItem = Math.floor(totalQuantity / itemDescriptions.length);
         
         items = itemDescriptions.map((desc, index) => {
-          const parts = desc.trim().split(' ');
-          const itemCode = parts[0] || '';
-          const itemDescription = parts.slice(1).join(' ') || desc.trim();
+          // Try to extract item code from description
+          const trimmedDesc = desc.trim();
+          let itemCode = '';
+          let itemDescription = trimmedDesc;
+          
+          // Look for common patterns like "VG30-NE", "BULK-VG30", "EMU-RS1"
+          const codeMatch = trimmedDesc.match(/^([A-Z0-9-]+)\s+(.+)/);
+          if (codeMatch) {
+            itemCode = codeMatch[1];
+            itemDescription = codeMatch[2];
+          }
           
           return {
             productMasterId: "",
@@ -640,11 +649,17 @@ export default function Sales() {
             productFamily: "",
             productGrade: "",
             hsnCode: "",
-            quantity: Math.floor(totalQuantity / itemDescriptions.length), // Distribute quantity evenly
+            quantity: quantityPerItem,
             unit: "PCS",
             unitPrice: avgPrice
           };
         });
+        
+        // Add any remaining quantity to the last item
+        const remainingQty = totalQuantity - (quantityPerItem * itemDescriptions.length);
+        if (remainingQty > 0 && items.length > 0) {
+          items[items.length - 1].quantity += remainingQty;
+        }
       } else {
         // Create single legacy item for old records
         const legacyItem = {
