@@ -44,6 +44,7 @@ const billingFormSchema = z.object({
   vehicleNumber: z.string().optional(),
   location: z.string().optional(),
   transporterId: z.string().optional(),
+  transporterContactNumber: z.string().optional(),
   
   // Financial Information
   taxAmount: z.number().min(0).optional(),
@@ -143,6 +144,7 @@ export default function Sales() {
       vehicleNumber: "",
       location: "",
       transporterId: "",
+      transporterContactNumber: "",
       taxAmount: 0,
       discountAmount: 0,
       items: [{
@@ -805,14 +807,19 @@ export default function Sales() {
                   <div className="bg-orange-50 p-4 rounded-lg">
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Transport Details (Optional)</h3>
                     <div className="space-y-4">
-                      <div className="space-y-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
                           name="transporterId"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Transporter</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || ""}>
+                              <FormLabel>Transporter Name</FormLabel>
+                              <Select onValueChange={(value) => {
+                                field.onChange(value);
+                                // Auto-fill contact number when transporter is selected
+                                const selectedTransporter = transporters.find(t => t.id === value);
+                                form.setValue("transporterContactNumber", selectedTransporter?.contactNumber || "");
+                              }} value={field.value || ""}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select or search transporter" />
@@ -833,11 +840,30 @@ export default function Sales() {
                                   </div>
                                   {transporters.map((transporter) => (
                                     <SelectItem key={transporter.id} value={transporter.id}>
-                                      {transporter.name} {transporter.contactNumber ? `(${transporter.contactNumber})` : ''}
+                                      {transporter.name}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name="transporterContactNumber"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Contact Number</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  placeholder="Auto-filled from transporter"
+                                  readOnly
+                                  className="bg-gray-100"
+                                />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
