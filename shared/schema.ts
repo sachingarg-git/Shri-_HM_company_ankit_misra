@@ -647,19 +647,30 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
   updatedAt: true,
 });
 
-export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
+export const insertPurchaseOrderSchema = z.object({
+  poNumber: z.string(),
+  supplierId: z.string(),
   orderDate: z.union([z.string(), z.date()]),
   expectedDeliveryDate: z.union([z.string(), z.date()]),
+  status: z.string().optional(),
+  currency: z.string().default("INR"),
+  subtotal: z.number(),
+  taxAmount: z.number().default(0),
+  discountAmount: z.number().default(0),
+  totalAmount: z.number(),
+  deliveryAddress: z.string().optional(),
+  termsAndConditions: z.string().optional(),
+  internalNotes: z.string().optional(),
 });
 
-export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+export const insertPurchaseOrderItemSchema = z.object({
+  purchaseOrderId: z.string(),
+  itemName: z.string(),
+  itemCode: z.string().optional(),
+  quantityOrdered: z.number(),
+  unit: z.string(),
+  unitPrice: z.number(),
+  totalPrice: z.number(),
   productMasterId: z.string().optional(),
   productName: z.string().optional(),
   productFamily: z.string().optional(),
