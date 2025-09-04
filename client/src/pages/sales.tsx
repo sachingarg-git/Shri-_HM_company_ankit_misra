@@ -498,45 +498,36 @@ export default function Sales() {
       };
 
       if (editingSales) {
-        // For editing, update the existing record with first item and create new records for additional items
-        const firstItem = items[0];
-        const productMatch = products.find(p => p.name === firstItem.itemDescription) || products[0];
+        // For editing, aggregate all items into the existing record
+        const totalQuantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+        const totalValue = items.reduce((sum, item) => sum + ((item.quantity || 0) * (item.unitPrice || 0)), 0);
         
-        const firstItemData = {
+        // Create combined description from all items
+        const itemDescriptions = items
+          .filter(item => item.itemDescription)
+          .map(item => `${item.itemCode || ''} ${item.itemDescription || ''}`.trim())
+          .join(', ');
+        
+        // Use first item for product reference, or find best match
+        const firstItem = items[0];
+        const productMatch = products.find(p => 
+          items.some(item => item.itemDescription?.includes(p.name || ''))
+        ) || products.find(p => p.name === firstItem?.itemDescription) || products[0];
+        
+        const aggregatedData = {
           ...baseData,
-          netWeight: firstItem.quantity.toString(),
-          drumQuantity: Math.ceil(firstItem.quantity),
-          perDrumWeight: firstItem.unitPrice.toFixed(2),
-          basicRate: firstItem.unitPrice.toFixed(2),
-          totalAmount: (firstItem.quantity * firstItem.unitPrice * 1.18).toFixed(2), // Including 18% GST
-          productId: productMatch?.id || ""
+          netWeight: totalQuantity.toString(),
+          drumQuantity: Math.ceil(totalQuantity),
+          perDrumWeight: totalQuantity > 0 ? (totalValue / totalQuantity).toFixed(2) : "0",
+          basicRate: totalQuantity > 0 ? (totalValue / totalQuantity).toFixed(2) : "0",
+          totalAmount: (totalValue * 1.18).toFixed(2), // Including 18% GST
+          productId: productMatch?.id || "",
+          // Store item descriptions for reference
+          notes: `Items: ${itemDescriptions}`
         };
 
-        // Update the existing record
-        await apiRequest(`/api/sales/${editingSales.id}`, "PUT", firstItemData);
-
-        // Create new records for additional items
-        for (let i = 1; i < items.length; i++) {
-          const item = items[i];
-          const productMatch = products.find(p => p.name === item.itemDescription) || products[0];
-          
-          const itemData = {
-            ...baseData,
-            // Generate new numbers for additional items
-            salesOrderNumber: `${data.salesOrderNumber}-${i}`,
-            invoiceNumber: `${data.invoiceNumber}-${i}`,
-            netWeight: item.quantity.toString(),
-            drumQuantity: Math.ceil(item.quantity),
-            perDrumWeight: item.unitPrice.toFixed(2),
-            basicRate: item.unitPrice.toFixed(2),
-            totalAmount: (item.quantity * item.unitPrice * 1.18).toFixed(2),
-            productId: productMatch?.id || ""
-          };
-
-          await apiRequest("/api/sales", "POST", itemData);
-        }
-
-        return firstItemData;
+        // Update the existing record with aggregated data
+        return await apiRequest(`/api/sales/${editingSales.id}`, "PUT", aggregatedData);
       } else {
         // For new records, create separate sales records for each item
         const results = [];
