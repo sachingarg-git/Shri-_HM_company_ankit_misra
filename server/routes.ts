@@ -720,11 +720,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Received PO data:", JSON.stringify(purchaseOrder, null, 2));
       console.log("Received items data:", JSON.stringify(items, null, 2));
       
-      // Prepare purchase order data with date conversion and field mapping
+      // Prepare purchase order data with proper date conversion
       const poData = {
         ...purchaseOrder,
-        orderDate: purchaseOrder.poDate ? new Date(purchaseOrder.poDate) : new Date(),
-        expectedDeliveryDate: purchaseOrder.deliveryDate ? new Date(purchaseOrder.deliveryDate) : new Date(),
+        // Convert string dates to Date objects
+        poDate: purchaseOrder.poDate ? new Date(purchaseOrder.poDate) : new Date(),
+        deliveryDate: purchaseOrder.deliveryDate ? new Date(purchaseOrder.deliveryDate) : undefined,
+        // Remove conflicting date fields to avoid string/Date type conflicts
+        orderDate: undefined,
+        expectedDeliveryDate: undefined,
       };
       
       // Prepare items data with field mapping and type conversion
@@ -744,9 +748,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create purchase order with items (skip validation for now)
       const createdPO = await storage.createPurchaseOrderWithItems(poData, itemsData);
       res.status(201).json(createdPO);
-    } catch (error) {
+    } catch (error: any) {
       console.error("PO creation error:", error);
-      res.status(500).json({ message: "Failed to create purchase order", error: error.message });
+      res.status(500).json({ message: "Failed to create purchase order", error: error?.message || "Unknown error" });
     }
   });
 
@@ -1328,13 +1332,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Final sales data to save:", finalSalesData);
       const sales = await storage.createSales(finalSalesData);
       res.status(201).json(sales);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Sales creation error:", error);
       if (error instanceof z.ZodError) {
         console.error("Validation errors:", error.errors);
         return res.status(400).json({ message: "Invalid sales data", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create sales record", error: error.message });
+      res.status(500).json({ message: "Failed to create sales record", error: error?.message || "Unknown error" });
     }
   });
 

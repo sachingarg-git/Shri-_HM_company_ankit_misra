@@ -1,6 +1,6 @@
 import { 
   users, clients, orders, payments, tasks, ewayBills, clientTracking, 
-  salesRates, creditAgreements, purchaseOrders, sales, numberSeries,
+  salesRates, creditAgreements, purchaseOrders, purchaseOrderItems, sales, numberSeries,
   transporters, products, shippingAddresses, followUps, leadFollowUps, clientAssignments,
   companyProfile, branches, productMaster, suppliers, banks, vehicles,
   leads, opportunities, quotations, quotationItems, salesOrders, salesOrderItems,
@@ -10,6 +10,7 @@ import {
   type Task, type InsertTask, type EwayBill, type InsertEwayBill,
   type ClientTracking, type InsertClientTracking, type SalesRate, type InsertSalesRate,
   type CreditAgreement, type InsertCreditAgreement, type PurchaseOrder, type InsertPurchaseOrder,
+  type PurchaseOrderItem, type InsertPurchaseOrderItem,
   type Sales, type InsertSales, type NumberSeries, type InsertNumberSeries,
   type Transporter, type InsertTransporter, type Product, type InsertProduct,
   type ShippingAddress, type InsertShippingAddress, type FollowUp, type InsertFollowUp,
