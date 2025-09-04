@@ -218,7 +218,7 @@ export function CompanyProfileForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type of Entity *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger data-testid="select-entity-type">
                           <SelectValue placeholder="Select entity type" />
