@@ -5,18 +5,19 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, Filter, AlertTriangle, Clock, CheckCircle } from "lucide-react";
+import type { Payment } from "@shared/schema";
 
 export default function CreditPayments() {
   const [searchValue, setSearchValue] = useState("");
-  const { data: allPayments, isLoading } = useQuery({
+  const { data: allPayments, isLoading } = useQuery<Payment[]>({
     queryKey: ['/api/payments'],
   });
 
-  const { data: overduePayments } = useQuery({
+  const { data: overduePayments } = useQuery<Payment[]>({
     queryKey: ['/api/payments', { overdue: 'true' }],
   });
 
-  const { data: dueSoonPayments } = useQuery({
+  const { data: dueSoonPayments } = useQuery<Payment[]>({
     queryKey: ['/api/payments', { dueSoon: '7' }],
   });
 
@@ -51,25 +52,25 @@ export default function CreditPayments() {
   const stats = [
     {
       title: "Total Pending",
-      value: `₹${allPayments?.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + parseInt(p.amount), 0).toLocaleString() || '0'}`,
+      value: `₹${(allPayments || []).filter(p => p.status === 'PENDING').reduce((sum, p) => sum + parseInt(p.amount), 0).toLocaleString()}`,
       icon: Clock,
       color: "text-warning bg-warning/10"
     },
     {
       title: "Overdue Payments",
-      value: overduePayments?.length || 0,
+      value: (overduePayments || []).length,
       icon: AlertTriangle,
       color: "text-error bg-error/10"
     },
     {
       title: "Due This Week",
-      value: dueSoonPayments?.length || 0,
+      value: (dueSoonPayments || []).length,
       icon: Clock,
       color: "text-info bg-info/10"
     },
     {
       title: "Total Collected",
-      value: `₹${allPayments?.filter(p => p.status === 'PAID').reduce((sum, p) => sum + parseInt(p.amount), 0).toLocaleString() || '0'}`,
+      value: `₹${(allPayments || []).filter(p => p.status === 'PAID').reduce((sum, p) => sum + parseInt(p.amount), 0).toLocaleString()}`,
       icon: CheckCircle,
       color: "text-success bg-success/10"
     }
@@ -165,7 +166,7 @@ export default function CreditPayments() {
                           </td>
                         </tr>
                       ) : (
-                        allPayments.map((payment, index) => {
+                        (allPayments || []).map((payment: Payment, index: number) => {
                           const StatusIcon = getStatusIcon(payment.status);
                           const isOverdue = new Date(payment.dueDate) < new Date() && payment.status === 'PENDING';
                           const actualStatus = isOverdue ? 'OVERDUE' : payment.status;

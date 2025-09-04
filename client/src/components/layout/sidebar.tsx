@@ -116,7 +116,10 @@ export default function Sidebar() {
                   </p>
                   {item.items.map((subItem, subIndex) => {
                     const Icon = subItem.icon;
-                    const isActive = location === subItem.href;
+                    // Both Credit Payments and Payment Alerts should be active when on credit-payments page
+                    const isActive = location === subItem.href || 
+                      (location === "/credit-payments" && 
+                       (subItem.name === "Credit Payments" || subItem.name === "Payment Alerts"));
                     
                     return (
                       <Link key={subIndex} href={subItem.href}>
