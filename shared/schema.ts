@@ -1591,6 +1591,12 @@ export const tourAdvances = pgTable("tour_advances", {
   dateOfApproval: timestamp("date_of_approval"),
   rejectionReason: text("rejection_reason"),
   
+  // Additional fields for detailed TA form
+  stateName: text("state_name"),
+  partyVisit: text("party_visit"),
+  salesPersonId: varchar("sales_person_id").references(() => users.id),
+  purposeOfTrip: text("purpose_of_trip"),
+  
   // Audit Fields
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   createdBy: varchar("created_by").notNull().references(() => users.id),
@@ -1612,6 +1618,40 @@ export const tourSegments = pgTable("tour_segments", {
   toLocation: text("to_location").notNull(),
   
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// TA Expenses table (for daily expense tracking)
+export const taExpenses = pgTable("ta_expenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tourAdvanceId: varchar("tour_advance_id").notNull().references(() => tourAdvances.id, { onDelete: "cascade" }),
+  
+  expenseDate: timestamp("expense_date").notNull(),
+  
+  // Food and Accommodation Expenses
+  personalCarKms: decimal("personal_car_kms", { precision: 10, scale: 2 }).default('0'),
+  roomRent: decimal("room_rent", { precision: 10, scale: 2 }).default('0'),
+  water: decimal("water", { precision: 10, scale: 2 }).default('0'),
+  breakfast: decimal("breakfast", { precision: 10, scale: 2 }).default('0'),
+  lunch: decimal("lunch", { precision: 10, scale: 2 }).default('0'),
+  dinner: decimal("dinner", { precision: 10, scale: 2 }).default('0'),
+  
+  // Travel & Other Expenses
+  usageRatePerKm: decimal("usage_rate_per_km", { precision: 10, scale: 2 }).default('0'),
+  trainAirTicket: decimal("train_air_ticket", { precision: 10, scale: 2 }).default('0'),
+  autoTaxi: decimal("auto_taxi", { precision: 10, scale: 2 }).default('0'),
+  rentACar: decimal("rent_a_car", { precision: 10, scale: 2 }).default('0'),
+  otherTransport: decimal("other_transport", { precision: 10, scale: 2 }).default('0'),
+  telephone: decimal("telephone", { precision: 10, scale: 2 }).default('0'),
+  tolls: decimal("tolls", { precision: 10, scale: 2 }).default('0'),
+  parking: decimal("parking", { precision: 10, scale: 2 }).default('0'),
+  dieselPetrol: decimal("diesel_petrol", { precision: 10, scale: 2 }).default('0'),
+  other: decimal("other", { precision: 10, scale: 2 }).default('0'),
+  
+  // Calculated fields
+  dailyTotal: decimal("daily_total", { precision: 10, scale: 2 }).default('0'),
+  
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
 });
 
 // Relations for Tour Advance module
@@ -1641,12 +1681,25 @@ export const tourAdvanceRelations = relations(tourAdvances, ({ one, many }) => (
     references: [users.id],
     relationName: "tourAdvanceCreatedBy"
   }),
-  segments: many(tourSegments)
+  segments: many(tourSegments),
+  expenses: many(taExpenses),
+  salesPerson: one(users, {
+    fields: [tourAdvances.salesPersonId],
+    references: [users.id],
+    relationName: "tourAdvanceSalesPerson"
+  })
 }));
 
 export const tourSegmentRelations = relations(tourSegments, ({ one }) => ({
   tourAdvance: one(tourAdvances, {
     fields: [tourSegments.tourAdvanceId],
+    references: [tourAdvances.id]
+  })
+}));
+
+export const taExpenseRelations = relations(taExpenses, ({ one }) => ({
+  tourAdvance: one(tourAdvances, {
+    fields: [taExpenses.tourAdvanceId],
     references: [tourAdvances.id]
   })
 }));
@@ -1682,10 +1735,21 @@ export const insertTourSegmentSchema = createInsertSchema(tourSegments).omit({
   segmentNumber: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseInt(val) || 0 : val || 0),
 });
 
+export const insertTAExpenseSchema = createInsertSchema(taExpenses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  expenseDate: z.union([z.string(), z.date()]).transform(val => typeof val === 'string' ? new Date(val) : val),
+});
+
 // Tour Advance Types
 export type InsertTourAdvance = z.infer<typeof insertTourAdvanceSchema>;
 export type TourAdvance = typeof tourAdvances.$inferSelect;
 
 export type InsertTourSegment = z.infer<typeof insertTourSegmentSchema>;
 export type TourSegment = typeof tourSegments.$inferSelect;
+
+export type InsertTAExpense = z.infer<typeof insertTAExpenseSchema>;
+export type TAExpense = typeof taExpenses.$inferSelect;
 

@@ -2071,6 +2071,71 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Failed to create tour segments');
     }
   }
+
+  // TA Expenses Implementation
+  async getTAExpense(id: string): Promise<TAExpense | undefined> {
+    try {
+      const [expense] = await db.select().from(taExpenses).where(eq(taExpenses.id, id));
+      return expense || undefined;
+    } catch (error) {
+      console.error('Error getting TA expense:', error);
+      return undefined;
+    }
+  }
+
+  async getTAExpensesByTourAdvance(tourAdvanceId: string): Promise<TAExpense[]> {
+    try {
+      return await db.select().from(taExpenses)
+        .where(eq(taExpenses.tourAdvanceId, tourAdvanceId))
+        .orderBy(asc(taExpenses.expenseDate));
+    } catch (error) {
+      console.error('Error getting TA expenses by tour advance:', error);
+      return [];
+    }
+  }
+
+  async createTAExpense(expenseData: InsertTAExpense): Promise<TAExpense> {
+    try {
+      const [expense] = await db.insert(taExpenses).values(expenseData).returning();
+      return expense;
+    } catch (error) {
+      console.error('Error creating TA expense:', error);
+      throw new Error('Failed to create TA expense');
+    }
+  }
+
+  async updateTAExpense(id: string, expenseData: Partial<InsertTAExpense>): Promise<TAExpense> {
+    try {
+      const [expense] = await db
+        .update(taExpenses)
+        .set({ ...expenseData, updatedAt: new Date() })
+        .where(eq(taExpenses.id, id))
+        .returning();
+      return expense;
+    } catch (error) {
+      console.error('Error updating TA expense:', error);
+      throw new Error('Failed to update TA expense');
+    }
+  }
+
+  async deleteTAExpense(id: string): Promise<void> {
+    try {
+      await db.delete(taExpenses).where(eq(taExpenses.id, id));
+    } catch (error) {
+      console.error('Error deleting TA expense:', error);
+      throw new Error('Failed to delete TA expense');
+    }
+  }
+
+  async createMultipleTAExpenses(expensesData: InsertTAExpense[]): Promise<TAExpense[]> {
+    try {
+      const expenses = await db.insert(taExpenses).values(expensesData).returning();
+      return expenses;
+    } catch (error) {
+      console.error('Error creating multiple TA expenses:', error);
+      throw new Error('Failed to create TA expenses');
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();

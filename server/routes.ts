@@ -3159,6 +3159,77 @@ M/S SRI HM BITUMEN CO
     }
   });
 
+  // =============================================================================
+  // TA EXPENSES ROUTES
+  // =============================================================================
+
+  // Get TA expenses by tour advance ID
+  app.get("/api/tour-advances/:tourAdvanceId/expenses", requireAuth, async (req, res) => {
+    try {
+      const expenses = await storage.getTAExpensesByTourAdvance(req.params.tourAdvanceId);
+      res.json(expenses);
+    } catch (error) {
+      console.error("Failed to fetch TA expenses:", error);
+      res.status(500).json({ error: "Failed to fetch TA expenses" });
+    }
+  });
+
+  // Create TA expense
+  app.post("/api/ta-expenses", requireAuth, async (req, res) => {
+    try {
+      const expenseData = insertTAExpenseSchema.parse(req.body);
+      const expense = await storage.createTAExpense(expenseData);
+      res.status(201).json(expense);
+    } catch (error) {
+      console.error("Failed to create TA expense:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid expense data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create TA expense" });
+    }
+  });
+
+  // Create multiple TA expenses
+  app.post("/api/ta-expenses/bulk", requireAuth, async (req, res) => {
+    try {
+      const expensesData = z.array(insertTAExpenseSchema).parse(req.body);
+      const expenses = await storage.createMultipleTAExpenses(expensesData);
+      res.status(201).json(expenses);
+    } catch (error) {
+      console.error("Failed to create TA expenses:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid expenses data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create TA expenses" });
+    }
+  });
+
+  // Update TA expense
+  app.put("/api/ta-expenses/:id", requireAuth, async (req, res) => {
+    try {
+      const expenseData = insertTAExpenseSchema.partial().parse(req.body);
+      const expense = await storage.updateTAExpense(req.params.id, expenseData);
+      res.json(expense);
+    } catch (error) {
+      console.error("Failed to update TA expense:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid expense data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update TA expense" });
+    }
+  });
+
+  // Delete TA expense
+  app.delete("/api/ta-expenses/:id", requireAuth, async (req, res) => {
+    try {
+      await storage.deleteTAExpense(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Failed to delete TA expense:", error);
+      res.status(500).json({ error: "Failed to delete TA expense" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

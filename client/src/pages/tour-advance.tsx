@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { CalendarIcon, Plus, Trash2, FileText, Edit, Eye } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -27,6 +28,12 @@ const tourAdvanceFormSchema = z.object({
   designation: z.string().min(1, "Designation is required"),
   department: z.string().optional(),
   phoneNo: z.string().optional(),
+  
+  // Additional fields from screenshot
+  stateName: z.string().optional(),
+  partyVisit: z.string().optional(),
+  salesPersonId: z.string().optional(),
+  purposeOfTrip: z.string().optional(),
   
   tourStartDate: z.date({ required_error: "Tour start date is required" }),
   tourEndDate: z.date({ required_error: "Tour end date is required" }),
@@ -83,6 +90,127 @@ const statusOptions = [
   { value: "SETTLED", label: "Settled", color: "bg-purple-100 text-purple-800" },
 ];
 
+// Expense Tracking Component
+function ExpenseTrackingTable({ numberOfDays, tourStartDate }: { numberOfDays: number, tourStartDate: Date }) {
+  const [expenses, setExpenses] = useState<{ [key: string]: { [key: string]: number } }>({});
+
+  const expenseCategories = [
+    { id: "FOOD_ACCOMMODATION", label: "Food & Accommodation", color: "bg-blue-50" },
+    { id: "TRAVEL_OTHER", label: "Travel & Other", color: "bg-green-50" },
+    { id: "ENTERTAINMENT", label: "Entertainment", color: "bg-purple-50" },
+    { id: "MISCELLANEOUS", label: "Miscellaneous", color: "bg-orange-50" },
+  ];
+
+  // Generate array of dates based on tour duration
+  const getDatesArray = () => {
+    const dates = [];
+    for (let i = 0; i < numberOfDays; i++) {
+      const date = new Date(tourStartDate);
+      date.setDate(date.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  };
+
+  const dates = getDatesArray();
+
+  // Handle expense change
+  const handleExpenseChange = (category: string, dayIndex: number, amount: string) => {
+    setExpenses(prev => ({
+      ...prev,
+      [category]: {
+        ...prev[category],
+        [dayIndex]: parseFloat(amount) || 0
+      }
+    }));
+  };
+
+  // Calculate daily totals
+  const getDayTotal = (dayIndex: number) => {
+    return expenseCategories.reduce((total, category) => {
+      return total + (expenses[category.id]?.[dayIndex] || 0);
+    }, 0);
+  };
+
+  // Calculate category totals
+  const getCategoryTotal = (categoryId: string) => {
+    const categoryExpenses = expenses[categoryId] || {};
+    return Object.values(categoryExpenses).reduce((total, amount) => total + amount, 0);
+  };
+
+  // Calculate grand total
+  const getGrandTotal = () => {
+    return expenseCategories.reduce((total, category) => {
+      return total + getCategoryTotal(category.id);
+    }, 0);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b bg-gray-50">
+                <th className="text-left p-3 font-medium">Expense Category</th>
+                {dates.map((date, index) => (
+                  <th key={index} className="text-center p-3 font-medium min-w-[120px]">
+                    <div className="text-sm">Day {index + 1}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {format(date, "MMM dd")}
+                    </div>
+                  </th>
+                ))}
+                <th className="text-center p-3 font-medium bg-blue-100">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {expenseCategories.map((category) => (
+                <tr key={category.id} className={`border-b ${category.color}`}>
+                  <td className="p-3 font-medium">{category.label}</td>
+                  {dates.map((_, dayIndex) => (
+                    <td key={dayIndex} className="p-3">
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className="text-center"
+                        value={expenses[category.id]?.[dayIndex] || ""}
+                        onChange={(e) => handleExpenseChange(category.id, dayIndex, e.target.value)}
+                        data-testid={`input-expense-${category.id}-day-${dayIndex}`}
+                      />
+                    </td>
+                  ))}
+                  <td className="p-3 text-center font-medium bg-blue-100">
+                    ₹{getCategoryTotal(category.id).toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+              {/* Daily Totals Row */}
+              <tr className="border-b bg-gray-100 font-medium">
+                <td className="p-3">Daily Total</td>
+                {dates.map((_, dayIndex) => (
+                  <td key={dayIndex} className="p-3 text-center">
+                    ₹{getDayTotal(dayIndex).toFixed(2)}
+                  </td>
+                ))}
+                <td className="p-3 text-center bg-blue-200 font-bold">
+                  ₹{getGrandTotal().toFixed(2)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      {/* Summary */}
+      <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
+        <span className="font-medium">Total Tour Expenses:</span>
+        <span className="text-2xl font-bold text-blue-600">₹{getGrandTotal().toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function TourAdvance() {
   const [selectedTourAdvance, setSelectedTourAdvance] = useState<any>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -107,6 +235,10 @@ export default function TourAdvance() {
       designation: "",
       department: "",
       phoneNo: "",
+      stateName: "",
+      partyVisit: "",
+      salesPersonId: "",
+      purposeOfTrip: "",
       tourStartDate: new Date(),
       tourEndDate: new Date(),
       numberOfDays: 1,
@@ -592,6 +724,73 @@ export default function TourAdvance() {
                           </FormItem>
                         )}
                       />
+
+                      <FormField
+                        control={form.control}
+                        name="stateName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="State name" data-testid="input-state" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="partyVisit"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Party Visit</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Party visit details" data-testid="input-party-visit" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="salesPersonId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Sales Person</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-sales-person">
+                                  <SelectValue placeholder="Select sales person" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {users.filter((user: any) => ['SALES_MANAGER', 'SALES_EXECUTIVE'].includes(user.role)).map((user: any) => (
+                                  <SelectItem key={user.id} value={user.id}>
+                                    {user.firstName} {user.lastName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="purposeOfTrip"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Purpose of Trip</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Purpose of trip" data-testid="input-purpose" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </CardContent>
                   </Card>
 
@@ -1072,6 +1271,20 @@ export default function TourAdvance() {
                           </div>
                         </Card>
                       ))}
+                    </CardContent>
+                  </Card>
+
+                  {/* Expense Tracking Section */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Daily Expense Tracking</CardTitle>
+                      <CardDescription>Track your daily expenses for each day of the tour</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ExpenseTrackingTable 
+                        numberOfDays={form.watch("numberOfDays")}
+                        tourStartDate={form.watch("tourStartDate")}
+                      />
                     </CardContent>
                   </Card>
 
