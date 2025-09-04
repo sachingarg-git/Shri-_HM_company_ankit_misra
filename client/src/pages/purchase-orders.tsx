@@ -246,12 +246,13 @@ export default function PurchaseOrdersPage() {
     // Line Items Table
     yPos += 55;
     
-    // Table Header with better styling
+    // Table Header with better styling - adjusted widths for Total column
+    const tableWidth = 180; // Increased from 170
     doc.setFillColor(52, 73, 94); // Dark blue header
-    doc.rect(leftMargin, yPos, 170, 10, 'F');
+    doc.rect(leftMargin, yPos, tableWidth, 10, 'F');
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.3);
-    doc.rect(leftMargin, yPos, 170, 10);
+    doc.rect(leftMargin, yPos, tableWidth, 10);
     
     doc.setTextColor(255, 255, 255); // White text for header
     doc.setFontSize(9);
@@ -260,18 +261,18 @@ export default function PurchaseOrdersPage() {
     doc.text('Description', leftMargin + 35, yPos + 7);
     doc.text('Qty', leftMargin + 88, yPos + 7);
     doc.text('Unit', leftMargin + 105, yPos + 7);
-    doc.text('Unit Price', leftMargin + 130, yPos + 7);
-    doc.text('Total', leftMargin + 160, yPos + 7);
+    doc.text('Unit Price', leftMargin + 125, yPos + 7);
+    doc.text('Total', leftMargin + 155, yPos + 7);
     
     // Reset text color
     doc.setTextColor(0, 0, 0);
     
-    // Table vertical lines
+    // Table vertical lines - adjusted positions
     doc.line(leftMargin + 33, yPos, leftMargin + 33, yPos + 10);
     doc.line(leftMargin + 83, yPos, leftMargin + 83, yPos + 10);
     doc.line(leftMargin + 103, yPos, leftMargin + 103, yPos + 10);
     doc.line(leftMargin + 123, yPos, leftMargin + 123, yPos + 10);
-    doc.line(leftMargin + 153, yPos, leftMargin + 153, yPos + 10);
+    doc.line(leftMargin + 150, yPos, leftMargin + 150, yPos + 10);
     
     yPos += 10;
     
@@ -288,12 +289,12 @@ export default function PurchaseOrdersPage() {
         // Alternate row background
         if (index % 2 === 1) {
           doc.setFillColor(248, 248, 248);
-          doc.rect(leftMargin, yPos, 170, rowHeight, 'F');
+          doc.rect(leftMargin, yPos, 180, rowHeight, 'F'); // Increased width
         }
         
         // Row border
         doc.setDrawColor(200, 200, 200);
-        doc.rect(leftMargin, yPos, 170, rowHeight);
+        doc.rect(leftMargin, yPos, 180, rowHeight); // Increased width
         
         // Cell data with proper alignment
         doc.setTextColor(0, 0, 0);
@@ -309,18 +310,18 @@ export default function PurchaseOrdersPage() {
         
         const unitPrice = formatCurrency(item.unitPrice || 0, po.currency);
         const unitPriceWidth = doc.getTextWidth(unitPrice);
-        doc.text(unitPrice, leftMargin + 150 - unitPriceWidth, yPos + 5);
+        doc.text(unitPrice, leftMargin + 147 - unitPriceWidth, yPos + 5); // Adjusted position
         
         const total = formatCurrency(item.totalLineValue || 0, po.currency);
         const totalWidth = doc.getTextWidth(total);
-        doc.text(total, leftMargin + 185 - totalWidth, yPos + 5);
+        doc.text(total, leftMargin + 197 - totalWidth, yPos + 5); // More space for Total column
         
-        // Vertical lines
+        // Vertical lines - adjusted positions
         doc.line(leftMargin + 33, yPos, leftMargin + 33, yPos + rowHeight);
         doc.line(leftMargin + 83, yPos, leftMargin + 83, yPos + rowHeight);
         doc.line(leftMargin + 103, yPos, leftMargin + 103, yPos + rowHeight);
         doc.line(leftMargin + 123, yPos, leftMargin + 123, yPos + rowHeight);
-        doc.line(leftMargin + 153, yPos, leftMargin + 153, yPos + rowHeight);
+        doc.line(leftMargin + 150, yPos, leftMargin + 150, yPos + rowHeight);
         
         totalAmount += parseFloat(item.totalLineValue?.toString() || '0');
         yPos += rowHeight;
@@ -328,10 +329,10 @@ export default function PurchaseOrdersPage() {
     } else {
       // Show "No items" row
       doc.setFillColor(248, 248, 248);
-      doc.rect(leftMargin, yPos, 170, 8, 'F');
+      doc.rect(leftMargin, yPos, 180, 8, 'F'); // Increased width
       doc.setDrawColor(200, 200, 200);
-      doc.rect(leftMargin, yPos, 170, 8);
-      doc.text('No line items found', leftMargin + 70, yPos + 5);
+      doc.rect(leftMargin, yPos, 180, 8); // Increased width
+      doc.text('No line items found', leftMargin + 80, yPos + 5); // Adjusted center position
       yPos += 8;
     }
     
