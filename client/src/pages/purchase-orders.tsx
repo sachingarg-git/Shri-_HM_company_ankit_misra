@@ -88,68 +88,208 @@ export default function PurchaseOrdersPage() {
     return currency === 'INR' ? `₹${num.toFixed(2)}` : `${currency} ${num.toFixed(2)}`;
   };
 
-  // PDF generation function
+  // Professional PDF generation function
   const generatePDF = (po: PurchaseOrder, items: PurchaseOrderItem[] = []) => {
     const doc = new jsPDF();
     
-    // Header
-    doc.setFontSize(20);
-    doc.text('Purchase Order', 20, 30);
+    // Page margins
+    const leftMargin = 20;
+    const rightMargin = 190;
+    const pageWidth = 210;
     
-    // PO Details
+    // Header Section with Company Branding
+    doc.setFillColor(41, 128, 185); // Blue header
+    doc.rect(0, 0, pageWidth, 35, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont("helvetica", "bold");
+    doc.text('PURCHASE ORDER', leftMargin, 25);
+    
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+    
+    // PO Header Information
+    let yPos = 50;
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text(`PO Number: ${po.poNumber}`, leftMargin, yPos);
+    doc.text(`Date: ${formatDate(po.poDate)}`, 120, yPos);
+    
+    yPos += 10;
     doc.setFontSize(12);
-    doc.text(`PO Number: ${po.poNumber}`, 20, 50);
-    doc.text(`Date: ${formatDate(po.poDate)}`, 120, 50);
-    doc.text(`Status: ${po.status}`, 20, 60);
-    doc.text(`Total Amount: ${formatCurrency(po.totalAmount, po.currency)}`, 120, 60);
+    doc.text(`Status: ${po.status}`, leftMargin, yPos);
+    if (po.revisionNumber && po.revisionNumber > 0) {
+      doc.text(`Revision: ${po.revisionNumber}`, 120, yPos);
+    }
     
-    // Supplier Details
-    doc.text('Supplier Information:', 20, 80);
-    doc.text(`Name: ${po.supplierName}`, 20, 90);
-    if (po.supplierContactPerson) doc.text(`Contact: ${po.supplierContactPerson}`, 20, 100);
-    if (po.supplierEmail) doc.text(`Email: ${po.supplierEmail}`, 20, 110);
-    if (po.supplierPhone) doc.text(`Phone: ${po.supplierPhone}`, 20, 120);
+    // Vendor Information Box
+    yPos += 20;
+    doc.setDrawColor(100, 100, 100);
+    doc.setLineWidth(0.5);
+    doc.rect(leftMargin, yPos, 80, 40); // Vendor box
     
-    // Buyer Details
-    doc.text('Buyer Information:', 120, 80);
-    doc.text(`Buyer: ${po.buyerName}`, 120, 90);
-    if (po.department) doc.text(`Department: ${po.department}`, 120, 100);
-    if (po.costCenter) doc.text(`Cost Center: ${po.costCenter}`, 120, 110);
-    if (po.approverName) doc.text(`Approver: ${po.approverName}`, 120, 120);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text('VENDOR', leftMargin + 2, yPos + 8);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    let vendorY = yPos + 15;
+    doc.text(po.supplierName, leftMargin + 2, vendorY);
+    if (po.supplierContactPerson) {
+      vendorY += 5;
+      doc.text(`Contact: ${po.supplierContactPerson}`, leftMargin + 2, vendorY);
+    }
+    if (po.supplierEmail) {
+      vendorY += 5;
+      doc.text(`Email: ${po.supplierEmail}`, leftMargin + 2, vendorY);
+    }
+    if (po.supplierPhone) {
+      vendorY += 5;
+      doc.text(`Phone: ${po.supplierPhone}`, leftMargin + 2, vendorY);
+    }
+    
+    // Buyer Information Box
+    doc.rect(110, yPos, 80, 40); // Buyer box
+    
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text('BUYER', 112, yPos + 8);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    let buyerY = yPos + 15;
+    doc.text(po.buyerName, 112, buyerY);
+    if (po.department) {
+      buyerY += 5;
+      doc.text(`Department: ${po.department}`, 112, buyerY);
+    }
+    if (po.costCenter) {
+      buyerY += 5;
+      doc.text(`Cost Center: ${po.costCenter}`, 112, buyerY);
+    }
+    if (po.approverName) {
+      buyerY += 5;
+      doc.text(`Approver: ${po.approverName}`, 112, buyerY);
+    }
     
     // Line Items Table
-    if (items.length > 0) {
-      let yPosition = 140;
-      
-      // Table header
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "bold");
-      doc.text('Item Code', 20, yPosition);
-      doc.text('Description', 60, yPosition);
-      doc.text('Qty', 120, yPosition);
-      doc.text('Unit', 140, yPosition);
-      doc.text('Unit Price', 160, yPosition);
-      doc.text('Total', 180, yPosition);
-      
-      // Draw header line
-      doc.line(20, yPosition + 2, 200, yPosition + 2);
-      yPosition += 10;
-      
-      // Table rows
-      doc.setFont("helvetica", "normal");
-      items.forEach((item) => {
-        doc.text(item.itemCode || '', 20, yPosition);
-        doc.text((item.itemDescription || '').substring(0, 20), 60, yPosition);
-        doc.text((item.quantityOrdered?.toString() || ''), 120, yPosition);
-        doc.text(item.unitOfMeasure || '', 140, yPosition);
-        doc.text(formatCurrency(item.unitPrice || 0, po.currency), 160, yPosition);
-        doc.text(formatCurrency(item.totalLineValue || 0, po.currency), 180, yPosition);
-        yPosition += 10;
+    yPos += 55;
+    
+    // Table Header
+    doc.setFillColor(240, 240, 240);
+    doc.rect(leftMargin, yPos, 170, 10, 'F');
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.rect(leftMargin, yPos, 170, 10);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text('Item Code', leftMargin + 2, yPos + 7);
+    doc.text('Description', leftMargin + 35, yPos + 7);
+    doc.text('Qty', leftMargin + 85, yPos + 7);
+    doc.text('Unit', leftMargin + 105, yPos + 7);
+    doc.text('Unit Price', leftMargin + 125, yPos + 7);
+    doc.text('Total', leftMargin + 155, yPos + 7);
+    
+    // Table vertical lines
+    doc.line(leftMargin + 33, yPos, leftMargin + 33, yPos + 10);
+    doc.line(leftMargin + 83, yPos, leftMargin + 83, yPos + 10);
+    doc.line(leftMargin + 103, yPos, leftMargin + 103, yPos + 10);
+    doc.line(leftMargin + 123, yPos, leftMargin + 123, yPos + 10);
+    doc.line(leftMargin + 153, yPos, leftMargin + 153, yPos + 10);
+    
+    yPos += 10;
+    
+    // Table Rows
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    
+    let totalAmount = 0;
+    
+    if (items && items.length > 0) {
+      items.forEach((item, index) => {
+        const rowHeight = 8;
+        
+        // Alternate row background
+        if (index % 2 === 1) {
+          doc.setFillColor(248, 248, 248);
+          doc.rect(leftMargin, yPos, 170, rowHeight, 'F');
+        }
+        
+        // Row border
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(leftMargin, yPos, 170, rowHeight);
+        
+        // Cell data
+        doc.setTextColor(0, 0, 0);
+        doc.text(item.itemCode || '-', leftMargin + 2, yPos + 5);
+        doc.text((item.itemDescription || '-').substring(0, 25), leftMargin + 35, yPos + 5);
+        doc.text((item.quantityOrdered?.toString() || '0'), leftMargin + 85, yPos + 5);
+        doc.text(item.unitOfMeasure || '-', leftMargin + 105, yPos + 5);
+        doc.text(formatCurrency(item.unitPrice || 0, po.currency), leftMargin + 125, yPos + 5);
+        doc.text(formatCurrency(item.totalLineValue || 0, po.currency), leftMargin + 155, yPos + 5);
+        
+        // Vertical lines
+        doc.line(leftMargin + 33, yPos, leftMargin + 33, yPos + rowHeight);
+        doc.line(leftMargin + 83, yPos, leftMargin + 83, yPos + rowHeight);
+        doc.line(leftMargin + 103, yPos, leftMargin + 103, yPos + rowHeight);
+        doc.line(leftMargin + 123, yPos, leftMargin + 123, yPos + rowHeight);
+        doc.line(leftMargin + 153, yPos, leftMargin + 153, yPos + rowHeight);
+        
+        totalAmount += parseFloat(item.totalLineValue?.toString() || '0');
+        yPos += rowHeight;
       });
-      
-      // Draw bottom line
-      doc.line(20, yPosition - 5, 200, yPosition - 5);
+    } else {
+      // Show "No items" row
+      doc.setFillColor(248, 248, 248);
+      doc.rect(leftMargin, yPos, 170, 8, 'F');
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(leftMargin, yPos, 170, 8);
+      doc.text('No line items found', leftMargin + 70, yPos + 5);
+      yPos += 8;
     }
+    
+    // Summary Section
+    yPos += 15;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    
+    // Summary box
+    doc.rect(120, yPos, 70, 30);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text('Order Summary', 122, yPos + 8);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    
+    yPos += 15;
+    if (po.discountAmount && parseFloat(po.discountAmount) > 0) {
+      doc.text('Discount:', 122, yPos);
+      doc.text(formatCurrency(po.discountAmount, po.currency), 165, yPos);
+      yPos += 5;
+    }
+    
+    if (po.taxAmount && parseFloat(po.taxAmount) > 0) {
+      doc.text('Tax:', 122, yPos);
+      doc.text(formatCurrency(po.taxAmount, po.currency), 165, yPos);
+      yPos += 5;
+    }
+    
+    doc.setFont("helvetica", "bold");
+    doc.text('Total Amount:', 122, yPos);
+    doc.text(formatCurrency(po.totalAmount, po.currency), 165, yPos);
+    
+    // Footer
+    yPos = 270;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text('This is a computer generated document and does not require signature.', leftMargin, yPos);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, leftMargin, yPos + 5);
     
     return doc;
   };
