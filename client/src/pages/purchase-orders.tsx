@@ -340,38 +340,41 @@ export default function PurchaseOrdersPage() {
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.5);
     
-    // Summary box
-    doc.rect(120, yPos, 70, 30);
+    // Summary box - make it wider to accommodate larger amounts
+    const summaryBoxX = 120;
+    const summaryBoxWidth = 80;
+    const summaryBoxHeight = 30;
+    doc.rect(summaryBoxX, yPos, summaryBoxWidth, summaryBoxHeight);
     
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text('Order Summary', 122, yPos + 8);
+    doc.text('Order Summary', summaryBoxX + 2, yPos + 8);
     
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     
     yPos += 15;
     if (po.discountAmount && parseFloat(po.discountAmount.toString()) > 0) {
-      doc.text('Discount:', 122, yPos);
+      doc.text('Discount:', summaryBoxX + 2, yPos);
       const discountText = formatCurrency(po.discountAmount, po.currency);
       const discountWidth = doc.getTextWidth(discountText);
-      doc.text(discountText, 185 - discountWidth, yPos);
+      doc.text(discountText, summaryBoxX + summaryBoxWidth - discountWidth - 2, yPos);
       yPos += 5;
     }
     
     if (po.taxAmount && parseFloat(po.taxAmount.toString()) > 0) {
-      doc.text('Tax:', 122, yPos);
+      doc.text('Tax:', summaryBoxX + 2, yPos);
       const taxText = formatCurrency(po.taxAmount, po.currency);
       const taxWidth = doc.getTextWidth(taxText);
-      doc.text(taxText, 185 - taxWidth, yPos);
+      doc.text(taxText, summaryBoxX + summaryBoxWidth - taxWidth - 2, yPos);
       yPos += 5;
     }
     
     doc.setFont("helvetica", "bold");
-    doc.text('Total Amount:', 122, yPos);
+    doc.text('Total Amount:', summaryBoxX + 2, yPos);
     const totalText = formatCurrency(po.totalAmount, po.currency);
     const totalWidth = doc.getTextWidth(totalText);
-    doc.text(totalText, 185 - totalWidth, yPos);
+    doc.text(totalText, summaryBoxX + summaryBoxWidth - totalWidth - 2, yPos);
     
     // Footer
     yPos = 270;
