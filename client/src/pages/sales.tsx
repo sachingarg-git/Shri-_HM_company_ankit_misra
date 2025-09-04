@@ -60,7 +60,7 @@ const billingFormSchema = z.object({
     productFamily: z.string().optional(),
     productGrade: z.string().optional(),
     hsnCode: z.string().optional(),
-    quantity: z.number().min(0.001, "Quantity must be greater than 0"),
+    quantity: z.number().min(0, "Quantity cannot be negative"),
     unit: z.string().min(1, "Unit is required"),
     unitPrice: z.number().min(0.01, "Unit price must be greater than 0"),
   })).min(1, "At least one item is required")
@@ -166,7 +166,7 @@ export default function Sales() {
         productFamily: "",
         productGrade: "",
         hsnCode: "",
-        quantity: 1,
+        quantity: 0,
         unit: "PCS",
         unitPrice: 0
       }]
@@ -410,7 +410,7 @@ export default function Sales() {
       productFamily: "",
       productGrade: "",
       hsnCode: "",
-      quantity: 1,
+      quantity: 0,
       unit: "PCS",
       unitPrice: 0
     });
@@ -437,7 +437,7 @@ export default function Sales() {
         productFamily: product.productFamily || "",
         productGrade: product.grade || "",
         hsnCode: product.hsnCode || "",
-        quantity: 1,
+        quantity: 0,
         unit: product.unit || "PCS",
         unitPrice: parseFloat(product.rate?.toString() || '0') || 0
       });
@@ -1317,9 +1317,20 @@ export default function Sales() {
                                         step="0.001"
                                         min="0"
                                         {...field}
-                                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                        onChange={e => {
+                                          const value = e.target.value;
+                                          if (value === '') {
+                                            field.onChange(0);
+                                          } else {
+                                            const num = parseFloat(value);
+                                            if (!isNaN(num)) {
+                                              field.onChange(num);
+                                            }
+                                          }
+                                        }}
                                         data-testid={`input-quantity-${index}`}
                                         className="text-center"
+                                        placeholder="0"
                                       />
                                     </FormControl>
                                     <FormMessage />
@@ -1364,9 +1375,20 @@ export default function Sales() {
                                         step="0.01"
                                         min="0"
                                         {...field}
-                                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                        onChange={e => {
+                                          const value = e.target.value;
+                                          if (value === '') {
+                                            field.onChange(0);
+                                          } else {
+                                            const num = parseFloat(value);
+                                            if (!isNaN(num)) {
+                                              field.onChange(num);
+                                            }
+                                          }
+                                        }}
                                         data-testid={`input-unit-price-${index}`}
                                         className="text-center"
+                                        placeholder="0.00"
                                       />
                                     </FormControl>
                                     <FormMessage />
