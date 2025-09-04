@@ -158,9 +158,9 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false, exist
           productFamily: item.productFamily || '',
           productGrade: item.productGrade || '',
           hsnCode: item.hsnCode || '',
-          quantityOrdered: item.quantityOrdered || 1,
+          quantityOrdered: parseFloat(item.quantityOrdered?.toString() || '1') || 1,
           unitOfMeasure: item.unitOfMeasure || 'PCS',
-          unitPrice: item.unitPrice || 0,
+          unitPrice: parseFloat(item.unitPrice?.toString() || '0') || 0,
         }));
         replace(formattedItems);
       }
