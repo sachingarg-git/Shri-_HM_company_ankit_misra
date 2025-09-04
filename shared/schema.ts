@@ -656,6 +656,12 @@ export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit
 export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({
   id: true,
   createdAt: true,
+}).extend({
+  productMasterId: z.string().optional(),
+  productName: z.string().optional(),
+  productFamily: z.string().optional(),
+  productGrade: z.string().optional(),
+  hsnCode: z.string().optional(),
 });
 
 export const insertPaymentSchema = createInsertSchema(payments).omit({

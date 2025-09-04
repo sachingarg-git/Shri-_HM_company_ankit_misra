@@ -717,17 +717,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/purchase-orders", async (req, res) => {
     try {
       const { purchaseOrder, items } = req.body;
+      console.log("Received PO data:", JSON.stringify(purchaseOrder, null, 2));
+      console.log("Received items data:", JSON.stringify(items, null, 2));
       
       // Validate purchase order data
       const poData = insertPurchaseOrderSchema.parse(purchaseOrder);
       
       // Validate items data
-      const itemsData = items.map((item: any) => insertPurchaseOrderItemSchema.parse(item));
+      const itemsData = items.map((item: any, index: number) => {
+        try {
+          return insertPurchaseOrderItemSchema.parse(item);
+        } catch (itemError) {
+          console.error(`Item ${index} validation error:`, itemError);
+          throw itemError;
+        }
+      });
       
       // Create purchase order with items
       const createdPO = await storage.createPurchaseOrderWithItems(poData, itemsData);
       res.status(201).json(createdPO);
     } catch (error) {
+      console.error("PO creation error:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid purchase order data", errors: error.errors });
       }
