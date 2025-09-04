@@ -215,6 +215,123 @@ export default function TourAdvance() {
     },
   });
 
+  // Status update mutation
+  const statusUpdateMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      return apiRequest(`/api/tour-advances/${id}`, "PUT", { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tour-advances"] });
+      toast({
+        title: "Status Updated",
+        description: "Tour advance status has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update tour advance status.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Status update handlers
+  const handleStatusUpdate = (id: string, status: string) => {
+    statusUpdateMutation.mutate({ id, status });
+  };
+
+  // Get workflow action buttons based on current status
+  const getWorkflowButtons = (ta: any) => {
+    const buttons = [];
+    
+    switch (ta.status) {
+      case "DRAFT":
+        buttons.push(
+          <Button
+            key="submit"
+            size="sm"
+            variant="default"
+            onClick={() => handleStatusUpdate(ta.id, "SUBMITTED")}
+            data-testid={`button-submit-ta-${ta.id}`}
+          >
+            Submit
+          </Button>
+        );
+        break;
+        
+      case "SUBMITTED":
+        buttons.push(
+          <Button
+            key="recommend"
+            size="sm"
+            variant="default"
+            onClick={() => handleStatusUpdate(ta.id, "RECOMMENDED")}
+            data-testid={`button-recommend-ta-${ta.id}`}
+          >
+            Recommend
+          </Button>,
+          <Button
+            key="reject"
+            size="sm"
+            variant="destructive"
+            onClick={() => handleStatusUpdate(ta.id, "REJECTED")}
+            data-testid={`button-reject-ta-${ta.id}`}
+          >
+            Reject
+          </Button>
+        );
+        break;
+        
+      case "RECOMMENDED":
+        buttons.push(
+          <Button
+            key="approve"
+            size="sm"
+            variant="default"
+            onClick={() => handleStatusUpdate(ta.id, "APPROVED")}
+            data-testid={`button-approve-ta-${ta.id}`}
+          >
+            Approve
+          </Button>,
+          <Button
+            key="reject"
+            size="sm"
+            variant="destructive"
+            onClick={() => handleStatusUpdate(ta.id, "REJECTED")}
+            data-testid={`button-reject-ta-${ta.id}`}
+          >
+            Reject
+          </Button>
+        );
+        break;
+        
+      case "APPROVED":
+        buttons.push(
+          <Button
+            key="settle"
+            size="sm"
+            variant="default"
+            onClick={() => handleStatusUpdate(ta.id, "SETTLED")}
+            data-testid={`button-settle-ta-${ta.id}`}
+          >
+            Settle
+          </Button>
+        );
+        break;
+        
+      default:
+        // For REJECTED and SETTLED status, no actions available
+        break;
+    }
+    
+    return (
+      <div className="flex gap-1">
+        {buttons}
+      </div>
+    );
+  };
+
   const onSubmit = async (data: TourAdvanceFormData) => {
     // Convert dates to ISO strings for API
     const formattedData = {
@@ -305,6 +422,7 @@ export default function TourAdvance() {
                 </div>
                 <div className="flex items-center gap-2">
                   {getStatusBadge(ta.status)}
+                  {getWorkflowButtons(ta)}
                   <div className="flex gap-1">
                     <Button
                       variant="ghost"
