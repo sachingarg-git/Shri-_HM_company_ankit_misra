@@ -6,19 +6,35 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { PurchaseOrderForm } from "@/components/PurchaseOrderForm";
-import { Plus, Package, Eye, Edit, Trash2, Calendar, DollarSign } from "lucide-react";
-import type { PurchaseOrder, InsertPurchaseOrder, InsertPurchaseOrderItem } from "@shared/schema";
+import { Plus, Package, Eye, Edit, Trash2, Calendar, DollarSign, FileText, Printer, Mail, MessageSquare, Download } from "lucide-react";
+import type { PurchaseOrder, PurchaseOrderItem, InsertPurchaseOrder, InsertPurchaseOrderItem } from "@shared/schema";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+// Declare jsPDF autotable plugin
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => void;
+  }
+}
 
 export default function PurchaseOrdersPage() {
   const [showForm, setShowForm] = useState(false);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [isEmailSending, setIsEmailSending] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   // Fetch purchase orders
   const { data: purchaseOrders, isLoading } = useQuery<PurchaseOrder[]>({
     queryKey: ['/api/purchase-orders'],
+  });
+
+  // Fetch purchase order items for selected PO
+  const { data: purchaseOrderItems } = useQuery<PurchaseOrderItem[]>({
+    queryKey: ['/api/purchase-orders', selectedPO?.id, 'items'],
+    enabled: !!selectedPO?.id,
   });
 
   // Create purchase order mutation
@@ -78,6 +94,135 @@ export default function PurchaseOrdersPage() {
   const formatCurrency = (amount: string | number, currency: string = 'INR') => {
     const num = typeof amount === 'string' ? parseFloat(amount) : amount;
     return currency === 'INR' ? `₹${num.toFixed(2)}` : `${currency} ${num.toFixed(2)}`;
+  };
+
+  // PDF generation function
+  const generatePDF = (po: PurchaseOrder, items: PurchaseOrderItem[] = []) => {
+    const doc = new jsPDF();
+    
+    // Header
+    doc.setFontSize(20);
+    doc.text('Purchase Order', 20, 30);
+    
+    // PO Details
+    doc.setFontSize(12);
+    doc.text(`PO Number: ${po.poNumber}`, 20, 50);
+    doc.text(`Date: ${formatDate(po.poDate)}`, 120, 50);
+    doc.text(`Status: ${po.status}`, 20, 60);
+    doc.text(`Total Amount: ${formatCurrency(po.totalAmount, po.currency)}`, 120, 60);
+    
+    // Supplier Details
+    doc.text('Supplier Information:', 20, 80);
+    doc.text(`Name: ${po.supplierName}`, 20, 90);
+    if (po.supplierContactPerson) doc.text(`Contact: ${po.supplierContactPerson}`, 20, 100);
+    if (po.supplierEmail) doc.text(`Email: ${po.supplierEmail}`, 20, 110);
+    if (po.supplierPhone) doc.text(`Phone: ${po.supplierPhone}`, 20, 120);
+    
+    // Buyer Details
+    doc.text('Buyer Information:', 120, 80);
+    doc.text(`Buyer: ${po.buyerName}`, 120, 90);
+    if (po.department) doc.text(`Department: ${po.department}`, 120, 100);
+    if (po.costCenter) doc.text(`Cost Center: ${po.costCenter}`, 120, 110);
+    if (po.approverName) doc.text(`Approver: ${po.approverName}`, 120, 120);
+    
+    // Line Items Table
+    if (items.length > 0) {
+      const tableData = items.map(item => [
+        item.itemCode || '',
+        item.itemDescription || '',
+        item.quantityOrdered?.toString() || '',
+        item.unitOfMeasure || '',
+        formatCurrency(item.unitPrice || 0, po.currency),
+        formatCurrency(item.totalLineValue || 0, po.currency)
+      ]);
+      
+      (doc as any).autoTable({
+        startY: 140,
+        head: [['Item Code', 'Description', 'Quantity', 'Unit', 'Unit Price', 'Total']],
+        body: tableData,
+        theme: 'grid',
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [41, 128, 185] }
+      });
+    }
+    
+    return doc;
+  };
+
+  // Generate and download PDF
+  const handleDownloadPDF = () => {
+    if (!selectedPO) return;
+    const doc = generatePDF(selectedPO, purchaseOrderItems);
+    doc.save(`PO_${selectedPO.poNumber}.pdf`);
+    toast({ title: "Success", description: "PDF downloaded successfully" });
+  };
+
+  // Print function
+  const handlePrint = () => {
+    if (!selectedPO) return;
+    const doc = generatePDF(selectedPO, purchaseOrderItems);
+    const pdfBlob = doc.output('blob');
+    const pdfURL = URL.createObjectURL(pdfBlob);
+    const printWindow = window.open(pdfURL, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    }
+    toast({ title: "Success", description: "Opening print dialog" });
+  };
+
+  // Email function
+  const handleSendEmail = async () => {
+    if (!selectedPO || !selectedPO.supplierEmail) {
+      toast({ title: "Error", description: "Supplier email is required", variant: "destructive" });
+      return;
+    }
+    
+    setIsEmailSending(true);
+    try {
+      const doc = generatePDF(selectedPO, purchaseOrderItems);
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      
+      const response = await fetch('/api/purchase-orders/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          purchaseOrderId: selectedPO.id,
+          recipientEmail: selectedPO.supplierEmail,
+          pdfData: pdfBase64
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to send email');
+      
+      toast({ title: "Success", description: "Email sent successfully" });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to send email", variant: "destructive" });
+    } finally {
+      setIsEmailSending(false);
+    }
+  };
+
+  // WhatsApp sharing function
+  const handleWhatsAppShare = () => {
+    if (!selectedPO) return;
+    const doc = generatePDF(selectedPO, purchaseOrderItems);
+    const pdfBlob = doc.output('blob');
+    const pdfURL = URL.createObjectURL(pdfBlob);
+    
+    // Create download link and trigger download first
+    const link = document.createElement('a');
+    link.href = pdfURL;
+    link.download = `PO_${selectedPO.poNumber}.pdf`;
+    link.click();
+    
+    // Open WhatsApp with message
+    const message = `Purchase Order ${selectedPO.poNumber} - Total: ${formatCurrency(selectedPO.totalAmount, selectedPO.currency)}. Please find the PDF attachment.`;
+    const whatsappURL = `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+    window.open(whatsappURL, '_blank');
+    
+    toast({ title: "Success", description: "PDF downloaded. WhatsApp opened for sharing." });
   };
 
   return (
@@ -321,6 +466,105 @@ export default function PurchaseOrdersPage() {
                     <label className="font-medium text-sm text-muted-foreground">Approver</label>
                     <p className="text-sm">{selectedPO.approverName || '-'}</p>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Line Items */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Order Line Items</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!purchaseOrderItems || purchaseOrderItems.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No line items found</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse border border-gray-300">
+                        <thead>
+                          <tr className="bg-gray-50">
+                            <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">Item Code</th>
+                            <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">Description</th>
+                            <th className="border border-gray-300 px-4 py-2 text-right text-sm font-medium">Quantity</th>
+                            <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium">Unit</th>
+                            <th className="border border-gray-300 px-4 py-2 text-right text-sm font-medium">Unit Price</th>
+                            <th className="border border-gray-300 px-4 py-2 text-right text-sm font-medium">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {purchaseOrderItems.map((item, index) => (
+                            <tr key={index}>
+                              <td className="border border-gray-300 px-4 py-2 text-sm">{item.itemCode}</td>
+                              <td className="border border-gray-300 px-4 py-2 text-sm">{item.itemDescription}</td>
+                              <td className="border border-gray-300 px-4 py-2 text-sm text-right">{item.quantityOrdered}</td>
+                              <td className="border border-gray-300 px-4 py-2 text-sm">{item.unitOfMeasure}</td>
+                              <td className="border border-gray-300 px-4 py-2 text-sm text-right">
+                                {formatCurrency(item.unitPrice || 0, selectedPO.currency)}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-2 text-sm text-right font-medium">
+                                {formatCurrency(item.totalLineValue || 0, selectedPO.currency)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Action Buttons */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Actions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-3">
+                    <Button 
+                      onClick={handleDownloadPDF}
+                      className="flex items-center gap-2"
+                      data-testid="button-download-pdf"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download PDF
+                    </Button>
+                    
+                    <Button 
+                      onClick={handlePrint}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      data-testid="button-print-po"
+                    >
+                      <Printer className="h-4 w-4" />
+                      Print
+                    </Button>
+                    
+                    <Button 
+                      onClick={handleSendEmail}
+                      disabled={isEmailSending || !selectedPO.supplierEmail}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      data-testid="button-send-email"
+                    >
+                      <Mail className="h-4 w-4" />
+                      {isEmailSending ? "Sending..." : "Send Email"}
+                    </Button>
+                    
+                    <Button 
+                      onClick={handleWhatsAppShare}
+                      variant="outline"
+                      className="flex items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700"
+                      data-testid="button-whatsapp-share"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Share on WhatsApp
+                    </Button>
+                  </div>
+                  
+                  {!selectedPO.supplierEmail && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Email button disabled - no supplier email address
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
