@@ -561,6 +561,9 @@ export default function TourAdvance() {
 
   const onSubmit = async (data: TourAdvanceFormData) => {
     try {
+      console.log("Form submission data:", data);
+      console.log("Daily expenses in form:", data.dailyExpenses);
+      
       // Convert dates to ISO strings for API
       const formattedData = {
         ...data,
@@ -573,6 +576,8 @@ export default function TourAdvance() {
         })) || []
       };
 
+      console.log("Formatted data being sent to API:", formattedData);
+      console.log("Daily expenses being sent to API:", formattedData.dailyExpenses);
       createUpdateMutation.mutate(formattedData as any);
     } catch (error) {
       console.error("Error in onSubmit:", error);
