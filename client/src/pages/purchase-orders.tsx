@@ -157,127 +157,164 @@ export default function PurchaseOrdersPage() {
     return currency === 'INR' ? `Rs ${result}.${decimalPart}` : `${currency} ${result}.${decimalPart}`;
   };
 
-  // Professional PDF generation function
+  // Professional PDF generation function with proper formatting
   const generatePDF = (po: PurchaseOrder, items: PurchaseOrderItem[] = []) => {
     const doc = new jsPDF();
     
-    // Page margins
-    const leftMargin = 20;
-    const rightMargin = 190;
+    // Page settings
     const pageWidth = 210;
+    const pageHeight = 297;
+    const margin = 15;
+    const contentWidth = pageWidth - (margin * 2);
     
-    // Header Section with Company Branding
-    doc.setFillColor(41, 128, 185); // Blue header
-    doc.rect(0, 0, pageWidth, 35, 'F');
+    // Company Header
+    doc.setFillColor(34, 45, 65); // Professional dark blue
+    doc.rect(0, 0, pageWidth, 40, 'F');
     
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
+    doc.setFontSize(20);
     doc.setFont("helvetica", "bold");
-    doc.text('PURCHASE ORDER', leftMargin, 25);
+    doc.text('PURCHASE ORDER', margin, 25);
     
-    // Reset text color
-    doc.setTextColor(0, 0, 0);
-    
-    // PO Header Information
-    let yPos = 50;
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text(`PO Number: ${po.poNumber}`, leftMargin, yPos);
-    doc.text(`Date: ${formatDate(po.poDate)}`, 120, yPos);
-    
-    yPos += 10;
+    // Document info in header
     doc.setFontSize(12);
-    doc.text(`Status: ${po.status}`, leftMargin, yPos);
-    if (po.revisionNumber && po.revisionNumber > 0) {
-      doc.text(`Revision: ${po.revisionNumber}`, 120, yPos);
-    }
-    if (po.expectedDeliveryDate) {
-      doc.text(`Expected Delivery: ${formatDate(po.expectedDeliveryDate)}`, 120, yPos + 8);
-    }
+    doc.setFont("helvetica", "normal");
+    doc.text(`PO #: ${po.poNumber}`, pageWidth - 60, 20);
+    doc.text(`Date: ${formatDate(po.poDate)}`, pageWidth - 60, 30);
     
-    // Vendor Information Box
-    yPos += 20;
-    doc.setDrawColor(100, 100, 100);
-    doc.setLineWidth(0.5);
-    doc.rect(leftMargin, yPos, 80, 40); // Vendor box
+    // Reset for body content
+    doc.setTextColor(0, 0, 0);
+    let yPos = 55;
     
-    doc.setFontSize(11);
+    // Status and basic info
+    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text('VENDOR', leftMargin + 2, yPos + 8);
+    doc.text(`Status: ${po.status}`, margin, yPos);
+    if (po.deliveryDate) {
+      doc.setFont("helvetica", "normal");
+      doc.text(`Expected Delivery: ${formatDate(po.deliveryDate)}`, margin + 80, yPos);
+    }
+    
+    // Vendor and Buyer Information Boxes
+    yPos += 15;
+    const boxHeight = 35;
+    const boxWidth = (contentWidth - 10) / 2;
+    
+    // Vendor Box
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.rect(margin, yPos, boxWidth, boxHeight);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text('VENDOR', margin + 3, yPos + 8);
     
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     let vendorY = yPos + 15;
-    doc.text(po.supplierName, leftMargin + 2, vendorY);
+    doc.text(po.supplierName || 'N/A', margin + 3, vendorY);
     if (po.supplierContactPerson) {
       vendorY += 5;
-      doc.text(`Contact: ${po.supplierContactPerson}`, leftMargin + 2, vendorY);
+      doc.text(`Contact: ${po.supplierContactPerson}`, margin + 3, vendorY);
     }
     if (po.supplierEmail) {
       vendorY += 5;
-      doc.text(`Email: ${po.supplierEmail}`, leftMargin + 2, vendorY);
+      doc.text(`Email: ${po.supplierEmail}`, margin + 3, vendorY);
     }
     if (po.supplierPhone) {
       vendorY += 5;
-      doc.text(`Phone: ${po.supplierPhone}`, leftMargin + 2, vendorY);
+      doc.text(`Phone: ${po.supplierPhone}`, margin + 3, vendorY);
     }
     
-    // Buyer Information Box
-    doc.rect(110, yPos, 80, 40); // Buyer box
+    // Buyer Box
+    const buyerX = margin + boxWidth + 10;
+    doc.rect(buyerX, yPos, boxWidth, boxHeight);
     
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text('BUYER', 112, yPos + 8);
+    doc.text('BUYER', buyerX + 3, yPos + 8);
     
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     let buyerY = yPos + 15;
-    doc.text(po.buyerName, 112, buyerY);
+    doc.text(po.approverName || po.department || 'N/A', buyerX + 3, buyerY);
     if (po.department) {
       buyerY += 5;
-      doc.text(`Department: ${po.department}`, 112, buyerY);
+      doc.text(`Department: ${po.department}`, buyerX + 3, buyerY);
     }
     if (po.costCenter) {
       buyerY += 5;
-      doc.text(`Cost Center: ${po.costCenter}`, 112, buyerY);
+      doc.text(`Cost Center: ${po.costCenter}`, buyerX + 3, buyerY);
     }
     if (po.approverName) {
       buyerY += 5;
-      doc.text(`Approver: ${po.approverName}`, 112, buyerY);
+      doc.text(`Approver: ${po.approverName}`, buyerX + 3, buyerY);
     }
     
-    // Line Items Table
-    yPos += 55;
+    // Line Items Table - Completely redesigned to fit page
+    yPos += 45;
     
-    // Table Header with optimized width to fit page
-    const tableWidth = 170; // Back to original width that fits page
-    doc.setFillColor(52, 73, 94); // Dark blue header
-    doc.rect(leftMargin, yPos, tableWidth, 10, 'F');
+    // Table configuration with proper dimensions
+    const tableStartX = margin;
+    const tableWidth = contentWidth;
+    const rowHeight = 10;
+    
+    // Column widths that add up to tableWidth (180)
+    const colWidths = {
+      itemCode: 25,    // Item Code
+      description: 45, // Description
+      qty: 20,         // Quantity
+      unit: 15,        // Unit
+      unitPrice: 35,   // Unit Price
+      total: 40        // Total (wider to fit full currency values)
+    };
+    
+    // Verify total width
+    const totalColWidth = Object.values(colWidths).reduce((sum, width) => sum + width, 0);
+    
+    // Table Header
+    doc.setFillColor(52, 73, 94); // Professional blue
+    doc.rect(tableStartX, yPos, tableWidth, rowHeight, 'F');
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.3);
-    doc.rect(leftMargin, yPos, tableWidth, 10);
+    doc.rect(tableStartX, yPos, tableWidth, rowHeight);
     
-    doc.setTextColor(255, 255, 255); // White text for header
-    doc.setFontSize(9);
+    // Header text
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
     doc.setFont("helvetica", "bold");
-    doc.text('Item Code', leftMargin + 2, yPos + 7);
-    doc.text('Description', leftMargin + 30, yPos + 7); // Moved left to save space
-    doc.text('Qty', leftMargin + 75, yPos + 7); // Moved left
-    doc.text('Unit', leftMargin + 95, yPos + 7); // Moved left
-    doc.text('Unit Price', leftMargin + 115, yPos + 7); // Moved left
-    doc.text('Total', leftMargin + 150, yPos + 7); // Optimized position
     
-    // Reset text color
+    let xPos = tableStartX + 2;
+    doc.text('Item Code', xPos, yPos + 7);
+    xPos += colWidths.itemCode;
+    doc.text('Description', xPos + 2, yPos + 7);
+    xPos += colWidths.description;
+    doc.text('Qty', xPos + 2, yPos + 7);
+    xPos += colWidths.qty;
+    doc.text('Unit', xPos + 2, yPos + 7);
+    xPos += colWidths.unit;
+    doc.text('Unit Price', xPos + 2, yPos + 7);
+    xPos += colWidths.unitPrice;
+    doc.text('Total', xPos + 2, yPos + 7);
+    
+    // Column separators in header
+    doc.setDrawColor(255, 255, 255);
+    xPos = tableStartX + colWidths.itemCode;
+    doc.line(xPos, yPos, xPos, yPos + rowHeight);
+    xPos += colWidths.description;
+    doc.line(xPos, yPos, xPos, yPos + rowHeight);
+    xPos += colWidths.qty;
+    doc.line(xPos, yPos, xPos, yPos + rowHeight);
+    xPos += colWidths.unit;
+    doc.line(xPos, yPos, xPos, yPos + rowHeight);
+    xPos += colWidths.unitPrice;
+    doc.line(xPos, yPos, xPos, yPos + rowHeight);
+    
+    yPos += rowHeight;
+    
+    // Reset colors for table content
     doc.setTextColor(0, 0, 0);
-    
-    // Table vertical lines - optimized positions
-    doc.line(leftMargin + 28, yPos, leftMargin + 28, yPos + 10);
-    doc.line(leftMargin + 73, yPos, leftMargin + 73, yPos + 10);
-    doc.line(leftMargin + 93, yPos, leftMargin + 93, yPos + 10);
-    doc.line(leftMargin + 113, yPos, leftMargin + 113, yPos + 10);
-    doc.line(leftMargin + 145, yPos, leftMargin + 145, yPos + 10);
-    
-    yPos += 10;
+    doc.setDrawColor(200, 200, 200);
     
     // Table Rows
     doc.setFont("helvetica", "normal");
@@ -287,44 +324,59 @@ export default function PurchaseOrdersPage() {
     
     if (items && items.length > 0) {
       items.forEach((item, index) => {
-        const rowHeight = 8;
-        
         // Alternate row background
         if (index % 2 === 1) {
           doc.setFillColor(248, 248, 248);
-          doc.rect(leftMargin, yPos, 170, rowHeight, 'F'); // Back to original width
+          doc.rect(tableStartX, yPos, tableWidth, rowHeight, 'F');
         }
         
         // Row border
         doc.setDrawColor(200, 200, 200);
-        doc.rect(leftMargin, yPos, 170, rowHeight); // Back to original width
+        doc.rect(tableStartX, yPos, tableWidth, rowHeight);
         
-        // Cell data with proper alignment
-        doc.setTextColor(0, 0, 0);
-        doc.text(item.itemCode || '-', leftMargin + 2, yPos + 5);
-        doc.text((item.itemDescription || '-').substring(0, 20), leftMargin + 30, yPos + 5); // Shorter description
+        // Cell data with proper positioning
+        let xPos = tableStartX + 2;
         
-        // Right-align numbers
+        // Item Code
+        doc.text((item.itemCode || '-').substring(0, 8), xPos, yPos + 7);
+        xPos += colWidths.itemCode;
+        
+        // Description
+        doc.text((item.itemDescription || '-').substring(0, 15), xPos + 2, yPos + 7);
+        xPos += colWidths.description;
+        
+        // Quantity (right-aligned)
         const qty = (item.quantityOrdered?.toString() || '0');
         const qtyWidth = doc.getTextWidth(qty);
-        doc.text(qty, leftMargin + 90 - qtyWidth, yPos + 5); // Adjusted position
+        doc.text(qty, xPos + colWidths.qty - qtyWidth - 2, yPos + 7);
+        xPos += colWidths.qty;
         
-        doc.text(item.unitOfMeasure || '-', leftMargin + 95, yPos + 5); // Adjusted position
+        // Unit
+        doc.text((item.unitOfMeasure || '-').substring(0, 5), xPos + 2, yPos + 7);
+        xPos += colWidths.unit;
         
+        // Unit Price (right-aligned)
         const unitPrice = formatCurrency(item.unitPrice || 0, po.currency);
         const unitPriceWidth = doc.getTextWidth(unitPrice);
-        doc.text(unitPrice, leftMargin + 142 - unitPriceWidth, yPos + 5); // Adjusted position
+        doc.text(unitPrice, xPos + colWidths.unitPrice - unitPriceWidth - 2, yPos + 7);
+        xPos += colWidths.unitPrice;
         
+        // Total (right-aligned) - Now has 40 units of width
         const total = formatCurrency(item.totalLineValue || 0, po.currency);
         const totalWidth = doc.getTextWidth(total);
-        doc.text(total, leftMargin + 187 - totalWidth, yPos + 5); // Within page bounds
+        doc.text(total, xPos + colWidths.total - totalWidth - 2, yPos + 7);
         
-        // Vertical lines - optimized positions
-        doc.line(leftMargin + 28, yPos, leftMargin + 28, yPos + rowHeight);
-        doc.line(leftMargin + 73, yPos, leftMargin + 73, yPos + rowHeight);
-        doc.line(leftMargin + 93, yPos, leftMargin + 93, yPos + rowHeight);
-        doc.line(leftMargin + 113, yPos, leftMargin + 113, yPos + rowHeight);
-        doc.line(leftMargin + 145, yPos, leftMargin + 145, yPos + rowHeight);
+        // Column separators
+        let sepX = tableStartX + colWidths.itemCode;
+        doc.line(sepX, yPos, sepX, yPos + rowHeight);
+        sepX += colWidths.description;
+        doc.line(sepX, yPos, sepX, yPos + rowHeight);
+        sepX += colWidths.qty;
+        doc.line(sepX, yPos, sepX, yPos + rowHeight);
+        sepX += colWidths.unit;
+        doc.line(sepX, yPos, sepX, yPos + rowHeight);
+        sepX += colWidths.unitPrice;
+        doc.line(sepX, yPos, sepX, yPos + rowHeight);
         
         totalAmount += parseFloat(item.totalLineValue?.toString() || '0');
         yPos += rowHeight;
@@ -332,11 +384,11 @@ export default function PurchaseOrdersPage() {
     } else {
       // Show "No items" row
       doc.setFillColor(248, 248, 248);
-      doc.rect(leftMargin, yPos, 170, 8, 'F'); // Back to original width
+      doc.rect(tableStartX, yPos, tableWidth, rowHeight, 'F');
       doc.setDrawColor(200, 200, 200);
-      doc.rect(leftMargin, yPos, 170, 8); // Back to original width
-      doc.text('No line items found', leftMargin + 75, yPos + 5); // Centered for original width
-      yPos += 8;
+      doc.rect(tableStartX, yPos, tableWidth, rowHeight);
+      doc.text('No line items found', tableStartX + (tableWidth / 2) - 25, yPos + 7);
+      yPos += rowHeight;
     }
     
     // Summary Section
@@ -382,26 +434,26 @@ export default function PurchaseOrdersPage() {
     
     // Terms and Additional Information Section
     yPos += 20;
-    if (po.termsAndConditions) {
+    if (po.terms) {
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
-      doc.text('Terms & Conditions:', leftMargin, yPos);
+      doc.text('Terms & Conditions:', margin, yPos);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
-      const termsLines = doc.splitTextToSize(po.termsAndConditions, 160);
-      doc.text(termsLines, leftMargin, yPos + 8);
+      const termsLines = doc.splitTextToSize(po.terms, 160);
+      doc.text(termsLines, margin, yPos + 8);
       yPos += 8 + (termsLines.length * 4);
     }
     
-    if (po.internalNotes) {
+    if (po.notes) {
       yPos += 8;
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
-      doc.text('Internal Notes:', leftMargin, yPos);
+      doc.text('Internal Notes:', margin, yPos);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
-      const notesLines = doc.splitTextToSize(po.internalNotes, 160);
-      doc.text(notesLines, leftMargin, yPos + 8);
+      const notesLines = doc.splitTextToSize(po.notes, 160);
+      doc.text(notesLines, margin, yPos + 8);
       yPos += 8 + (notesLines.length * 4);
     }
     
@@ -414,11 +466,11 @@ export default function PurchaseOrdersPage() {
     // Add a separator line
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.3);
-    doc.line(leftMargin, yPos - 5, leftMargin + 170, yPos - 5);
+    doc.line(margin, yPos - 5, margin + 170, yPos - 5);
     
-    doc.text('This is a computer generated document and does not require signature.', leftMargin, yPos);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, leftMargin, yPos + 5);
-    doc.text(`Page 1 of 1`, leftMargin + 140, yPos + 5);
+    doc.text('This is a computer generated document and does not require signature.', margin, yPos);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, yPos + 5);
+    doc.text(`Page 1 of 1`, margin + 140, yPos + 5);
     
     return doc;
   };
