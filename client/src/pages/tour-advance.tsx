@@ -60,7 +60,10 @@ const tourAdvanceFormSchema = z.object({
     arrivalTime: z.string(),
     fromLocation: z.string().optional(),
     toLocation: z.string().optional(),
-  })).optional()
+  })).optional(),
+  
+  // Daily expenses tracking
+  dailyExpenses: z.record(z.record(z.number())).optional()
 });
 
 type TourAdvanceFormData = z.infer<typeof tourAdvanceFormSchema>;
@@ -91,15 +94,16 @@ const statusOptions = [
 ];
 
 // Expense Tracking Component
-function ExpenseTrackingTable({ numberOfDays, tourStartDate }: { numberOfDays: number, tourStartDate: Date }) {
-  const [expenses, setExpenses] = useState<{ [key: string]: { [key: string]: number } }>({});
-
+function ExpenseTrackingTable({ numberOfDays, tourStartDate, form }: { numberOfDays: number, tourStartDate: Date, form: any }) {
   const expenseCategories = [
     { id: "FOOD_ACCOMMODATION", label: "Food & Accommodation", color: "bg-blue-50" },
     { id: "TRAVEL_OTHER", label: "Travel & Other", color: "bg-green-50" },
     { id: "ENTERTAINMENT", label: "Entertainment", color: "bg-purple-50" },
     { id: "MISCELLANEOUS", label: "Miscellaneous", color: "bg-orange-50" },
   ];
+
+  // Get expense data from form
+  const dailyExpenses = form.watch("dailyExpenses") || {};
 
   // Generate array of dates based on tour duration
   const getDatesArray = () => {
@@ -116,25 +120,27 @@ function ExpenseTrackingTable({ numberOfDays, tourStartDate }: { numberOfDays: n
 
   // Handle expense change
   const handleExpenseChange = (category: string, dayIndex: number, amount: string) => {
-    setExpenses(prev => ({
-      ...prev,
+    const currentExpenses = form.getValues("dailyExpenses") || {};
+    const updatedExpenses = {
+      ...currentExpenses,
       [category]: {
-        ...prev[category],
+        ...currentExpenses[category],
         [dayIndex]: parseFloat(amount) || 0
       }
-    }));
+    };
+    form.setValue("dailyExpenses", updatedExpenses);
   };
 
   // Calculate daily totals
   const getDayTotal = (dayIndex: number) => {
     return expenseCategories.reduce((total, category) => {
-      return total + (expenses[category.id]?.[dayIndex] || 0);
+      return total + (dailyExpenses[category.id]?.[dayIndex] || 0);
     }, 0);
   };
 
   // Calculate category totals
   const getCategoryTotal = (categoryId: string) => {
-    const categoryExpenses = expenses[categoryId] || {};
+    const categoryExpenses = dailyExpenses[categoryId] || {};
     return Object.values(categoryExpenses).reduce((total, amount) => total + amount, 0);
   };
 
@@ -174,7 +180,7 @@ function ExpenseTrackingTable({ numberOfDays, tourStartDate }: { numberOfDays: n
                         type="number"
                         placeholder="0"
                         className="text-center"
-                        value={expenses[category.id]?.[dayIndex]?.toString() || ""}
+                        value={dailyExpenses[category.id]?.[dayIndex]?.toString() || ""}
                         onChange={(e) => handleExpenseChange(category.id, dayIndex, e.target.value)}
                         data-testid={`input-expense-${category.id}-day-${dayIndex}`}
                       />
@@ -263,7 +269,8 @@ export default function TourAdvance() {
           fromLocation: "",
           toLocation: "",
         }
-      ]
+      ],
+      dailyExpenses: {}
     },
   });
 
@@ -285,9 +292,9 @@ export default function TourAdvance() {
     }
   }, [tourStartDate, tourEndDate, form]);
 
-  // Auto-fill employee details
+  // Auto-fill employee details (only when not editing existing data)
   useEffect(() => {
-    if (selectedEmployee) {
+    if (selectedEmployee && !selectedTourAdvance) {
       const employee = users.find((u: any) => u.id === selectedEmployee);
       if (employee) {
         form.setValue("employeeName", `${employee.firstName} ${employee.lastName}`);
@@ -297,7 +304,7 @@ export default function TourAdvance() {
         form.setValue("employeeCode", employee.employeeCode || "");
       }
     }
-  }, [selectedEmployee, users, form]);
+  }, [selectedEmployee, users, form, selectedTourAdvance]);
 
   // Create/Update mutation
   const createUpdateMutation = useMutation({
@@ -316,7 +323,10 @@ export default function TourAdvance() {
       });
       setIsFormOpen(false);
       setSelectedTourAdvance(null);
-      form.reset();
+      // Only reset form after create, not after update to preserve data
+      if (!selectedTourAdvance) {
+        form.reset();
+      }
     },
     onError: (error: any) => {
       toast({
@@ -504,7 +514,8 @@ export default function TourAdvance() {
         segmentNumber: index + 1,
         departureDate: new Date(segment.departureDate),
         arrivalDate: new Date(segment.arrivalDate),
-      })) || []
+      })) || [],
+      dailyExpenses: tourAdvance.dailyExpenses || {}
     };
 
     form.reset(formData);
@@ -1294,6 +1305,7 @@ export default function TourAdvance() {
                       <ExpenseTrackingTable 
                         numberOfDays={form.watch("numberOfDays")}
                         tourStartDate={form.watch("tourStartDate")}
+                        form={form}
                       />
                     </CardContent>
                   </Card>
