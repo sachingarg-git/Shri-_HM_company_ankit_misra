@@ -807,6 +807,30 @@ export default function Sales() {
                     <div className="space-y-4">
                       <FormField
                         control={form.control}
+                        name="transporterId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Transporter</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || ""}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select transporter" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {transporters.map((transporter) => (
+                                  <SelectItem key={transporter.id} value={transporter.id}>
+                                    {transporter.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
                         name="vehicleNumber"
                         render={({ field }) => (
                           <FormItem>
