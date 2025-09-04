@@ -288,7 +288,7 @@ export default function Sales() {
         const avgPrice = totalQuantity > 0 ? (totalAmount / 1.18) / totalQuantity : 0; // Remove GST and calculate avg
         const quantityPerItem = Math.floor(totalQuantity / itemDescriptions.length);
         
-        tableData = itemDescriptions.map((desc, index) => {
+        tableData = itemDescriptions.map((desc: string, index: number) => {
           const trimmedDesc = desc.trim();
           let itemCode = '';
           let itemDescription = trimmedDesc;
@@ -2005,7 +2005,7 @@ function TAReportsSection() {
   // Filter tour advances by selected month
   const filteredTourAdvances = tourAdvances.filter((ta: any) => {
     const matchesMonth = !selectedMonth || format(new Date(ta.tourStartDate), "yyyy-MM") === selectedMonth;
-    const matchesEmployee = !selectedEmployee || ta.employeeId === selectedEmployee;
+    const matchesEmployee = !selectedEmployee || selectedEmployee === "all" || ta.employeeId === selectedEmployee;
     return matchesMonth && matchesEmployee;
   });
 
@@ -2144,7 +2144,7 @@ function TAReportsSection() {
                   <SelectValue placeholder="All employees" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All employees</SelectItem>
+                  <SelectItem value="all">All employees</SelectItem>
                   {users.map((user: any) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.firstName} {user.lastName}
