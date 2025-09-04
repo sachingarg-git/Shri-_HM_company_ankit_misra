@@ -400,7 +400,7 @@ export default function Sales() {
     }
   };
 
-  // Add new item
+  // Add new empty item
   const addItem = () => {
     append({
       productMasterId: "",
@@ -413,6 +413,42 @@ export default function Sales() {
       unit: "PCS",
       unitPrice: 0
     });
+  };
+
+  // Add selected product to bill
+  const addSelectedProductToBill = () => {
+    const selectedProductId = selectedProduct;
+    if (!selectedProductId) {
+      toast({
+        title: "Error",
+        description: "Please select a product first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const product = productMasters?.find(p => p.id === selectedProductId);
+    if (product) {
+      append({
+        productMasterId: selectedProductId,
+        itemCode: product.productCode || "",
+        itemDescription: product.name || "",
+        productFamily: product.productFamily || "",
+        productGrade: product.grade || "",
+        hsnCode: product.hsnCode || "",
+        quantity: 1,
+        unit: product.unit || "PCS",
+        unitPrice: parseFloat(product.rate?.toString() || '0') || 0
+      });
+      
+      // Reset the product selection
+      setSelectedProduct("");
+      
+      toast({
+        title: "Success",
+        description: "Product added to bill",
+      });
+    }
   };
 
   // Generate auto numbers
@@ -1193,7 +1229,7 @@ export default function Sales() {
                         )}
                       />
                       <div className="flex items-end">
-                        <Button type="button" onClick={addItem} size="default" className="w-full" data-testid="button-add-item">
+                        <Button type="button" onClick={addSelectedProductToBill} size="default" className="w-full" data-testid="button-add-selected-product">
                           <Plus className="h-4 w-4 mr-2" />
                           Add Item to Bill
                         </Button>
