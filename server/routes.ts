@@ -13,7 +13,8 @@ import {
   insertSupplierSchema, insertBankSchema, insertVehicleSchema,
   insertLeadSchema, insertOpportunitySchema, insertQuotationSchema, insertQuotationItemSchema,
   insertSalesOrderSchema, insertSalesOrderItemSchema, insertDeliveryPlanSchema,
-  insertDispatchSchema, insertDeliveryChallanSchema, insertTourAdvanceSchema, insertTourSegmentSchema
+  insertDispatchSchema, insertDeliveryChallanSchema, insertTourAdvanceSchema, insertTourSegmentSchema,
+  insertTAExpenseSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";

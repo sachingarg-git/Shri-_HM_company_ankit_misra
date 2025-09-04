@@ -174,7 +174,7 @@ function ExpenseTrackingTable({ numberOfDays, tourStartDate }: { numberOfDays: n
                         type="number"
                         placeholder="0"
                         className="text-center"
-                        value={expenses[category.id]?.[dayIndex] || ""}
+                        value={expenses[category.id]?.[dayIndex]?.toString() || ""}
                         onChange={(e) => handleExpenseChange(category.id, dayIndex, e.target.value)}
                         data-testid={`input-expense-${category.id}-day-${dayIndex}`}
                       />
@@ -218,12 +218,12 @@ export default function TourAdvance() {
   const queryClient = useQueryClient();
 
   // Fetch tour advances
-  const { data: tourAdvances = [], isLoading } = useQuery({
+  const { data: tourAdvances = [], isLoading } = useQuery<any[]>({
     queryKey: ["/api/tour-advances"],
   });
 
   // Fetch users for employee selection
-  const { data: users = [] } = useQuery({
+  const { data: users = [] } = useQuery<any[]>({
     queryKey: ["/api/users"],
   });
 
