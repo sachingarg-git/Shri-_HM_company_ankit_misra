@@ -58,8 +58,6 @@ const purchaseOrderSchema = z.object({
     quantityOrdered: z.number().min(0.001, "Quantity must be greater than 0"),
     unitOfMeasure: z.string().min(1, "Unit of measure is required"),
     unitPrice: z.number().min(0.01, "Unit price must be greater than 0"),
-    specifications: z.string().optional(),
-    notes: z.string().optional(),
   })).min(1, "At least one item is required")
 });
 
@@ -110,8 +108,6 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
         quantityOrdered: 1,
         unitOfMeasure: 'PCS',
         unitPrice: 0,
-        specifications: '',
-        notes: ''
       }]
     }
   });
@@ -156,8 +152,6 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
       quantityOrdered: 1,
       unitOfMeasure: 'PCS',
       unitPrice: 0,
-      specifications: '',
-      notes: ''
     });
   };
 
@@ -228,8 +222,6 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
       unitOfMeasure: item.unitOfMeasure,
       unitPrice: item.unitPrice.toString(),
       totalLineValue: (item.quantityOrdered * item.unitPrice).toString(),
-      specifications: item.specifications,
-      notes: item.notes,
     }));
 
     onSubmit({ purchaseOrder, items });
@@ -468,11 +460,11 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {fields.map((field, index) => (
-                <div key={field.id} className="border rounded-lg p-4 space-y-4">
+                <div key={field.id} className="border rounded-lg p-4 space-y-4 bg-gray-50/50">
                   <div className="flex justify-between items-center">
-                    <h4 className="font-medium">Item {index + 1}</h4>
+                    <h4 className="font-medium text-lg">Item {index + 1}</h4>
                     {fields.length > 1 && (
                       <Button
                         type="button"
@@ -609,36 +601,57 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
                       )}
                     />
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.specifications`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Specifications</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} rows={2} data-testid={`textarea-specifications-${index}`} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name={`items.${index}.notes`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Item Notes</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} rows={2} data-testid={`textarea-item-notes-${index}`} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+
+                  {/* Product Master Details */}
+                  {form.watch(`items.${index}.productMasterId`) && form.watch(`items.${index}.productMasterId`) !== "manual" && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 p-3 bg-blue-50 rounded-lg border">
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.productFamily`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Family</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly className="bg-white/80" />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.productGrade`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Grade</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly className="bg-white/80" />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.hsnCode`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>HSN Code</FormLabel>
+                            <FormControl>
+                              <Input {...field} readOnly className="bg-white/80" />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex items-end">
+                        <Badge variant="secondary" className="mb-2">
+                          <Package className="h-3 w-3 mr-1" />
+                          Product Master Data
+                        </Badge>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="flex justify-end">
                     <Badge variant="outline" className="text-lg px-3 py-1">

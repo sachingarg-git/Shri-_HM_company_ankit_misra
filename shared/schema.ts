@@ -235,9 +235,7 @@ export const purchaseOrderItems = pgTable("purchase_order_items", {
   hsnCode: text("hsn_code"),
   
   // Additional item details
-  specifications: text("specifications"),
   deliveryDate: timestamp("delivery_date"),
-  notes: text("notes"),
   
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
