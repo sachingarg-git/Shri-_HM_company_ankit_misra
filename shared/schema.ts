@@ -650,8 +650,8 @@ export const insertOrderSchema = createInsertSchema(orders).omit({
 export const insertPurchaseOrderSchema = z.object({
   poNumber: z.string(),
   supplierId: z.string(),
-  orderDate: z.union([z.string(), z.date()]),
-  expectedDeliveryDate: z.union([z.string(), z.date()]),
+  orderDate: z.string(),
+  expectedDeliveryDate: z.string(),
   status: z.string().optional(),
   currency: z.string().default("INR"),
   subtotal: z.number(),
@@ -676,7 +676,7 @@ export const insertPurchaseOrderItemSchema = z.object({
   productFamily: z.string().optional(),
   productGrade: z.string().optional(),
   hsnCode: z.string().optional(),
-  deliveryDate: z.union([z.string(), z.date()]).optional(),
+  deliveryDate: z.string().optional(),
 });
 
 export const insertPaymentSchema = createInsertSchema(payments).omit({
