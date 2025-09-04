@@ -58,8 +58,8 @@ export default function TAReports() {
     // Travel Details
     const travelData = [
       ['Travel Details'],
-      [`From: ${ta.segments?.[0]?.fromLocation || 'N/A'}`],
-      [`To: ${ta.segments?.[0]?.toLocation || 'N/A'}`]
+      [`From: ${ta.segments?.[0]?.fromLocation || ta.mainDestination || 'N/A'}`],
+      [`To: ${ta.segments?.[ta.segments?.length - 1]?.toLocation || ta.mainDestination || 'N/A'}`]
     ];
 
     let finalY = (doc as any).lastAutoTable.finalY + 10;
@@ -97,7 +97,11 @@ export default function TAReports() {
     // Helper function to get daily total for a specific day
     const getDayTotal = (dayIndex: number) => {
       let total = 0;
-      ['FOOD_ACCOMMODATION', 'TRAVEL_OTHER', 'ENTERTAINMENT', 'MISCELLANEOUS'].forEach(category => {
+      // Sum all detailed expense categories
+      const allCategories = ['PERSONAL_CAR_KMS', 'ROOM_RENT', 'WATER', 'BREAKFAST', 'LUNCH', 'DINNER',
+                            'USAGE_RATE_PER_KM', 'TRAIN_AIR_TICKET', 'AUTO_TAXI', 'RENT_A_CAR', 
+                            'OTHER_TRANSPORT', 'TELEPHONE', 'TOLLS', 'PARKING', 'DIESEL_PETROL', 'OTHER'];
+      allCategories.forEach(category => {
         total += parseFloat(dailyExpenses[category]?.[dayIndex] || 0);
       });
       return total.toFixed(2);
@@ -110,26 +114,36 @@ export default function TAReports() {
       dayColumns.push(i);
     }
 
+    // Helper function to get group total
+    const getGroupTotal = (categories: string[]) => {
+      return categories.reduce((total, cat) => total + parseFloat(getCategoryTotal(cat)), 0).toFixed(2);
+    };
+
+    // Food & Accommodation categories
+    const foodCategories = ['PERSONAL_CAR_KMS', 'ROOM_RENT', 'WATER', 'BREAKFAST', 'LUNCH', 'DINNER'];
+    // Travel & Other categories  
+    const travelCategories = ['USAGE_RATE_PER_KM', 'TRAIN_AIR_TICKET', 'AUTO_TAXI', 'RENT_A_CAR', 'OTHER_TRANSPORT', 'TELEPHONE', 'TOLLS', 'PARKING', 'DIESEL_PETROL', 'OTHER'];
+
     // Expense Categories with actual data
     const expenseCategories = [
-      ['Food and Accommodation Expenses', ...dayColumns.map(() => ''), getCategoryTotal('FOOD_ACCOMMODATION')],
-      ['Usage of Personal Car in KMS:', ...dayColumns.map(() => ''), ''],
-      ['Room Rent:', ...dayColumns.map(i => getExpenseValue('FOOD_ACCOMMODATION', i)), getCategoryTotal('FOOD_ACCOMMODATION')],
-      ['Water:', ...dayColumns.map(() => ''), ''],
-      ['Breakfast:', ...dayColumns.map(() => ''), ''],
-      ['Lunch:', ...dayColumns.map(() => ''), ''],
-      ['Dinner:', ...dayColumns.map(() => ''), ''],
-      ['Travel & Other Expenses', ...dayColumns.map(() => ''), getCategoryTotal('TRAVEL_OTHER')],
-      ['Usage Rate Rs./KM', ...dayColumns.map(i => getExpenseValue('TRAVEL_OTHER', i)), getCategoryTotal('TRAVEL_OTHER')],
-      ['TRAIN/Air Ticket:', ...dayColumns.map(() => ''), ''],
-      ['AUTO/Taxi :', ...dayColumns.map(() => ''), ''],
-      ['Rent A Car:', ...dayColumns.map(() => ''), ''],
-      ['Other Transport:', ...dayColumns.map(() => ''), ''],
-      ['Telephone:', ...dayColumns.map(() => ''), ''],
-      ['Tolls:', ...dayColumns.map(() => ''), ''],
-      ['Parking:', ...dayColumns.map(() => ''), ''],
-      ['Diesel/petrol:', ...dayColumns.map(() => ''), ''],
-      ['Other:', ...dayColumns.map(() => ''), ''],
+      ['Food and Accommodation Expenses', ...dayColumns.map(() => ''), getGroupTotal(foodCategories)],
+      ['Usage of Personal Car in KMS:', ...dayColumns.map(i => getExpenseValue('PERSONAL_CAR_KMS', i)), getCategoryTotal('PERSONAL_CAR_KMS')],
+      ['Room Rent:', ...dayColumns.map(i => getExpenseValue('ROOM_RENT', i)), getCategoryTotal('ROOM_RENT')],
+      ['Water:', ...dayColumns.map(i => getExpenseValue('WATER', i)), getCategoryTotal('WATER')],
+      ['Breakfast:', ...dayColumns.map(i => getExpenseValue('BREAKFAST', i)), getCategoryTotal('BREAKFAST')],
+      ['Lunch:', ...dayColumns.map(i => getExpenseValue('LUNCH', i)), getCategoryTotal('LUNCH')],
+      ['Dinner:', ...dayColumns.map(i => getExpenseValue('DINNER', i)), getCategoryTotal('DINNER')],
+      ['Travel & Other Expenses', ...dayColumns.map(() => ''), getGroupTotal(travelCategories)],
+      ['Usage Rate Rs./KM', ...dayColumns.map(i => getExpenseValue('USAGE_RATE_PER_KM', i)), getCategoryTotal('USAGE_RATE_PER_KM')],
+      ['TRAIN/Air Ticket:', ...dayColumns.map(i => getExpenseValue('TRAIN_AIR_TICKET', i)), getCategoryTotal('TRAIN_AIR_TICKET')],
+      ['AUTO/Taxi :', ...dayColumns.map(i => getExpenseValue('AUTO_TAXI', i)), getCategoryTotal('AUTO_TAXI')],
+      ['Rent A Car:', ...dayColumns.map(i => getExpenseValue('RENT_A_CAR', i)), getCategoryTotal('RENT_A_CAR')],
+      ['Other Transport:', ...dayColumns.map(i => getExpenseValue('OTHER_TRANSPORT', i)), getCategoryTotal('OTHER_TRANSPORT')],
+      ['Telephone:', ...dayColumns.map(i => getExpenseValue('TELEPHONE', i)), getCategoryTotal('TELEPHONE')],
+      ['Tolls:', ...dayColumns.map(i => getExpenseValue('TOLLS', i)), getCategoryTotal('TOLLS')],
+      ['Parking:', ...dayColumns.map(i => getExpenseValue('PARKING', i)), getCategoryTotal('PARKING')],
+      ['Diesel/petrol:', ...dayColumns.map(i => getExpenseValue('DIESEL_PETROL', i)), getCategoryTotal('DIESEL_PETROL')],
+      ['Other:', ...dayColumns.map(i => getExpenseValue('OTHER', i)), getCategoryTotal('OTHER')],
       ['Daily Total', ...dayColumns.map(i => getDayTotal(i)), dayColumns.reduce((sum, i) => sum + parseFloat(getDayTotal(i)), 0).toFixed(2)]
     ];
 

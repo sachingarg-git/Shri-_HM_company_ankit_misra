@@ -96,10 +96,25 @@ const statusOptions = [
 // Expense Tracking Component
 function ExpenseTrackingTable({ numberOfDays, tourStartDate, form }: { numberOfDays: number, tourStartDate: Date, form: any }) {
   const expenseCategories = [
-    { id: "FOOD_ACCOMMODATION", label: "Food & Accommodation", color: "bg-blue-50" },
-    { id: "TRAVEL_OTHER", label: "Travel & Other", color: "bg-green-50" },
-    { id: "ENTERTAINMENT", label: "Entertainment", color: "bg-purple-50" },
-    { id: "MISCELLANEOUS", label: "Miscellaneous", color: "bg-orange-50" },
+    // Food and Accommodation Expenses
+    { id: "PERSONAL_CAR_KMS", label: "Usage of Personal Car in KMS", color: "bg-blue-50", group: "Food & Accommodation" },
+    { id: "ROOM_RENT", label: "Room Rent", color: "bg-blue-50", group: "Food & Accommodation" },
+    { id: "WATER", label: "Water", color: "bg-blue-50", group: "Food & Accommodation" },
+    { id: "BREAKFAST", label: "Breakfast", color: "bg-blue-50", group: "Food & Accommodation" },
+    { id: "LUNCH", label: "Lunch", color: "bg-blue-50", group: "Food & Accommodation" },
+    { id: "DINNER", label: "Dinner", color: "bg-blue-50", group: "Food & Accommodation" },
+    
+    // Travel & Other Expenses
+    { id: "USAGE_RATE_PER_KM", label: "Usage Rate Rs./KM", color: "bg-green-50", group: "Travel & Other" },
+    { id: "TRAIN_AIR_TICKET", label: "TRAIN/Air Ticket", color: "bg-green-50", group: "Travel & Other" },
+    { id: "AUTO_TAXI", label: "AUTO/Taxi", color: "bg-green-50", group: "Travel & Other" },
+    { id: "RENT_A_CAR", label: "Rent A Car", color: "bg-green-50", group: "Travel & Other" },
+    { id: "OTHER_TRANSPORT", label: "Other Transport", color: "bg-green-50", group: "Travel & Other" },
+    { id: "TELEPHONE", label: "Telephone", color: "bg-green-50", group: "Travel & Other" },
+    { id: "TOLLS", label: "Tolls", color: "bg-green-50", group: "Travel & Other" },
+    { id: "PARKING", label: "Parking", color: "bg-green-50", group: "Travel & Other" },
+    { id: "DIESEL_PETROL", label: "Diesel/petrol", color: "bg-green-50", group: "Travel & Other" },
+    { id: "OTHER", label: "Other", color: "bg-green-50", group: "Travel & Other" },
   ];
 
   // Get expense data from form
@@ -138,6 +153,21 @@ function ExpenseTrackingTable({ numberOfDays, tourStartDate, form }: { numberOfD
     }, 0);
   };
 
+  // Calculate category totals by group
+  const getGroupTotal = (groupName: string, dayIndex?: number) => {
+    const groupCategories = expenseCategories.filter(cat => cat.group === groupName);
+    if (dayIndex !== undefined) {
+      return groupCategories.reduce((total, category) => {
+        return total + (dailyExpenses[category.id]?.[dayIndex] || 0);
+      }, 0);
+    } else {
+      return groupCategories.reduce((total, category) => {
+        const categoryExpenses = dailyExpenses[category.id] || {};
+        return total + Object.values(categoryExpenses).reduce((sum: number, amount) => sum + amount, 0);
+      }, 0);
+    }
+  };
+
   // Calculate category totals
   const getCategoryTotal = (categoryId: string) => {
     const categoryExpenses = dailyExpenses[categoryId] || {};
@@ -171,7 +201,20 @@ function ExpenseTrackingTable({ numberOfDays, tourStartDate, form }: { numberOfD
               </tr>
             </thead>
             <tbody>
-              {expenseCategories.map((category) => (
+              {/* Food & Accommodation Group */}
+              <tr className="bg-blue-100 border-b-2">
+                <td className="p-3 font-bold text-blue-800">Food & Accommodation Expenses</td>
+                {dates.map((_, dayIndex) => (
+                  <td key={dayIndex} className="p-3 text-center font-semibold">
+                    ₹{getGroupTotal("Food & Accommodation", dayIndex).toFixed(2)}
+                  </td>
+                ))}
+                <td className="p-3 text-center font-bold bg-blue-200">
+                  ₹{getGroupTotal("Food & Accommodation").toFixed(2)}
+                </td>
+              </tr>
+              
+              {expenseCategories.filter(cat => cat.group === "Food & Accommodation").map((category) => (
                 <tr key={category.id} className={`border-b ${category.color}`}>
                   <td className="p-3 font-medium">{category.label}</td>
                   {dates.map((_, dayIndex) => (
@@ -187,6 +230,40 @@ function ExpenseTrackingTable({ numberOfDays, tourStartDate, form }: { numberOfD
                     </td>
                   ))}
                   <td className="p-3 text-center font-medium bg-blue-100">
+                    ₹{getCategoryTotal(category.id).toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+
+              {/* Travel & Other Group */}
+              <tr className="bg-green-100 border-b-2">
+                <td className="p-3 font-bold text-green-800">Travel & Other Expenses</td>
+                {dates.map((_, dayIndex) => (
+                  <td key={dayIndex} className="p-3 text-center font-semibold">
+                    ₹{getGroupTotal("Travel & Other", dayIndex).toFixed(2)}
+                  </td>
+                ))}
+                <td className="p-3 text-center font-bold bg-green-200">
+                  ₹{getGroupTotal("Travel & Other").toFixed(2)}
+                </td>
+              </tr>
+              
+              {expenseCategories.filter(cat => cat.group === "Travel & Other").map((category) => (
+                <tr key={category.id} className={`border-b ${category.color}`}>
+                  <td className="p-3 font-medium">{category.label}</td>
+                  {dates.map((_, dayIndex) => (
+                    <td key={dayIndex} className="p-3">
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className="text-center"
+                        value={dailyExpenses[category.id]?.[dayIndex]?.toString() || ""}
+                        onChange={(e) => handleExpenseChange(category.id, dayIndex, e.target.value)}
+                        data-testid={`input-expense-${category.id}-day-${dayIndex}`}
+                      />
+                    </td>
+                  ))}
+                  <td className="p-3 text-center font-medium bg-green-100">
                     ₹{getCategoryTotal(category.id).toFixed(2)}
                   </td>
                 </tr>
