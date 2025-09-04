@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Building, MapPin, Users, CreditCard, Clock, Globe } from "lucide-react";
+import { Building, MapPin, Users, CreditCard, Clock, Globe, List, Edit, Eye } from "lucide-react";
 
 // Validation schema with your exact requirements
 const companyProfileSchema = z.object({
@@ -85,6 +85,8 @@ export function CompanyProfileForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [gstinState, setGstinState] = useState<string>("");
+  const [viewMode, setViewMode] = useState<"form" | "list">("form");
+  const [showSaved, setShowSaved] = useState(false);
 
   const form = useForm<CompanyProfileFormData>({
     resolver: zodResolver(companyProfileSchema),
@@ -131,6 +133,8 @@ export function CompanyProfileForm() {
     onSuccess: () => {
       toast({ title: "Success", description: "Company profile created successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/company-profile"] });
+      setViewMode("list");
+      setShowSaved(true);
     },
     onError: (error) => {
       console.error("Create error:", error);
@@ -146,6 +150,8 @@ export function CompanyProfileForm() {
     onSuccess: () => {
       toast({ title: "Success", description: "Company profile updated successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/company-profile"] });
+      setViewMode("list");
+      setShowSaved(true);
     },
     onError: (error) => {
       console.error("Update error:", error);
@@ -161,18 +167,221 @@ export function CompanyProfileForm() {
     }
   };
 
+  // Company Profile List View Component
+  const CompanyProfileListView = () => {
+    if (!companyProfile) {
+      return (
+        <Card>
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground">No company profile found.</p>
+            <Button 
+              onClick={() => setViewMode("form")} 
+              className="mt-4"
+              data-testid="button-create-profile"
+            >
+              Create Company Profile
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {showSaved && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+              <p className="text-green-800 font-medium">Company profile saved successfully!</p>
+            </div>
+          </div>
+        )}
+        
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5" />
+                Company Profile Details
+              </CardTitle>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setViewMode("form");
+                  setShowSaved(false);
+                }}
+                data-testid="button-edit-profile"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Profile
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Basic Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <Building className="h-4 w-4" />
+                Basic Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Legal Name</p>
+                  <p className="font-medium">{companyProfile.legalName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Trade Name</p>
+                  <p className="font-medium">{companyProfile.tradeName || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Entity Type</p>
+                  <p className="font-medium">{companyProfile.entityType}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">GSTIN</p>
+                  <p className="font-medium">{companyProfile.gstin || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">PAN</p>
+                  <p className="font-medium">{companyProfile.pan || "—"}</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Contact Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Contact Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Primary Contact</p>
+                  <p className="font-medium">{companyProfile.primaryContactName}</p>
+                  <p className="text-sm">{companyProfile.primaryContactEmail}</p>
+                  <p className="text-sm">{companyProfile.primaryContactMobile}</p>
+                </div>
+                {companyProfile.accountsContactName && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Accounts Contact</p>
+                    <p className="font-medium">{companyProfile.accountsContactName}</p>
+                    <p className="text-sm">{companyProfile.accountsContactEmail}</p>
+                    <p className="text-sm">{companyProfile.accountsContactMobile}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Address Information */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Address Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Registered Address</p>
+                  <p className="font-medium">
+                    {companyProfile.registeredAddressLine1}
+                    {companyProfile.registeredAddressLine2 && <br />}
+                    {companyProfile.registeredAddressLine2}
+                  </p>
+                  <p className="text-sm">
+                    {companyProfile.registeredCity}, {companyProfile.registeredState} - {companyProfile.registeredPincode}
+                  </p>
+                </div>
+                {companyProfile.corporateAddressLine1 && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Corporate Address</p>
+                    <p className="font-medium">
+                      {companyProfile.corporateAddressLine1}
+                      {companyProfile.corporateAddressLine2 && <br />}
+                      {companyProfile.corporateAddressLine2}
+                    </p>
+                    <p className="text-sm">
+                      {companyProfile.corporateCity}, {companyProfile.corporateState} - {companyProfile.corporatePincode}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Banking Information */}
+            {companyProfile.bankName && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Banking Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Bank Name</p>
+                      <p className="font-medium">{companyProfile.bankName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Account Number</p>
+                      <p className="font-medium">{companyProfile.accountNumber || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">IFSC Code</p>
+                      <p className="font-medium">{companyProfile.ifscCode || "—"}</p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return <div className="p-4">Loading company profile...</div>;
   }
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Building className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Company Profile</h1>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Building className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Company Profile</h1>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant={viewMode === "form" ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setViewMode("form");
+              setShowSaved(false);
+            }}
+            data-testid="button-form-view"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Form
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+            data-testid="button-list-view"
+          >
+            <List className="h-4 w-4 mr-2" />
+            View
+          </Button>
+        </div>
       </div>
 
-      <Form {...form}>
+      {viewMode === "list" ? (
+        <CompanyProfileListView />
+      ) : (
+        <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           
           {/* 1) Basic Information */}
@@ -778,7 +987,8 @@ export function CompanyProfileForm() {
             </Button>
           </div>
         </form>
-      </Form>
+        </Form>
+      )}
     </div>
   );
 }
