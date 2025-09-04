@@ -137,17 +137,20 @@ export default function PurchaseOrdersPage() {
     
     if (isNaN(num)) return currency === 'INR' ? '₹0.00' : `${currency} 0.00`;
     
-    // Format with proper Indian numbering system for INR
-    if (currency === 'INR') {
-      return `₹${num.toLocaleString('en-IN', { 
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: 2 
-      })}`;
-    }
-    return `${currency} ${num.toLocaleString('en-US', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    })}`;
+    // Simple manual formatting to avoid locale issues in PDF
+    const formatted = num.toFixed(2);
+    const parts = formatted.split('.');
+    const integerPart = parts[0];
+    const decimalPart = parts[1];
+    
+    // Add comma separators manually for Indian format
+    const lastThree = integerPart.substring(integerPart.length - 3);
+    const otherNumbers = integerPart.substring(0, integerPart.length - 3);
+    const result = otherNumbers !== '' ? 
+      otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree :
+      lastThree;
+    
+    return currency === 'INR' ? `₹${result}.${decimalPart}` : `${currency} ${result}.${decimalPart}`;
   };
 
   // Professional PDF generation function
