@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -67,9 +67,11 @@ interface PurchaseOrderFormProps {
   onSubmit: (data: { purchaseOrder: InsertPurchaseOrder; items: InsertPurchaseOrderItem[] }) => void;
   onCancel: () => void;
   isLoading?: boolean;
+  existingPO?: any; // Existing purchase order data for edit mode
+  existingItems?: any[]; // Existing items for edit mode
 }
 
-export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: PurchaseOrderFormProps) {
+export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false, existingPO, existingItems }: PurchaseOrderFormProps) {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
   // Fetch suppliers for dropdown
@@ -112,10 +114,66 @@ export function PurchaseOrderForm({ onSubmit, onCancel, isLoading = false }: Pur
     }
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "items"
   });
+
+  // Load existing data when in edit mode
+  useEffect(() => {
+    if (existingPO && existingItems) {
+      // Format date for form input
+      const formattedDate = existingPO.poDate ? new Date(existingPO.poDate).toISOString().split('T')[0] : '';
+      const formattedDeliveryDate = existingPO.deliveryDate ? new Date(existingPO.deliveryDate).toISOString().split('T')[0] : '';
+      
+      // Set form values from existing purchase order
+      form.setValue("poNumber", existingPO.poNumber || '');
+      form.setValue("poDate", formattedDate);
+      form.setValue("revisionNumber", existingPO.revisionNumber || 0);
+      form.setValue("status", existingPO.status || 'OPEN');
+      form.setValue("supplierId", existingPO.supplierId || '');
+      form.setValue("supplierName", existingPO.supplierName || '');
+      form.setValue("supplierContactPerson", existingPO.supplierContactPerson || '');
+      form.setValue("supplierEmail", existingPO.supplierEmail || '');
+      form.setValue("supplierPhone", existingPO.supplierPhone || '');
+      form.setValue("buyerName", existingPO.buyerName || '');
+      form.setValue("department", existingPO.department || '');
+      form.setValue("costCenter", existingPO.costCenter || '');
+      form.setValue("approverName", existingPO.approverName || '');
+      form.setValue("currency", existingPO.currency || 'INR');
+      form.setValue("taxAmount", existingPO.taxAmount || 0);
+      form.setValue("discountAmount", existingPO.discountAmount || 0);
+      form.setValue("deliveryDate", formattedDeliveryDate);
+      form.setValue("deliveryAddress", existingPO.deliveryAddress || '');
+      form.setValue("notes", existingPO.notes || '');
+      form.setValue("terms", existingPO.terms || '');
+
+      // Load existing items
+      if (existingItems && existingItems.length > 0) {
+        const formattedItems = existingItems.map(item => ({
+          productMasterId: item.productMasterId || '',
+          itemCode: item.itemCode || '',
+          itemDescription: item.itemDescription || '',
+          productName: item.productName || '',
+          productFamily: item.productFamily || '',
+          productGrade: item.productGrade || '',
+          hsnCode: item.hsnCode || '',
+          quantityOrdered: item.quantityOrdered || 1,
+          unitOfMeasure: item.unitOfMeasure || 'PCS',
+          unitPrice: item.unitPrice || 0,
+        }));
+        replace(formattedItems);
+      }
+
+      // Set selected supplier if available
+      if (existingPO.supplierId && suppliers) {
+        const supplier = suppliers.find(s => s.id === existingPO.supplierId);
+        if (supplier) {
+          setSelectedSupplier(supplier);
+        }
+      }
+    }
+  }, [existingPO, existingItems, suppliers, form, replace]);
 
   const watchedItems = form.watch("items");
   

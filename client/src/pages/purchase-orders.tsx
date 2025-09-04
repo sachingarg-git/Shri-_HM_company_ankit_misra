@@ -1008,6 +1008,8 @@ export default function PurchaseOrdersPage() {
               })}
               onCancel={() => setShowEditForm(false)}
               isLoading={updateMutation.isPending}
+              existingPO={selectedPO}
+              existingItems={selectedPOItems || []}
             />
           )}
         </DialogContent>
