@@ -790,6 +790,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Status change endpoint
+  app.patch("/api/purchase-orders/:id/status", async (req, res) => {
+    try {
+      const { status } = req.body;
+      const updatedPO = await storage.updatePurchaseOrderStatus(req.params.id, status);
+      res.json(updatedPO);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update purchase order status" });
+    }
+  });
+
   app.delete("/api/purchase-orders/:id", async (req, res) => {
     try {
       await storage.deletePurchaseOrder(req.params.id);

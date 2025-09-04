@@ -14,6 +14,7 @@ export default function PurchaseOrdersPage() {
   const [showForm, setShowForm] = useState(false);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
   const [isEmailSending, setIsEmailSending] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -24,8 +25,8 @@ export default function PurchaseOrdersPage() {
   });
 
   // Fetch purchase order items for selected PO
-  const { data: purchaseOrderItems } = useQuery<PurchaseOrderItem[]>({
-    queryKey: ['/api/purchase-orders', selectedPO?.id, 'items'],
+  const { data: purchaseOrderItems, isLoading: itemsLoading } = useQuery<PurchaseOrderItem[]>({
+    queryKey: [`/api/purchase-orders/${selectedPO?.id}/items`],
     enabled: !!selectedPO?.id,
   });
 
@@ -50,6 +51,29 @@ export default function PurchaseOrdersPage() {
     }
   });
 
+  // Update purchase order mutation
+  const updateMutation = useMutation({
+    mutationFn: async (data: { id: string; purchaseOrder: InsertPurchaseOrder; items: InsertPurchaseOrderItem[] }) => {
+      const response = await fetch(`/api/purchase-orders/${data.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purchaseOrder: data.purchaseOrder, items: data.items })
+      });
+      if (!response.ok) throw new Error('Failed to update purchase order');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/purchase-orders/${selectedPO?.id}/items`] });
+      setShowEditForm(false);
+      setShowDetails(false);
+      toast({ title: "Success", description: "Purchase order updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update purchase order", variant: "destructive" });
+    }
+  });
+
   // Delete purchase order mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -65,6 +89,26 @@ export default function PurchaseOrdersPage() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to delete purchase order", variant: "destructive" });
+    }
+  });
+
+  // Status change mutation
+  const statusChangeMutation = useMutation({
+    mutationFn: async (data: { id: string; status: string }) => {
+      const response = await fetch(`/api/purchase-orders/${data.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: data.status })
+      });
+      if (!response.ok) throw new Error('Failed to update status');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/purchase-orders'] });
+      toast({ title: "Success", description: "Status updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
     }
   });
 
@@ -477,6 +521,44 @@ export default function PurchaseOrdersPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => {
+                          setSelectedPO(po);
+                          setShowEditForm(true);
+                        }}
+                        data-testid={`button-edit-po-${po.id}`}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
+                      
+                      {/* Status Change Quick Actions */}
+                      {po.status === 'OPEN' && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => statusChangeMutation.mutate({ id: po.id, status: 'APPROVED' })}
+                          disabled={statusChangeMutation.isPending}
+                          data-testid={`button-approve-po-${po.id}`}
+                        >
+                          Approve
+                        </Button>
+                      )}
+                      
+                      {po.status === 'APPROVED' && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => statusChangeMutation.mutate({ id: po.id, status: 'CLOSED' })}
+                          disabled={statusChangeMutation.isPending}
+                          data-testid={`button-close-po-${po.id}`}
+                        >
+                          Close
+                        </Button>
+                      )}
+                      
+                      <Button
+                        variant="destructive"
+                        size="sm"
                         onClick={() => deleteMutation.mutate(po.id)}
                         disabled={deleteMutation.isPending}
                         data-testid={`button-delete-po-${po.id}`}
@@ -620,7 +702,12 @@ export default function PurchaseOrdersPage() {
                   <CardTitle className="text-lg">Order Line Items</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {!purchaseOrderItems || purchaseOrderItems.length === 0 ? (
+                  {itemsLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>
+                      <span className="ml-2 text-sm text-muted-foreground">Loading line items...</span>
+                    </div>
+                  ) : !purchaseOrderItems || purchaseOrderItems.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No line items found</p>
                   ) : (
                     <div className="overflow-x-auto">
@@ -664,6 +751,19 @@ export default function PurchaseOrdersPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-3">
+                    <Button 
+                      onClick={() => {
+                        setShowDetails(false);
+                        setShowEditForm(true);
+                      }}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                      data-testid="button-edit-po-details"
+                    >
+                      <Edit className="h-4 w-4" />
+                      Edit Purchase Order
+                    </Button>
+                    
                     <Button 
                       onClick={handleDownloadPDF}
                       className="flex items-center gap-2"
@@ -748,6 +848,29 @@ export default function PurchaseOrdersPage() {
                 </Card>
               )}
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Purchase Order Form Dialog */}
+      <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Purchase Order - {selectedPO?.poNumber}</DialogTitle>
+            <DialogDescription>
+              Update the purchase order details and line items
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPO && (
+            <PurchaseOrderForm
+              onSubmit={(data) => updateMutation.mutate({ 
+                id: selectedPO.id, 
+                purchaseOrder: data.purchaseOrder, 
+                items: data.items 
+              })}
+              onCancel={() => setShowEditForm(false)}
+              isLoading={updateMutation.isPending}
+            />
           )}
         </DialogContent>
       </Dialog>
