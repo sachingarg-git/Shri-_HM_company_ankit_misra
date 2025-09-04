@@ -46,8 +46,8 @@ const tourAdvanceFormSchema = z.object({
   purposeRemarks: z.string().optional(),
   
   advanceRequired: z.boolean().default(false),
-  advanceAmountRequested: z.number().optional(),
-  sanctionAmountApproved: z.number().optional(),
+  advanceAmountRequested: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) || 0 : val || 0),
+  sanctionAmountApproved: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) || 0 : val || 0),
   sanctionAuthority: z.string().optional(),
   
   status: z.enum(["DRAFT", "SUBMITTED", "RECOMMENDED", "APPROVED", "REJECTED", "SETTLED"]).default("DRAFT"),
@@ -231,6 +231,7 @@ export default function TourAdvance() {
     resolver: zodResolver(tourAdvanceFormSchema),
     defaultValues: {
       employeeId: "",
+      employeeCode: "",
       employeeName: "",
       designation: "",
       department: "",
@@ -465,9 +466,6 @@ export default function TourAdvance() {
   };
 
   const onSubmit = async (data: TourAdvanceFormData) => {
-    console.log("Form submitted with data:", data);
-    console.log("Form errors:", form.formState.errors);
-    
     try {
       // Convert dates to ISO strings for API
       const formattedData = {
@@ -481,13 +479,12 @@ export default function TourAdvance() {
         })) || []
       };
 
-      console.log("Formatted data for API:", formattedData);
       createUpdateMutation.mutate(formattedData as any);
     } catch (error) {
       console.error("Error in onSubmit:", error);
       toast({
         title: "Error",
-        description: "Failed to submit form. Please check the console for details.",
+        description: "Failed to submit form. Please try again.",
         variant: "destructive",
       });
     }
