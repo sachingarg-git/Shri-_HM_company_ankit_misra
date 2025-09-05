@@ -88,8 +88,11 @@ export default function ewaybillsPage() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Always redirect to official government E-way Bill portal
-    window.open("https://ewaybillgst.gov.in/Login.aspx", "_blank");
+    // Internal login - stay within the application
+    if (credentials.username && credentials.password && credentials.captcha) {
+      setIsLoggedIn(true);
+      setCurrentPage("dashboard");
+    }
   };
 
   const handleLogout = () => {
@@ -270,7 +273,6 @@ export default function ewaybillsPage() {
                 <div className="flex justify-between text-sm pt-4">
                   <button 
                     type="button" 
-                    onClick={() => window.open("https://ewaybillgst.gov.in/Registration.aspx", "_blank")}
                     className="text-blue-600 hover:text-blue-800"
                     data-testid="link-new-registration"
                   >
@@ -278,7 +280,6 @@ export default function ewaybillsPage() {
                   </button>
                   <button 
                     type="button" 
-                    onClick={() => window.open("https://ewaybillgst.gov.in/ForgotPassword.aspx", "_blank")}
                     className="text-blue-600 hover:text-blue-800"
                     data-testid="link-forgot-credentials"
                   >
@@ -291,9 +292,9 @@ export default function ewaybillsPage() {
                   If you are unable to Login, you can follow the steps given in this document.
                 </div>
 
-                {/* Note about portal connection */}
+                {/* Note about internal system */}
                 <div className="text-center text-xs text-gray-500 mt-4 p-3 bg-blue-50 rounded">
-                  <strong>Live Link:</strong> Opens official Government E-way Bill portal (ewaybillgst.gov.in) in new tab
+                  Internal E-way Bill Management System - All operations within this application
                 </div>
               </form>
             </CardContent>
