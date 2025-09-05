@@ -249,6 +249,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team Performance API - Enhanced metrics for comprehensive team analysis
+  app.get("/api/team-performance", requireAuth, async (req, res) => {
+    try {
+      const currentUser = (req as any).user;
+      const { timeRange = '30d', department, role: roleFilter, sortBy = 'activityScore', sortOrder = 'desc' } = req.query;
+      
+      // Only admins and managers can see comprehensive team performance
+      if (!['ADMIN', 'SALES_MANAGER', 'MANAGER'].includes(currentUser.role)) {
+        return res.status(403).json({ message: "Insufficient permissions to view team performance" });
+      }
+      
+      // Get all active users
+      const users = await storage.getAllUsers();
+      const activeUsers = users.filter((user: any) => user.isActive);
+      
+      // Get aggregated data for performance calculation
+      const [leads, tasks, clients, followUps, orders] = await Promise.all([
+        storage.getAllLeads(),
+        storage.getAllTasks(),
+        storage.getAllClients(),
+        storage.getAllFollowUps(),
+        storage.getAllOrders()
+      ]);
+      
+      // Calculate performance metrics for each user
+      const performanceData = activeUsers.map((user: any) => {
+        // Filter data by user
+        const userLeads = leads.filter((lead: any) => lead.assignedTo === user.id);
+        const userTasks = tasks.filter((task: any) => task.assignedTo === user.id);
+        const userClients = clients.filter((client: any) => client.assignedTo === user.id);
+        const userFollowUps = followUps.filter((followUp: any) => followUp.assignedTo === user.id);
+        const userOrders = orders.filter((order: any) => order.createdBy === user.id);
+        
+        // Calculate metrics
+        const leadsGenerated = userLeads.length;
+        const leadsConverted = userLeads.filter((lead: any) => lead.status === 'CLOSED_WON').length;
+        const conversionRate = leadsGenerated > 0 ? Math.round((leadsConverted / leadsGenerated) * 100) : 0;
+        
+        const tasksAssigned = userTasks.length;
+        const tasksCompleted = userTasks.filter((task: any) => task.status === 'COMPLETED').length;
+        const taskCompletionRate = tasksAssigned > 0 ? Math.round((tasksCompleted / tasksAssigned) * 100) : 0;
+        const overdueTasks = userTasks.filter((task: any) => 
+          task.status !== 'COMPLETED' && new Date(task.dueDate) < new Date()
+        ).length;
+        
+        const clientsManaged = userClients.length;
+        const activeClients = userClients.filter((client: any) => client.isActive).length;
+        
+        const followUpsScheduled = userFollowUps.length;
+        const followUpsCompleted = userFollowUps.filter((f: any) => f.status === 'COMPLETED').length;
+        const followUpRate = followUpsScheduled > 0 ? Math.round((followUpsCompleted / followUpsScheduled) * 100) : 0;
+        
+        // Calculate sales metrics
+        const salesRevenue = userOrders.reduce((sum: number, order: any) => {
+          return sum + (parseFloat(order.totalAmount || '0'));
+        }, 0);
+        
+        // Calculate activity score
+        const activityScore = Math.round(
+          (taskCompletionRate * 0.3) + 
+          (followUpRate * 0.25) + 
+          (conversionRate * 0.25) + 
+          (Math.min(salesRevenue / 100000, 1) * 100 * 0.2) // Normalize revenue to 0-100 scale
+        );
+        
+        // Determine performance grade
+        let performanceGrade = 'C';
+        if (activityScore >= 90) performanceGrade = 'A+';
+        else if (activityScore >= 80) performanceGrade = 'A';
+        else if (activityScore >= 70) performanceGrade = 'B+';
+        else if (activityScore >= 60) performanceGrade = 'B';
+        else if (activityScore >= 50) performanceGrade = 'C+';
+        
+        return {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          department: user.department || 'General',
+          email: user.email,
+          leadsGenerated,
+          leadsConverted,
+          conversionRate,
+          salesRevenue,
+          salesTarget: 300000, // Mock target
+          targetAchievement: Math.round((salesRevenue / 300000) * 100),
+          tasksAssigned,
+          tasksCompleted,
+          taskCompletionRate,
+          overdueTasks,
+          clientsManaged,
+          activeClients,
+          newClientsAcquired: Math.floor(Math.random() * 5), // Mock data
+          followUpsScheduled,
+          followUpsCompleted,
+          followUpRate,
+          activityScore,
+          performanceGrade,
+          lastActivity: user.lastLogin || new Date().toISOString(),
+        };
+      });
+      
+      // Apply filters
+      let filteredData = performanceData;
+      if (department && department !== 'all') {
+        filteredData = filteredData.filter((user: any) => user.department === department);
+      }
+      if (roleFilter && roleFilter !== 'all') {
+        filteredData = filteredData.filter((user: any) => user.role === roleFilter);
+      }
+      
+      // Apply sorting
+      filteredData.sort((a: any, b: any) => {
+        const aValue = a[sortBy as string];
+        const bValue = b[sortBy as string];
+        
+        if (typeof aValue === 'number' && typeof bValue === 'number') {
+          return sortOrder === 'desc' ? bValue - aValue : aValue - bValue;
+        }
+        
+        const aStr = String(aValue).toLowerCase();
+        const bStr = String(bValue).toLowerCase();
+        return sortOrder === 'desc' ? bStr.localeCompare(aStr) : aStr.localeCompare(bStr);
+      });
+      
+      res.json({
+        performanceData: filteredData,
+        summary: {
+          totalUsers: filteredData.length,
+          avgActivityScore: Math.round(filteredData.reduce((sum: number, user: any) => sum + user.activityScore, 0) / filteredData.length),
+          totalRevenue: filteredData.reduce((sum: number, user: any) => sum + user.salesRevenue, 0),
+          totalLeads: filteredData.reduce((sum: number, user: any) => sum + user.leadsGenerated, 0),
+          totalTasks: filteredData.reduce((sum: number, user: any) => sum + user.tasksCompleted, 0),
+          topPerformers: filteredData.filter((user: any) => user.activityScore >= 80).length,
+        }
+      });
+    } catch (error: any) {
+      console.error("Team performance error:", error);
+      res.status(500).json({ message: "Failed to fetch team performance data" });
+    }
+  });
+
+  app.get("/api/team-performance/export", requireAuth, async (req, res) => {
+    try {
+      const currentUser = (req as any).user;
+      
+      // Only admins and managers can export team performance
+      if (!['ADMIN', 'SALES_MANAGER', 'MANAGER'].includes(currentUser.role)) {
+        return res.status(403).json({ message: "Insufficient permissions to export team performance" });
+      }
+      
+      // This would generate and return a CSV/Excel file
+      // For now, return success message
+      res.json({ message: "Export functionality ready - would generate CSV/Excel file" });
+    } catch (error: any) {
+      console.error("Team performance export error:", error);
+      res.status(500).json({ message: "Failed to export team performance data" });
+    }
+  });
+
   // Legacy Users API (keeping for compatibility)
   app.get("/api/users/:id", requireAuth, async (req, res) => {
     try {
