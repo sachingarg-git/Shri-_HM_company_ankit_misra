@@ -2197,22 +2197,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== SALES OPERATIONS API ====================
   
-  // Leads API - Role-based access control
+  // Leads API - Permission-based access control
   app.get("/api/leads", requireAuth, async (req, res) => {
     try {
       const { status } = req.query;
       const currentUser = (req as any).user;
       
+      // Check if user has LEAD_FOLLOW_UP VIEW permission (covers lead viewing)
+      const hasLeadPermission = await AuthService.hasPermission(currentUser.id, 'LEAD_FOLLOW_UP', 'VIEW');
+      
+      if (!hasLeadPermission) {
+        return res.status(403).json({ error: "Insufficient permissions to view leads" });
+      }
+      
       let leads;
-      if (currentUser.role === 'ADMIN' || currentUser.role === 'SALES_MANAGER') {
-        // Admin and Sales Manager can see all leads
+      // If user is admin or has broad permissions, show all leads
+      // Otherwise show only assigned leads
+      if (currentUser.role === 'ADMIN' || currentUser.role === 'SALES_MANAGER' || hasLeadPermission) {
+        // Users with proper permissions can see all leads
         if (status) {
           leads = await storage.getLeadsByStatus(status as string);
         } else {
           leads = await storage.getAllLeads();
         }
       } else {
-        // Sales Executive and others can only see their assigned leads
+        // Fallback to assigned leads only
         if (status) {
           leads = await storage.getLeadsByStatusAndUser(status as string, currentUser.id);
         } else {
@@ -2236,9 +2245,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Lead not found" });
       }
       
-      // Check if user can access this lead
-      if (currentUser.role === 'SALES_EXECUTIVE' && lead.assignedToUserId !== currentUser.id) {
-        return res.status(403).json({ error: "You can only access your assigned leads" });
+      // Check if user has permission to view leads
+      const hasLeadPermission = await AuthService.hasPermission(currentUser.id, 'LEAD_FOLLOW_UP', 'VIEW');
+      
+      if (!hasLeadPermission) {
+        return res.status(403).json({ error: "Insufficient permissions to view leads" });
+      }
+      
+      // If user has permissions or is admin/manager, allow access
+      // Otherwise, only allow access to assigned leads
+      if (!(currentUser.role === 'ADMIN' || currentUser.role === 'SALES_MANAGER' || hasLeadPermission)) {
+        if (lead.assignedToUserId !== currentUser.id) {
+          return res.status(403).json({ error: "You can only access your assigned leads" });
+        }
       }
       
       res.json(lead);
@@ -2252,8 +2271,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const currentUser = (req as any).user;
       
-      // Check if user can create leads
-      if (!['ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE'].includes(currentUser.role)) {
+      // Check if user has permission to create leads
+      const hasCreatePermission = await AuthService.hasPermission(currentUser.id, 'LEAD_FOLLOW_UP', 'ADD');
+      
+      if (!hasCreatePermission && !['ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE'].includes(currentUser.role)) {
         return res.status(403).json({ error: "Insufficient permissions to create leads" });
       }
       
