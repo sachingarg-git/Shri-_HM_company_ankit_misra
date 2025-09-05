@@ -37,19 +37,14 @@ export function usePermissions() {
   });
 
   const hasPermission = (module: ModuleName, action: ActionType = 'VIEW'): boolean => {
-    // For now, we'll use role-based fallback until database is fully synced
-    // This ensures the system works while database permissions are being set up
+    // Check if user has explicit permission for this module and action
     const permission = permissions.find(
       p => p.module === module && p.action === action && p.granted
     );
     
-    // If we have explicit permission data, use it
-    if (permissions.length > 0) {
-      return !!permission;
-    }
-
-    // Fallback: return true for testing until database is ready
-    return true;
+    // Always use explicit permissions - no fallback to true
+    // This ensures proper restriction based on granted permissions
+    return !!permission;
   };
 
   const hasViewPermission = (module: ModuleName): boolean => {
