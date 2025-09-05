@@ -75,9 +75,7 @@ export default function TAReports() {
     // Parse daily expenses data
     let dailyExpenses = {};
     try {
-      console.log('Raw TA data:', ta.dailyExpenses);
       dailyExpenses = ta.dailyExpenses ? (typeof ta.dailyExpenses === 'string' ? JSON.parse(ta.dailyExpenses) : ta.dailyExpenses) : {};
-      console.log('Parsed daily expenses:', dailyExpenses);
     } catch (e) {
       console.error('Error parsing daily expenses:', e);
       dailyExpenses = {};

@@ -2130,7 +2130,10 @@ export default function Clients() {
           {selectedClientForView && (
             <div className="space-y-6">
               {/* Client 360 View */}
-              <Client360View clientId={selectedClientForView.id} />
+              <Client360View 
+                clientId={selectedClientForView.id} 
+                onClose={() => setIsClientViewOpen(false)}
+              />
               
               {/* Additional Client Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
