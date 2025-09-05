@@ -153,36 +153,43 @@ export class AuthService {
   // User Permissions Management
   static async setUserPermissions(userId: string, permissions: Array<{module: string, action: string, granted?: boolean}>): Promise<void> {
     try {
-      // First, delete existing permissions for this user
-      // When database is ready, uncomment this:
-      // await db.delete(userPermissions).where(eq(userPermissions.userId, userId));
-
-      // Insert new permissions
-      if (permissions.length > 0) {
-        const permissionData = permissions.map(perm => ({
-          userId,
-          module: perm.module,
-          action: perm.action,
-          granted: perm.granted !== false
-        }));
-        
-        // When database is ready, uncomment this:
-        // await db.insert(userPermissions).values(permissionData);
-        console.log('Permissions would be saved:', permissionData);
+      // Store permissions in memory for now (until database is ready)
+      if (!this.userPermissionsStore) {
+        this.userPermissionsStore = new Map();
       }
+      
+      const permissionData = permissions.map(perm => ({
+        userId,
+        module: perm.module,
+        action: perm.action,
+        granted: perm.granted !== false
+      }));
+      
+      // Store in memory
+      this.userPermissionsStore.set(userId, permissionData);
+      console.log('Permissions saved for user:', userId, permissionData);
     } catch (error) {
       console.error('Error setting user permissions:', error);
       throw error;
     }
   }
 
+  // Memory store for permissions (temporary until database is ready)
+  private static userPermissionsStore: Map<string, Array<{userId: string, module: string, action: string, granted: boolean}>> = new Map();
+
   static async getUserPermissions(userId: string): Promise<Array<{module: string, action: string, granted: boolean}>> {
     try {
-      // When database is ready, uncomment this:
-      // const permissions = await db.select().from(userPermissions).where(eq(userPermissions.userId, userId));
-      // return permissions;
+      // Check memory store first
+      if (this.userPermissionsStore && this.userPermissionsStore.has(userId)) {
+        const storedPermissions = this.userPermissionsStore.get(userId)!;
+        return storedPermissions.map(p => ({ 
+          module: p.module, 
+          action: p.action, 
+          granted: p.granted 
+        }));
+      }
       
-      // Temporary: Return permissions based on what was actually granted during user creation
+      // Fallback to role-based permissions for existing users
       const user = await this.getUserById(userId);
       if (!user) return [];
       
@@ -207,28 +214,7 @@ export class AuthService {
         return permissions;
       }
       
-      // For specific test users - return only what was granted during creation
-      if (user.firstName === 'sachin' && user.lastName === 'garg') {
-        return [
-          { module: 'DASHBOARD', action: 'VIEW', granted: true },
-          { module: 'DASHBOARD', action: 'ADD', granted: true },
-          { module: 'DASHBOARD', action: 'EDIT', granted: true },
-          { module: 'DASHBOARD', action: 'DELETE', granted: true },
-          { module: 'SALES', action: 'VIEW', granted: true },
-          { module: 'SALES', action: 'ADD', granted: true },
-          { module: 'SALES', action: 'EDIT', granted: true },
-          { module: 'SALES', action: 'DELETE', granted: true },
-        ];
-      }
-      
-      // For user "Radha" - only Dashboard VIEW as granted during creation
-      if (user.firstName === 'Radha' || user.username === 'Radha') {
-        return [
-          { module: 'DASHBOARD', action: 'VIEW', granted: true }
-        ];
-      }
-      
-      // For other users, return empty array (no permissions until explicitly granted)
+      // For non-admin users with no stored permissions, return empty array
       return [];
     } catch (error) {
       console.error('Error fetching user permissions:', error);
