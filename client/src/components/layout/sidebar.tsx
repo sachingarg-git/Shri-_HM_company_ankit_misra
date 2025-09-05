@@ -32,7 +32,7 @@ const navigation: NavigationEntry[] = [
     section: "PAYMENTS",
     items: [
       { name: "Credit Payments", href: "/credit-payments", icon: CreditCard, badge: "5", module: "CREDIT_PAYMENTS" },
-      { name: "Payment Alerts", href: "/credit-payments", icon: Bell, badge: "12", module: "CREDIT_PAYMENTS" },
+      { name: "Payment Alerts", href: "/payment-alerts", icon: Bell, badge: "12", module: "CREDIT_PAYMENTS" },
     ],
   },
   {
@@ -136,10 +136,7 @@ export default function Sidebar() {
                   </p>
                   {item.items.map((subItem, subIndex) => {
                     const Icon = subItem.icon;
-                    // Both Credit Payments and Payment Alerts should be active when on credit-payments page
-                    const isActive = location === subItem.href || 
-                      (location === "/credit-payments" && 
-                       (subItem.name === "Credit Payments" || subItem.name === "Payment Alerts"));
+                    const isActive = location === subItem.href;
                     
                     return (
                       <Link key={subIndex} href={subItem.href}>
