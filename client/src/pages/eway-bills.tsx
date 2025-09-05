@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Truck, FileText, Search, Plus, RefreshCw, Download, Globe, User, Lock, Eye, Home, BarChart3, Settings, Bell, MapPin, Calendar, Printer } from "lucide-react";
+import { Truck, FileText, Search, Plus, RefreshCw, Download, Globe, User, Lock, Eye, Home, BarChart3, Settings, Bell, MapPin, Calendar, Printer, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function ewaybillsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -21,6 +22,8 @@ export default function ewaybillsPage() {
 
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedBill, setSelectedBill] = useState<any>(null);
+  const [showBillModal, setShowBillModal] = useState(false);
   const [newEwayBill, setNewEwayBill] = useState({
     documentType: "",
     documentNumber: "",
@@ -158,6 +161,118 @@ export default function ewaybillsPage() {
       rate: "",
       taxableValue: ""
     });
+  };
+
+  const viewBill = (bill: any) => {
+    setSelectedBill(bill);
+    setShowBillModal(true);
+  };
+
+  const downloadBill = (bill: any) => {
+    // Create a simple text content for download
+    const billContent = `
+E-WAY BILL
+==========
+E-way Bill No: ${bill.ewayBillNo}
+Document No: ${bill.documentNo}
+From GSTIN: ${bill.fromGstin}
+To GSTIN: ${bill.toGstin}
+Transporter GSTIN: ${bill.transporterGstin}
+Vehicle No: ${bill.vehicleNo}
+Status: ${bill.status}
+Valid Upto: ${bill.validUpto}
+Distance: ${bill.distance}
+Value: ₹${bill.value.toLocaleString()}
+
+Generated on: ${new Date().toLocaleString()}
+    `.trim();
+
+    // Create and download file
+    const blob = new Blob([billContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `E-way-Bill-${bill.ewayBillNo}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const printBill = (bill: any) => {
+    const printContent = `
+    <html>
+      <head>
+        <title>E-way Bill - ${bill.ewayBillNo}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h1 { color: #1e40af; text-align: center; }
+          .bill-details { margin: 20px 0; }
+          .row { display: flex; margin: 10px 0; }
+          .label { font-weight: bold; width: 150px; }
+          .value { flex: 1; }
+          @media print { 
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>E-WAY BILL</h1>
+        <div class="bill-details">
+          <div class="row">
+            <span class="label">E-way Bill No:</span>
+            <span class="value">${bill.ewayBillNo}</span>
+          </div>
+          <div class="row">
+            <span class="label">Document No:</span>
+            <span class="value">${bill.documentNo}</span>
+          </div>
+          <div class="row">
+            <span class="label">From GSTIN:</span>
+            <span class="value">${bill.fromGstin}</span>
+          </div>
+          <div class="row">
+            <span class="label">To GSTIN:</span>
+            <span class="value">${bill.toGstin}</span>
+          </div>
+          <div class="row">
+            <span class="label">Transporter GSTIN:</span>
+            <span class="value">${bill.transporterGstin}</span>
+          </div>
+          <div class="row">
+            <span class="label">Vehicle No:</span>
+            <span class="value">${bill.vehicleNo}</span>
+          </div>
+          <div class="row">
+            <span class="label">Status:</span>
+            <span class="value">${bill.status}</span>
+          </div>
+          <div class="row">
+            <span class="label">Valid Upto:</span>
+            <span class="value">${bill.validUpto}</span>
+          </div>
+          <div class="row">
+            <span class="label">Distance:</span>
+            <span class="value">${bill.distance}</span>
+          </div>
+          <div class="row">
+            <span class="label">Value:</span>
+            <span class="value">₹${bill.value.toLocaleString()}</span>
+          </div>
+        </div>
+        <p style="text-align: center; margin-top: 40px; font-size: 12px;">
+          Generated on: ${new Date().toLocaleString()}
+        </p>
+      </body>
+    </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -696,13 +811,31 @@ export default function ewaybillsPage() {
                         <TableCell>₹{bill.value.toLocaleString()}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button variant="outline" size="sm" data-testid={`button-view-${bill.id}`}>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => viewBill(bill)}
+                              title="View E-way Bill Details"
+                              data-testid={`button-view-${bill.id}`}
+                            >
                               <FileText className="w-3 h-3" />
                             </Button>
-                            <Button variant="outline" size="sm" data-testid={`button-download-${bill.id}`}>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => downloadBill(bill)}
+                              title="Download E-way Bill"
+                              data-testid={`button-download-${bill.id}`}
+                            >
                               <Download className="w-3 h-3" />
                             </Button>
-                            <Button variant="outline" size="sm" data-testid={`button-print-${bill.id}`}>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => printBill(bill)}
+                              title="Print E-way Bill"
+                              data-testid={`button-print-${bill.id}`}
+                            >
                               <Printer className="w-3 h-3" />
                             </Button>
                           </div>
@@ -805,6 +938,104 @@ export default function ewaybillsPage() {
           </div>
         )}
       </div>
+
+      {/* E-way Bill Details Modal */}
+      <Dialog open={showBillModal} onOpenChange={setShowBillModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              E-way Bill Details
+            </DialogTitle>
+          </DialogHeader>
+          {selectedBill && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">E-way Bill Number</Label>
+                  <p className="text-lg font-semibold">{selectedBill.ewayBillNo}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Status</Label>
+                  <div className="mt-1">{getStatusBadge(selectedBill.status)}</div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Document Number</Label>
+                  <p className="text-sm">{selectedBill.documentNo}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Valid Until</Label>
+                  <p className="text-sm">{selectedBill.validUpto}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">From GSTIN</Label>
+                  <p className="text-sm">{selectedBill.fromGstin}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">To GSTIN</Label>
+                  <p className="text-sm">{selectedBill.toGstin}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Transporter GSTIN</Label>
+                  <p className="text-sm">{selectedBill.transporterGstin}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Vehicle Number</Label>
+                  <p className="text-sm">{selectedBill.vehicleNo}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Distance</Label>
+                  <p className="text-sm">{selectedBill.distance}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-gray-500">Total Value</Label>
+                  <p className="text-lg font-semibold text-green-600">₹{selectedBill.value.toLocaleString()}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t">
+                <Button 
+                  onClick={() => downloadBill(selectedBill)}
+                  className="flex items-center gap-2"
+                  data-testid="modal-download-button"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => printBill(selectedBill)}
+                  className="flex items-center gap-2"
+                  data-testid="modal-print-button"
+                >
+                  <Printer className="w-4 h-4" />
+                  Print
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setShowBillModal(false)}
+                  className="ml-auto"
+                  data-testid="modal-close-button"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
