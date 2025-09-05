@@ -76,69 +76,120 @@ export default function ewaybillsPage() {
 
   if (!isLoggedIn) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">E-way Bills</h1>
-          <p className="text-gray-600 mt-1">E-way Bills management and tracking system</p>
-        </div>
-        
-        <div className="max-w-md mx-auto">
-          <Card>
-            <CardHeader className="text-center">
-              <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <Truck className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900">E-way Bill Portal Login</h3>
-              <p className="text-gray-600">Enter your GST credentials to access E-way bills</p>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <Label htmlFor="gstin">GSTIN</Label>
-                  <Input
-                    id="gstin"
-                    type="text"
-                    placeholder="Enter your GSTIN"
-                    value={credentials.gstin}
-                    onChange={(e) => setCredentials(prev => ({ ...prev, gstin: e.target.value }))}
-                    data-testid="input-gstin"
-                    required
-                  />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-md w-full mx-auto">
+          <Card className="shadow-lg">
+            <CardContent className="p-8">
+              {/* Government Emblem */}
+              <div className="text-center mb-6">
+                <div className="mx-auto w-20 h-20 mb-4 flex items-center justify-center">
+                  <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                    GOI
+                  </div>
                 </div>
-                
-                <div>
-                  <Label htmlFor="username">Username</Label>
+                <h1 className="text-2xl font-bold text-gray-700 mb-2">E - Waybill System</h1>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-4">
+                {/* Username Field */}
+                <div className="relative">
+                  <div className="absolute left-0 top-0 w-12 h-12 bg-blue-400 flex items-center justify-center rounded-l">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                    </svg>
+                  </div>
                   <Input
                     id="username"
                     type="text"
-                    placeholder="Enter username"
+                    placeholder="Username"
                     value={credentials.username}
                     onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
+                    className="pl-14 h-12 border-2 border-blue-200 text-gray-600 placeholder-gray-400"
                     data-testid="input-username"
                     required
                   />
                 </div>
-                
-                <div>
-                  <Label htmlFor="password">Password</Label>
+
+                {/* Password Field */}
+                <div className="relative">
+                  <div className="absolute left-0 top-0 w-12 h-12 bg-blue-400 flex items-center justify-center rounded-l">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Enter password"
+                    placeholder="Password"
                     value={credentials.password}
                     onChange={(e) => setCredentials(prev => ({ ...prev, password: e.target.value }))}
+                    className="pl-14 h-12 border-2 border-blue-200 text-gray-600 placeholder-gray-400"
                     data-testid="input-password"
                     required
                   />
                 </div>
-                
+
+                {/* Captcha Field */}
+                <div className="relative">
+                  <div className="absolute left-0 top-0 w-12 h-12 bg-blue-400 flex items-center justify-center rounded-l">
+                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex">
+                    <div className="flex-1">
+                      <Input
+                        placeholder="Enter Captcha"
+                        className="pl-14 h-12 border-2 border-blue-200 text-gray-600 placeholder-gray-400 rounded-r-none"
+                        data-testid="input-captcha"
+                        required
+                      />
+                    </div>
+                    <div className="w-32 h-12 bg-gray-200 border-2 border-l-0 border-blue-200 flex items-center justify-center text-lg font-bold text-blue-800 rounded-r">
+                      LF07LD
+                    </div>
+                    <button 
+                      type="button" 
+                      className="w-12 h-12 bg-blue-400 flex items-center justify-center border-2 border-l-0 border-blue-200 rounded-r"
+                      data-testid="button-refresh-captcha"
+                    >
+                      <RefreshCw className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Login Button */}
                 <Button 
                   type="submit" 
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg rounded"
                   data-testid="button-login"
                 >
-                  Login to E-way Bill Portal
+                  Login
                 </Button>
+
+                {/* Links */}
+                <div className="flex justify-between text-sm pt-4">
+                  <button 
+                    type="button" 
+                    className="text-blue-600 hover:text-blue-800"
+                    data-testid="link-new-registration"
+                  >
+                    New Registration ?
+                  </button>
+                  <button 
+                    type="button" 
+                    className="text-blue-600 hover:text-blue-800"
+                    data-testid="link-forgot-credentials"
+                  >
+                    Forgot Credentials ?
+                  </button>
+                </div>
+
+                {/* Help Text */}
+                <div className="text-center text-sm text-orange-600 pt-4">
+                  If you are unable to Login, you can follow the steps given in this document.
+                </div>
               </form>
             </CardContent>
           </Card>
