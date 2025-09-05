@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions, ModuleName } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { 
   Home, CreditCard, Bell, Users, MapPin, BarChart3, 
@@ -14,60 +15,62 @@ type NavigationItem = {
   href: string;
   icon: LucideIcon;
   badge?: string;
+  module?: ModuleName;
 };
 
 type NavigationSection = {
   section: string;
   items: NavigationItem[];
+  module?: ModuleName;
 };
 
 type NavigationEntry = NavigationItem | NavigationSection;
 
 const navigation: NavigationEntry[] = [
-  { name: "Dashboard", href: "/", icon: Home },
+  { name: "Dashboard", href: "/", icon: Home, module: "DASHBOARD" },
   {
     section: "PAYMENTS",
     items: [
-      { name: "Credit Payments", href: "/credit-payments", icon: CreditCard, badge: "5" },
-      { name: "Payment Alerts", href: "/credit-payments", icon: Bell, badge: "12" },
+      { name: "Credit Payments", href: "/credit-payments", icon: CreditCard, badge: "5", module: "CREDIT_PAYMENTS" },
+      { name: "Payment Alerts", href: "/credit-payments", icon: Bell, badge: "12", module: "CREDIT_PAYMENTS" },
     ],
   },
   {
     section: "CLIENTS",
     items: [
-      { name: "Client Management", href: "/client-management", icon: Users },
-      { name: "Client Tracking", href: "/client-tracking", icon: MapPin },
-      { name: "Sales Rates", href: "/sales-rates", icon: BarChart3 },
+      { name: "Client Management", href: "/client-management", icon: Users, module: "CLIENT_MANAGEMENT" },
+      { name: "Client Tracking", href: "/client-tracking", icon: MapPin, module: "CLIENT_TRACKING" },
+      { name: "Sales Rates", href: "/sales-rates", icon: BarChart3, module: "SALES_RATES" },
     ],
   },
   {
     section: "OPERATIONS",
     items: [
-      { name: "Task Management", href: "/task-management", icon: CheckSquare },
-      { name: "Follow-up Hub", href: "/follow-up-hub", icon: Target },
-      { name: "Lead Follow-ups", href: "/lead-follow-up-hub", icon: Clock },
-      { name: "Order Workflow", href: "/order-workflow", icon: ShoppingCart },
-      { name: "Credit Agreements", href: "/credit-agreements", icon: File },
-      { name: "E-Way Bills", href: "/eway-bills", icon: Receipt },
+      { name: "Task Management", href: "/task-management", icon: CheckSquare, module: "TASK_MANAGEMENT" },
+      { name: "Follow-up Hub", href: "/follow-up-hub", icon: Target, module: "FOLLOW_UP_HUB" },
+      { name: "Lead Follow-ups", href: "/lead-follow-up-hub", icon: Clock, module: "LEAD_FOLLOW_UP" },
+      { name: "Order Workflow", href: "/order-workflow", icon: ShoppingCart, module: "ORDER_WORKFLOW" },
+      { name: "Credit Agreements", href: "/credit-agreements", icon: File, module: "CREDIT_AGREEMENTS" },
+      { name: "E-Way Bills", href: "/eway-bills", icon: Receipt, module: "EWAY_BILLS" },
     ],
   },
   {
     section: "SALES",
     items: [
-      { name: "Sales", href: "/sales", icon: Package },
-      { name: "Sales Operations", href: "/sales-operations", icon: Target },
-      { name: "Tour Advance", href: "/tour-advance", icon: Plane },
-      { name: "TA Reports", href: "/ta-reports", icon: FileText },
-      { name: "Purchase Orders", href: "/purchase-orders", icon: FileText },
-      { name: "Team Performance", href: "/team-performance", icon: TrendingUp },
+      { name: "Sales", href: "/sales", icon: Package, module: "SALES" },
+      { name: "Sales Operations", href: "/sales-operations", icon: Target, module: "SALES_OPERATIONS" },
+      { name: "Tour Advance", href: "/tour-advance", icon: Plane, module: "TOUR_ADVANCE" },
+      { name: "TA Reports", href: "/ta-reports", icon: FileText, module: "TA_REPORTS" },
+      { name: "Purchase Orders", href: "/purchase-orders", icon: FileText, module: "PURCHASE_ORDERS" },
+      { name: "Team Performance", href: "/team-performance", icon: TrendingUp, module: "TEAM_PERFORMANCE" },
     ],
   },
 
   {
     section: "SYSTEM",
     items: [
-      { name: "Master Data", href: "/master-data", icon: Database },
-      { name: "User Management", href: "/user-management", icon: Settings },
+      { name: "Master Data", href: "/master-data", icon: Database, module: "MASTER_DATA" },
+      { name: "User Management", href: "/user-management", icon: Settings, module: "USER_MANAGEMENT" },
     ],
   },
 ];
@@ -75,6 +78,21 @@ const navigation: NavigationEntry[] = [
 export default function Sidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { hasViewPermission } = usePermissions();
+
+  // Filter navigation based on permissions
+  const filteredNavigation = navigation.filter(item => {
+    if ('href' in item) {
+      // Single item - check if user has permission for the module
+      return !item.module || hasViewPermission(item.module);
+    } else {
+      // Section - filter items and only show section if it has any visible items
+      const visibleItems = item.items.filter(subItem => 
+        !subItem.module || hasViewPermission(subItem.module)
+      );
+      return visibleItems.length > 0 ? { ...item, items: visibleItems } : null;
+    }
+  }).filter(Boolean) as NavigationEntry[];
 
   return (
     <aside className="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col">
@@ -92,7 +110,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
         <div className="space-y-1">
-          {navigation.map((item, index) => {
+          {filteredNavigation.map((item, index) => {
             if ('href' in item) {
               const Icon = item.icon;
               const isActive = location === item.href;

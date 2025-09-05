@@ -96,6 +96,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/auth/permissions", requireAuth, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const permissions = await AuthService.getUserPermissions(user.id);
+      res.json(permissions);
+    } catch (error: any) {
+      console.error("Get user permissions error:", error);
+      res.status(500).json({ error: "Failed to get user permissions" });
+    }
+  });
+
   // User Management Routes (Protected)
   app.get("/api/users", requireAuth, async (req, res) => {
     try {
