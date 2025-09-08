@@ -623,7 +623,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteClient(req.params.id);
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete client" });
+      console.error("Error deleting client:", error);
+      const message = error instanceof Error ? error.message : "Failed to delete client";
+      res.status(400).json({ message });
     }
   });
 

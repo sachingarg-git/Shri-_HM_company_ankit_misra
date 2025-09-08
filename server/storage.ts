@@ -434,6 +434,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteClient(id: string): Promise<void> {
+    // Check for related records that would prevent deletion
+    const [ordersCount] = await db.select({ count: sql`count(*)` }).from(orders).where(eq(orders.clientId, id));
+    const [paymentsCount] = await db.select({ count: sql`count(*)` }).from(payments).where(eq(payments.clientId, id));
+    const [tasksCount] = await db.select({ count: sql`count(*)` }).from(tasks).where(eq(tasks.clientId, id));
+    const [purchaseOrdersCount] = await db.select({ count: sql`count(*)` }).from(purchaseOrders).where(eq(purchaseOrders.clientId, id));
+    const [trackingCount] = await db.select({ count: sql`count(*)` }).from(clientTracking).where(eq(clientTracking.clientId, id));
+
+    // Calculate total related records
+    const totalRelatedRecords = Number(ordersCount.count) + Number(paymentsCount.count) + Number(tasksCount.count) + Number(purchaseOrdersCount.count) + Number(trackingCount.count);
+    
+    if (totalRelatedRecords > 0) {
+      const details = [];
+      if (Number(ordersCount.count) > 0) details.push(`${ordersCount.count} order(s)`);
+      if (Number(paymentsCount.count) > 0) details.push(`${paymentsCount.count} payment(s)`);
+      if (Number(tasksCount.count) > 0) details.push(`${tasksCount.count} task(s)`);
+      if (Number(purchaseOrdersCount.count) > 0) details.push(`${purchaseOrdersCount.count} purchase order(s)`);
+      if (Number(trackingCount.count) > 0) details.push(`${trackingCount.count} tracking record(s)`);
+      
+      throw new Error(`Cannot delete client: This client has ${details.join(', ')}. Please remove or transfer these records before deleting the client.`);
+    }
+
+    // Delete related client assignments first (these can be safely deleted)
+    await db.delete(clientAssignments).where(eq(clientAssignments.clientId, id));
+    
+    // Delete related shipping addresses (these can be safely deleted)
+    await db.delete(shippingAddresses).where(eq(shippingAddresses.clientId, id));
+    
+    // Finally delete the client
     await db.delete(clients).where(eq(clients.id, id));
   }
 
