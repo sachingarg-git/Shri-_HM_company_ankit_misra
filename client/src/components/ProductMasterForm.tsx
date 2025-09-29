@@ -198,7 +198,7 @@ export function ProductMasterForm() {
   const createMutation = useMutation({
     mutationFn: (data: ProductMasterFormData) => {
       console.log("Creating product with data:", data);
-      return apiRequest("POST", "/api/product-master", data);
+      return apiRequest("/api/product-master", "POST", data);
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Product created successfully" });
@@ -216,7 +216,7 @@ export function ProductMasterForm() {
   const updateMutation = useMutation({
     mutationFn: (data: ProductMasterFormData) => {
       console.log("Updating product with data:", data);
-      return apiRequest("PUT", `/api/product-master/${editingProduct.id}`, data);
+      return apiRequest(`/api/product-master/${editingProduct.id}`, "PUT", data);
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Product updated successfully" });
@@ -234,7 +234,7 @@ export function ProductMasterForm() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => {
-      return apiRequest("DELETE", `/api/product-master/${id}`, null);
+      return apiRequest(`/api/product-master/${id}`, "DELETE", null);
     },
     onSuccess: () => {
       toast({ title: "Success", description: "Product deleted successfully" });
@@ -290,11 +290,11 @@ export function ProductMasterForm() {
   };
 
   // Filter products based on search term
-  const filteredProducts = products?.filter((product: any) =>
+  const filteredProducts = Array.isArray(products) ? products.filter((product: any) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.productCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.hsnCode?.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  ) : [];
 
   if (isLoading) {
     return <div className="p-4">Loading products...</div>;
