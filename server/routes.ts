@@ -2989,7 +2989,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // PATCH endpoint for sales orders (partial updates)
   app.patch("/api/sales-orders/:id", async (req, res) => {
     try {
-      const validatedData = insertSalesOrderSchema.partial().parse(req.body);
+      // Convert ISO date strings to Date objects before validation
+      const preprocessedData = { ...req.body };
+      if (preprocessedData.expectedDeliveryDate && typeof preprocessedData.expectedDeliveryDate === 'string') {
+        preprocessedData.expectedDeliveryDate = new Date(preprocessedData.expectedDeliveryDate);
+      }
+      if (preprocessedData.orderDate && typeof preprocessedData.orderDate === 'string') {
+        preprocessedData.orderDate = new Date(preprocessedData.orderDate);
+      }
+      
+      const validatedData = insertSalesOrderSchema.partial().parse(preprocessedData);
       const salesOrder = await storage.updateSalesOrder(req.params.id, validatedData);
       res.json(salesOrder);
     } catch (error) {
