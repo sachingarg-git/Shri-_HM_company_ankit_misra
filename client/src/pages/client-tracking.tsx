@@ -42,6 +42,11 @@ export default function ClientTracking() {
     queryKey: ["/api/clients"],
   });
 
+  // Fetch orders for dropdown
+  const { data: orders = [] } = useQuery({
+    queryKey: ["/api/orders"],
+  });
+
   // Form setup
   const form = useForm<TrackingFormData>({
     resolver: zodResolver(trackingFormSchema),
@@ -313,9 +318,26 @@ export default function ClientTracking() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Order ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter order ID" {...field} data-testid="input-order-id" />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-order-id">
+                          <SelectValue placeholder="Select order" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {orders && orders.length > 0 ? (
+                          orders.map((order: any) => (
+                            <SelectItem key={order.id} value={order.id}>
+                              {order.orderNumber} - {order.clientName}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-sm text-gray-500">
+                            No orders available. Create an order first.
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
