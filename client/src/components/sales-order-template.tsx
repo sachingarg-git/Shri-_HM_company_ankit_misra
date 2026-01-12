@@ -204,23 +204,25 @@ export const generateBitumenSalesOrderPDF = (salesOrderData: SalesOrderData) => 
   // Bill To Header
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('Bill To', margin + 2, currentY + 5);
-  doc.text('Ship To', margin + sectionWidth + 2, currentY + 5);
+  doc.text('Bill To :', margin + 2, currentY + 5);
+  doc.text('Ship To :', margin + sectionWidth + 2, currentY + 5);
   
   currentY += 2;
-  doc.rect(margin, currentY, sectionWidth, 35, 'S');
-  doc.rect(margin + sectionWidth, currentY, sectionWidth, 35, 'S');
+  doc.rect(margin, currentY, sectionWidth, 50, 'S');
+  doc.rect(margin + sectionWidth, currentY, sectionWidth, 50, 'S');
 
   currentY += 8;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   
   const clientInfo = [
-    { label: 'Name:', value: salesOrderData.client.name || 'N/A' },
-    { label: 'GSTIN:', value: salesOrderData.client.gstNumber || 'N/A' },
-    { label: 'Address:', value: (salesOrderData.client.address || 'N/A').substring(0, 40) },
-    { label: 'State:', value: salesOrderData.client.state || 'N/A' },
-    { label: 'Mobile:', value: salesOrderData.client.mobileNumber || 'N/A' }
+    { label: 'Name :', value: salesOrderData.client.name || '' },
+    { label: 'GST No :', value: salesOrderData.client.gstNumber || '' },
+    { label: 'Address :', value: (salesOrderData.client.address || '').substring(0, 40) },
+    { label: 'State :', value: salesOrderData.client.state || '' },
+    { label: 'Pin Code :', value: salesOrderData.client.pinCode || '' },
+    { label: 'Mobile No :', value: salesOrderData.client.mobileNumber || '' },
+    { label: 'Email ID :', value: salesOrderData.client.email || '' }
   ];
 
   clientInfo.forEach((info, index) => {
@@ -229,15 +231,15 @@ export const generateBitumenSalesOrderPDF = (salesOrderData: SalesOrderData) => 
     doc.setFont('helvetica', 'bold');
     doc.text(info.label, margin + 2, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(info.value.substring(0, 35), margin + 18, y);
+    doc.text(info.value.substring(0, 35), margin + 22, y);
     // Ship To
     doc.setFont('helvetica', 'bold');
     doc.text(info.label, margin + sectionWidth + 2, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(info.value.substring(0, 35), margin + sectionWidth + 18, y);
+    doc.text(info.value.substring(0, 35), margin + sectionWidth + 22, y);
   });
 
-  currentY += 32;
+  currentY += 47;
 
   // ===================== ITEMS TABLE =====================
   const tableWidth = pageWidth - 2 * margin;

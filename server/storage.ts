@@ -98,9 +98,11 @@ export interface IStorage {
   // Credit Agreements
   getCreditAgreement(id: string): Promise<CreditAgreement | undefined>;
   getCreditAgreementsByClient(clientId: string): Promise<CreditAgreement[]>;
+  getAllCreditAgreements(): Promise<CreditAgreement[]>;
   getActiveCreditAgreementByClient(clientId: string): Promise<CreditAgreement | undefined>;
   createCreditAgreement(agreement: InsertCreditAgreement): Promise<CreditAgreement>;
   updateCreditAgreement(id: string, agreement: Partial<InsertCreditAgreement>): Promise<CreditAgreement>;
+  deleteCreditAgreement(id: string): Promise<void>;
 
   // Payments
   getPayment(id: string): Promise<Payment | undefined>;
@@ -323,6 +325,21 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async initializeCreditAgreementColumns(): Promise<void> {
+    try {
+      // Try to add columns if they don't exist
+      await db.execute(sql`
+        ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "address" text;
+      `);
+      await db.execute(sql`
+        ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "pin_code" text;
+      `);
+    } catch (error) {
+      // Columns might already exist, that's fine
+      console.log("Credit agreement columns initialization completed (may already exist)");
+    }
+  }
+
   // Users
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -790,6 +807,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(creditAgreements).where(eq(creditAgreements.clientId, clientId)).orderBy(desc(creditAgreements.createdAt));
   }
 
+  async getAllCreditAgreements(): Promise<CreditAgreement[]> {
+    return await db.select().from(creditAgreements).orderBy(desc(creditAgreements.createdAt));
+  }
+
   async getActiveCreditAgreementByClient(clientId: string): Promise<CreditAgreement | undefined> {
     const [agreement] = await db.select().from(creditAgreements)
       .where(and(eq(creditAgreements.clientId, clientId), eq(creditAgreements.isActive, true)))
@@ -798,13 +819,74 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCreditAgreement(insertAgreement: InsertCreditAgreement): Promise<CreditAgreement> {
-    const [agreement] = await db.insert(creditAgreements).values(insertAgreement).returning();
+    // Build the insert object with only non-null values
+    const dataToInsert: any = {
+      clientId: insertAgreement.clientId,
+      agreementNumber: insertAgreement.agreementNumber,
+      creditLimit: insertAgreement.creditLimit,
+      paymentTerms: insertAgreement.paymentTerms,
+    };
+
+    // Only add optional fields if they have values
+    if (insertAgreement.interestRate !== null && insertAgreement.interestRate !== undefined) {
+      dataToInsert.interestRate = insertAgreement.interestRate;
+    }
+    if (insertAgreement.customerName) {
+      dataToInsert.customerName = insertAgreement.customerName;
+    }
+    if (insertAgreement.date) {
+      // Ensure date is a Date object - handle both string and Date inputs
+      if (typeof insertAgreement.date === 'string') {
+        dataToInsert.date = new Date(insertAgreement.date);
+      } else if (insertAgreement.date instanceof Date) {
+        dataToInsert.date = insertAgreement.date;
+      }
+    }
+    if (insertAgreement.location) {
+      dataToInsert.location = insertAgreement.location;
+    }
+    if (insertAgreement.address) {
+      dataToInsert.address = insertAgreement.address;
+    }
+    if (insertAgreement.pinCode) {
+      dataToInsert.pinCode = insertAgreement.pinCode;
+    }
+    if (insertAgreement.gstnNumber) {
+      dataToInsert.gstnNumber = insertAgreement.gstnNumber;
+    }
+    if (insertAgreement.chequeNumbers) {
+      dataToInsert.chequeNumbers = insertAgreement.chequeNumbers;
+    }
+    if (insertAgreement.bankName) {
+      dataToInsert.bankName = insertAgreement.bankName;
+    }
+    if (insertAgreement.branchName) {
+      dataToInsert.branchName = insertAgreement.branchName;
+    }
+    if (insertAgreement.accountHolder) {
+      dataToInsert.accountHolder = insertAgreement.accountHolder;
+    }
+    if (insertAgreement.accountNumber) {
+      dataToInsert.accountNumber = insertAgreement.accountNumber;
+    }
+
+    console.log("DataToInsert before insert:", JSON.stringify({
+      ...dataToInsert,
+      date: dataToInsert.date ? `[Date: ${dataToInsert.date.toISOString()}]` : null
+    }, null, 2));
+    
+    const [agreement] = await db.insert(creditAgreements).values(dataToInsert).returning();
+    console.log("Agreement created:", agreement);
     return agreement;
   }
 
   async updateCreditAgreement(id: string, updateAgreement: Partial<InsertCreditAgreement>): Promise<CreditAgreement> {
     const [agreement] = await db.update(creditAgreements).set(updateAgreement).where(eq(creditAgreements.id, id)).returning();
     return agreement;
+  }
+
+  async deleteCreditAgreement(id: string): Promise<void> {
+    await db.delete(creditAgreements).where(eq(creditAgreements.id, id));
   }
 
   // Payments
@@ -2205,6 +2287,11 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+// Initialize database columns
+storage.initializeCreditAgreementColumns().catch((error) => {
+  console.error("Failed to initialize credit agreement columns:", error);
+});
 
 // Initialize bitumen products data
 export async function initializeBitumenProducts() {

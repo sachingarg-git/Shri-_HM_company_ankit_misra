@@ -1,0 +1,11 @@
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "customer_name" text;
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "date" timestamp;
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "location" text;
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "address" text;
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "pin_code" text;
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "gstn_number" text;
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "cheque_numbers" text;
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "bank_name" text;
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "branch_name" text;
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "account_holder" text;
+ALTER TABLE "credit_agreements" ADD COLUMN IF NOT EXISTS "account_number" text;

@@ -169,7 +169,7 @@ export const clients = pgTable("clients", {
 // Credit Agreements table
 export const creditAgreements = pgTable("credit_agreements", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  clientId: varchar("client_id").notNull().references(() => clients.id),
+  clientId: varchar("client_id").notNull(),
   agreementNumber: text("agreement_number").notNull().unique(),
   creditLimit: decimal("credit_limit", { precision: 15, scale: 2 }).notNull(),
   paymentTerms: integer("payment_terms").notNull(),
@@ -177,6 +177,18 @@ export const creditAgreements = pgTable("credit_agreements", {
   isActive: boolean("is_active").notNull().default(true),
   signedAt: timestamp("signed_at"),
   expiresAt: timestamp("expires_at"),
+  // Additional fields for credit agreement form
+  customerName: text("customer_name"),
+  date: timestamp("date"),
+  location: text("location"),
+  address: text("address"),
+  pinCode: text("pin_code"),
+  gstnNumber: text("gstn_number"),
+  chequeNumbers: text("cheque_numbers"),
+  bankName: text("bank_name"),
+  branchName: text("branch_name"),
+  accountHolder: text("account_holder"),
+  accountNumber: text("account_number"),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
@@ -718,10 +730,36 @@ export const insertClientAssignmentSchema = createInsertSchema(clientAssignments
   updatedAt: true,
 });
 
-export const insertCreditAgreementSchema = createInsertSchema(creditAgreements).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertCreditAgreementSchema = z.object({
+  clientId: z.string().min(1, "Client ID is required"),
+  agreementNumber: z.string().min(1, "Agreement number is required"),
+  creditLimit: z.any().transform(val => {
+    if (!val) return 0;
+    const num = parseFloat(String(val));
+    return isNaN(num) ? 0 : num;
+  }),
+  paymentTerms: z.any().transform(val => {
+    if (!val) return 30;
+    const num = parseInt(String(val), 10);
+    return isNaN(num) ? 30 : num;
+  }),
+  interestRate: z.any().optional().transform(val => {
+    if (!val) return null;
+    const num = parseFloat(String(val));
+    return isNaN(num) ? null : num;
+  }).nullable(),
+  customerName: z.any().optional().nullable(),
+  date: z.any().optional().nullable(),
+  location: z.any().optional().nullable(),
+  address: z.any().optional().nullable(),
+  pinCode: z.any().optional().nullable(),
+  gstnNumber: z.any().optional().nullable(),
+  chequeNumbers: z.any().optional().nullable(),
+  bankName: z.any().optional().nullable(),
+  branchName: z.any().optional().nullable(),
+  accountHolder: z.any().optional().nullable(),
+  accountNumber: z.any().optional().nullable(),
+}).passthrough(); // Allow additional fields
 
 export const insertOrderSchema = createInsertSchema(orders).omit({
   id: true,

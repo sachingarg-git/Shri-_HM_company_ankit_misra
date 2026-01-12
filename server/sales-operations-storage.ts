@@ -153,30 +153,33 @@ export async function syncClientToInvoiceParties(client: any): Promise<Party> {
     ))
     .limit(1);
 
+  // Build full billing address from client master fields
   const addressParts = [
-    client.address_line1,
-    client.address_line2,
-    client.city,
-    client.state,
-    client.country
+    client.billingAddressLine || client.billing_address_line || client.address_line1,
+    client.billingCity || client.billing_city || client.city,
+    client.billingState || client.billing_state || client.state,
+    client.billingCountry || client.billing_country || client.country
   ].filter(Boolean);
   const fullAddress = addressParts.join(', ') || 'N/A';
   
-  const state = client.state || 'N/A';
+  const state = client.billingState || client.billing_state || client.state || 'N/A';
+  const city = client.billingCity || client.billing_city || client.city || 'N/A';
+  const pincode = client.billingPincode || client.billing_pincode || client.postal_code || client.pincode || '000000';
+  
   const partyData = {
     partyName: client.name || client.clientName || client.companyName || 'Unknown',
     partyType: 'CUSTOMER' as const,
     billingAddress: fullAddress,
-    city: client.city || 'N/A',
+    city: city,
     state: state,
     stateCode: getStateCode(state),
-    pincode: client.postal_code || client.pincode || '000000',
-    gstin: client.gst_number || client.gstin || null,
-    pan: client.pan || null,
-    contactPerson: client.contact_person || null,
-    contactNumber: client.phone || client.contact_phone || null,
+    pincode: pincode,
+    gstin: client.gstNumber || client.gst_number || client.gstin || null,
+    pan: client.panNumber || client.pan_number || client.pan || null,
+    contactPerson: client.contactPersonName || client.contact_person_name || client.contact_person || null,
+    contactNumber: client.mobileNumber || client.mobile_number || client.phone || client.contact_phone || null,
     email: client.email || null,
-    creditDays: client.payment_terms || 30,
+    creditDays: client.paymentTerms || client.payment_terms || 30,
     isActive: true
   };
 
@@ -417,11 +420,23 @@ export async function getAllSalesInvoices(): Promise<any[]> {
       ip.billing_address as "customerAddress",
       ip.city as "customerCity",
       ip.state as "customerState",
+      ip.state_code as "customerStateCode",
       ip.pincode as "customerPincode",
+      ip.contact_person as "customerContactPerson",
       ip.contact_number as "customerPhone",
-      ip.email as "customerEmail"
+      ip.email as "customerEmail",
+      ip.shipping_address as "shippingAddress",
+      COALESCE(sp.party_name, ip.party_name) as "shipToName",
+      COALESCE(sp.gstin, ip.gstin) as "shipToGstin",
+      COALESCE(sp.billing_address, ip.billing_address) as "shipToAddress",
+      COALESCE(sp.city, ip.city) as "shipToCity",
+      COALESCE(sp.state, ip.state) as "shipToState",
+      COALESCE(sp.pincode, ip.pincode) as "shipToPincode",
+      COALESCE(sp.contact_number, ip.contact_number) as "shipToMobile",
+      COALESCE(sp.email, ip.email) as "shipToEmail"
     FROM sales_invoices si
     LEFT JOIN invoice_parties ip ON si.customer_id = ip.id
+    LEFT JOIN invoice_parties sp ON si.shipping_party_id = sp.id
     ORDER BY si.created_at DESC
   `);
   
@@ -493,11 +508,23 @@ export async function getSalesInvoiceById(id: string): Promise<any | null> {
       ip.billing_address as "customerAddress",
       ip.city as "customerCity",
       ip.state as "customerState",
+      ip.state_code as "customerStateCode",
       ip.pincode as "customerPincode",
+      ip.contact_person as "customerContactPerson",
       ip.contact_number as "customerPhone",
-      ip.email as "customerEmail"
+      ip.email as "customerEmail",
+      ip.shipping_address as "shippingAddress",
+      COALESCE(sp.party_name, ip.party_name) as "shipToName",
+      COALESCE(sp.gstin, ip.gstin) as "shipToGstin",
+      COALESCE(sp.billing_address, ip.billing_address) as "shipToAddress",
+      COALESCE(sp.city, ip.city) as "shipToCity",
+      COALESCE(sp.state, ip.state) as "shipToState",
+      COALESCE(sp.pincode, ip.pincode) as "shipToPincode",
+      COALESCE(sp.contact_number, ip.contact_number) as "shipToMobile",
+      COALESCE(sp.email, ip.email) as "shipToEmail"
     FROM sales_invoices si
     LEFT JOIN invoice_parties ip ON si.customer_id = ip.id
+    LEFT JOIN invoice_parties sp ON si.shipping_party_id = sp.id
     WHERE si.id = ${id}
     LIMIT 1
   `);
@@ -507,6 +534,8 @@ export async function getSalesInvoiceById(id: string): Promise<any | null> {
     invoiceNumber: invoice.invoiceNumber,
     customerName: invoice.customerName,
     customerAddress: invoice.customerAddress,
+    customerPhone: invoice.customerPhone,
+    customerEmail: invoice.customerEmail,
     totalInvoiceAmount: invoice.totalInvoiceAmount
   } : 'Invoice not found');
   

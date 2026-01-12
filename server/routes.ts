@@ -1082,7 +1082,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const agreements = await storage.getCreditAgreementsByClient(clientId as string);
         res.json(agreements);
       } else {
-        res.status(400).json({ message: "Client ID required" });
+        const agreements = await storage.getAllCreditAgreements();
+        res.json(agreements);
       }
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch credit agreements" });
@@ -1098,16 +1099,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/credit-agreements/:id", async (req, res) => {
+    try {
+      const agreement = await storage.getCreditAgreement(req.params.id);
+      if (!agreement) {
+        return res.status(404).json({ message: "Credit agreement not found" });
+      }
+      res.json(agreement);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch credit agreement" });
+    }
+  });
+
   app.post("/api/credit-agreements", async (req, res) => {
     try {
-      const agreementData = insertCreditAgreementSchema.parse(req.body);
-      const agreement = await storage.createCreditAgreement(agreementData);
+      console.log("Received data:", JSON.stringify(req.body, null, 2));
+      
+      // Build the insert object with only required fields and safe optional fields
+      const insertData: any = {
+        clientId: req.body.clientId,
+        agreementNumber: req.body.agreementNumber,
+        creditLimit: parseFloat(req.body.creditLimit) || 0,
+        paymentTerms: parseInt(req.body.paymentTerms) || 30,
+      };
+
+      // Add optional fields if they exist
+      if (req.body.interestRate) {
+        insertData.interestRate = parseFloat(req.body.interestRate) || undefined;
+      }
+      if (req.body.customerName) {
+        insertData.customerName = req.body.customerName;
+      }
+      if (req.body.date) {
+        insertData.date = req.body.date;
+      }
+      if (req.body.location) {
+        insertData.location = req.body.location;
+      }
+      if (req.body.address) {
+        insertData.address = req.body.address;
+      }
+      if (req.body.pinCode) {
+        insertData.pinCode = req.body.pinCode;
+      }
+      if (req.body.gstnNumber) {
+        insertData.gstnNumber = req.body.gstnNumber;
+      }
+      if (req.body.chequeNumbers) {
+        insertData.chequeNumbers = req.body.chequeNumbers;
+      }
+      if (req.body.bankName) {
+        insertData.bankName = req.body.bankName;
+      }
+      if (req.body.branchName) {
+        insertData.branchName = req.body.branchName;
+      }
+      if (req.body.accountHolder) {
+        insertData.accountHolder = req.body.accountHolder;
+      }
+      if (req.body.accountNumber) {
+        insertData.accountNumber = req.body.accountNumber;
+      }
+
+      console.log("Inserting data:", JSON.stringify(insertData, null, 2));
+      const agreement = await storage.createCreditAgreement(insertData);
+      console.log("Created agreement:", agreement);
       res.status(201).json(agreement);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid credit agreement data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to create credit agreement" });
+      console.error("Create agreement error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      console.error("Full error:", error);
+      res.status(500).json({ 
+        message: "Failed to create credit agreement", 
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined
+      });
     }
   });
 
@@ -1121,6 +1187,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid credit agreement data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update credit agreement" });
+    }
+  });
+
+  app.delete("/api/credit-agreements/:id", async (req, res) => {
+    try {
+      await storage.deleteCreditAgreement(req.params.id);
+      res.json({ message: "Credit agreement deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete credit agreement" });
     }
   });
 

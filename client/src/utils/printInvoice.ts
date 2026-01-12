@@ -507,3 +507,396 @@ export const printTaxInvoice = (invoice: any, type: 'sales' | 'purchase', showEr
   printWindow.document.write(invoiceHtml);
   printWindow.document.close();
 };
+
+// Generate Sales Order HTML matching the screenshot format
+export const generateSalesOrderHtml = (invoice: any): string => {
+  const formatDate = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const day = date.getDate().toString().padStart(2, '0');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day}-${month}-${year.toString().slice(-2)}`;
+  };
+
+  const formatDeliveryTerms = (dateStr: string): string => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const day = date.getDate();
+    const suffix = day === 1 || day === 21 || day === 31 ? 'st' : 
+                   day === 2 || day === 22 ? 'nd' : 
+                   day === 3 || day === 23 ? 'rd' : 'th';
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    return `${day}${suffix} TO ${day + 3}${suffix} ${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
+
+  const formatIndianNumber = (num: number): string => {
+    if (!num || isNaN(num)) return '0';
+    const str = Math.round(num).toString();
+    const lastThree = str.slice(-3);
+    const otherNumbers = str.slice(0, -3);
+    const formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + (otherNumbers ? ',' : '') + lastThree;
+    return formatted;
+  };
+
+  // Get items from invoice - debug logging
+  console.log('🖨️ Sales Order Print - Invoice data:', invoice);
+  console.log('🖨️ Sales Order Print - Items:', invoice.items);
+  
+  const items = invoice.items || [];
+  
+  // Calculate totals from invoice or items
+  let subtotal = parseFloat(invoice.subtotalAmount || 0);
+  let gstAmount = parseFloat(invoice.cgstAmount || 0) + parseFloat(invoice.sgstAmount || 0) + parseFloat(invoice.igstAmount || 0);
+  
+  // If no subtotal from invoice, calculate from items
+  if (subtotal === 0 && items.length > 0) {
+    subtotal = items.reduce((sum: number, item: any) => {
+      const qty = parseFloat(item.quantity || 0);
+      const rate = parseFloat(item.ratePerUnit || item.rate || 0);
+      return sum + (qty * rate);
+    }, 0);
+    
+    gstAmount = items.reduce((sum: number, item: any) => {
+      const itemAmount = parseFloat(item.quantity || 0) * parseFloat(item.ratePerUnit || item.rate || 0);
+      const itemGstRate = parseFloat(item.cgstRate || item.sgstRate || 9) * 2; // CGST + SGST
+      return sum + (itemAmount * itemGstRate / 100);
+    }, 0);
+  }
+  
+  const gstRate = 18;
+  const freightAmount = parseFloat(invoice.freightCharges || invoice.transportCharges || invoice.otherCharges || 0);
+  const totalAmount = parseFloat(invoice.totalInvoiceAmount || 0) || (subtotal + gstAmount + freightAmount);
+
+  // Generate items rows
+  const generateItemsRows = (): string => {
+    if (items.length === 0) {
+      return `
+        <tr>
+          <td colspan="7" style="border: 1px dashed #E67E22; padding: 20px; text-align: center; color: #999;">
+            No items found in this invoice
+          </td>
+        </tr>
+      `;
+    }
+    
+    let rows = '';
+    items.forEach((item: any) => {
+      const qty = parseFloat(item.quantity || 0);
+      const rate = parseFloat(item.ratePerUnit || item.rate || 0);
+      const amount = parseFloat(item.taxableAmount || item.grossAmount || 0) || (qty * rate);
+      const itemCgst = parseFloat(item.cgstAmount || 0);
+      const itemSgst = parseFloat(item.sgstAmount || 0);
+      const itemGst = itemCgst + itemSgst || (amount * gstRate / 100);
+      const itemTotal = parseFloat(item.totalAmount || 0) || (amount + itemGst);
+      const productName = item.productName || item.description || 'BITUMEN VG-30 PHONEIX EMBOSSED';
+      const unit = item.unitOfMeasurement || item.unit || 'MT';
+      
+      rows += `
+        <tr>
+          <td style="border: 1px dashed #E67E22; padding: 8px; font-weight: bold;">${productName}</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: center;">${qty}</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: center;">${unit}</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: right;">${formatIndianNumber(rate)}</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: right;">${formatIndianNumber(amount)}</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: right;">${formatIndianNumber(itemGst)}</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: right;">${formatIndianNumber(itemTotal)}</td>
+        </tr>
+      `;
+    });
+    
+    // Transport charges row
+    if (freightAmount > 0) {
+      const transportQty = items[0]?.quantity || 0;
+      const transportRate = freightAmount / (transportQty || 1);
+      rows += `
+        <tr>
+          <td style="border: 1px dashed #E67E22; padding: 8px; font-weight: bold;">Transport Charges</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: center;">${transportQty}</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: center;">MT</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: right;">${formatIndianNumber(transportRate)}</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: right;">${formatIndianNumber(freightAmount)}</td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: right;"></td>
+          <td style="border: 1px dashed #E67E22; padding: 8px; text-align: right;"></td>
+        </tr>
+      `;
+    }
+    
+    return rows;
+  };
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Sales Order - ${invoice.invoiceNumber || invoice.orderNumber || ''}</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; font-size: 11px; line-height: 1.4; padding: 15px; background: #fff; }
+        .container { max-width: 800px; margin: 0 auto; border: 2px solid #E67E22; }
+        .header { display: flex; align-items: center; padding: 15px; border-bottom: 2px solid #E67E22; }
+        .logo-section { display: flex; align-items: center; gap: 10px; }
+        .logo-hindi { font-size: 36px; color: #E67E22; font-weight: bold; font-family: serif; }
+        .logo-text { font-size: 12px; color: #E67E22; font-weight: bold; }
+        .company-details { flex: 1; text-align: right; }
+        .company-name { font-size: 22px; color: #E67E22; font-weight: bold; margin-bottom: 5px; }
+        .company-address { font-size: 10px; color: #333; line-height: 1.3; }
+        .company-contact { font-size: 10px; color: #333; margin-top: 5px; }
+        .title { text-align: center; padding: 10px; font-size: 20px; color: #E67E22; font-weight: bold; border-bottom: 2px solid #E67E22; }
+        .info-row { display: flex; border-bottom: 2px solid #E67E22; }
+        .info-cell { flex: 1; padding: 8px; border-right: 2px solid #E67E22; }
+        .info-cell:last-child { border-right: none; }
+        .info-label { font-size: 10px; color: #E67E22; font-weight: bold; margin-bottom: 3px; }
+        .info-value { font-size: 11px; font-weight: bold; }
+        .party-section { display: flex; border-bottom: 2px solid #E67E22; }
+        .bill-to, .ship-to { flex: 1; padding: 10px; }
+        .bill-to { border-right: 2px solid #E67E22; }
+        .party-title { font-size: 11px; color: #E67E22; font-weight: bold; margin-bottom: 8px; }
+        .party-detail { font-size: 10px; margin: 4px 0; }
+        .party-label { color: #E67E22; }
+        .items-table { width: 100%; border-collapse: collapse; }
+        .items-header { background: #FFF3E0; }
+        .items-header th { border: 1px dashed #E67E22; padding: 8px; color: #E67E22; font-weight: bold; font-size: 10px; }
+        .bottom-section { display: flex; border-top: 2px solid #E67E22; }
+        .left-section { flex: 1; padding: 10px; border-right: 2px solid #E67E22; }
+        .right-section { width: 250px; }
+        .totals-row { display: flex; border-bottom: 1px solid #E67E22; }
+        .totals-label { flex: 1; padding: 8px; font-weight: bold; text-align: right; color: #E67E22; }
+        .totals-value { width: 100px; padding: 8px; text-align: right; font-weight: bold; }
+        .freight-note { padding: 8px; font-size: 10px; font-weight: bold; color: #E67E22; border-bottom: 2px solid #E67E22; }
+        .terms-bank { display: flex; border-bottom: 2px solid #E67E22; }
+        .terms { flex: 1; padding: 10px; border-right: 2px solid #E67E22; font-size: 9px; }
+        .terms-title { font-weight: bold; text-decoration: underline; margin-bottom: 5px; }
+        .bank-details { width: 250px; padding: 10px; }
+        .bank-title { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 5px; }
+        .bank-row { font-size: 10px; margin: 3px 0; }
+        .signature-section { display: flex; }
+        .signature-left { flex: 1; padding: 15px; border-right: 2px solid #E67E22; min-height: 80px; }
+        .signature-right { width: 250px; padding: 15px; text-align: center; }
+        .signature-company { font-weight: bold; font-size: 11px; }
+        .signature-line { margin-top: 40px; font-size: 10px; }
+        .no-print { margin-top: 20px; text-align: center; }
+        @media print { 
+          body { padding: 0; } 
+          .no-print { display: none; }
+          @page { size: A4; margin: 10mm; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <!-- Header with Logo and Company Details -->
+        <div class="header">
+          <div class="logo-section">
+            <img src="/logo.jpg" alt="SRI HM Bitumen Company" style="width: 100px; height: auto;" />
+          </div>
+          <div class="company-details">
+            <div class="company-name">M/S SRI HM BITUMEN CO</div>
+            <div class="company-address">
+              Dag No: 1071, Patta No: 264, Mikirpara, Chakardaigaon<br>
+              Mouza - Ramcharani, Guwahati, Assam - 781035
+            </div>
+            <div class="company-contact">
+              GST No: 18CGMPP6536N2ZG<br>
+              Mobile No: +91 8453059698<br>
+              Email ID: info.srihmbitumen@gmail.com
+            </div>
+          </div>
+        </div>
+
+        <!-- Title -->
+        <div class="title">Sales Order</div>
+
+        <!-- Order Info Row 1 -->
+        <div class="info-row">
+          <div class="info-cell">
+            <div class="info-label">Sales Order No.</div>
+            <div class="info-value">${invoice.invoiceNumber || invoice.orderNumber || ''}</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Sales Order Date</div>
+            <div class="info-value">${formatDate(invoice.invoiceDate || invoice.orderDate)}</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Delivery Terms</div>
+            <div class="info-value">${invoice.deliveryTerms || formatDeliveryTerms(invoice.dueDate || invoice.invoiceDate)}</div>
+          </div>
+        </div>
+
+        <!-- Order Info Row 2 -->
+        <div class="info-row">
+          <div class="info-cell">
+            <div class="info-label">Payment Terms</div>
+            <div class="info-value">${invoice.paymentTerms || 'ADVANCE'}</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Destination</div>
+            <div class="info-value">${invoice.destination || invoice.placeOfSupply || ''}</div>
+          </div>
+          <div class="info-cell">
+            <div class="info-label">Loading From</div>
+            <div class="info-value">${invoice.loadingFrom || invoice.dispatchFrom || 'KANDLA'}</div>
+          </div>
+        </div>
+
+        <!-- Bill To and Ship To -->
+        <div class="party-section">
+          <div class="bill-to">
+            <div class="party-title">Bill To :</div>
+            <div class="party-detail"><span class="party-label">Name :</span> ${invoice.customerName || ''}</div>
+            <div class="party-detail"><span class="party-label">GST No :</span> ${invoice.customerGstin || invoice.customerGSTIN || ''}</div>
+            <div class="party-detail"><span class="party-label">Address</span></div>
+            <div class="party-detail">${invoice.customerAddress || 'N/A'}</div>
+            <div class="party-detail"><span class="party-label">State :</span> ${invoice.customerState || invoice.placeOfSupply || 'N/A'}</div>
+            <div class="party-detail"><span class="party-label">Pin Code :</span> ${invoice.customerPincode || ''}</div>
+            <div class="party-detail"><span class="party-label">Mobile No :</span> ${invoice.customerMobile || invoice.customerPhone || invoice.partyMobileNumber || ''}</div>
+            <div class="party-detail"><span class="party-label">Email ID :</span> ${invoice.customerEmail || ''}</div>
+          </div>
+          <div class="ship-to">
+            <div class="party-title">Ship To :</div>
+            <div class="party-detail"><span class="party-label">Name :</span> ${invoice.shipToName || ''}</div>
+            <div class="party-detail"><span class="party-label">GST No :</span> ${invoice.shipToGstin || ''}</div>
+            <div class="party-detail"><span class="party-label">Address :</span></div>
+            <div class="party-detail">${invoice.shipToAddress || invoice.shippingAddress || ''}</div>
+            <div class="party-detail"><span class="party-label">State :</span> ${invoice.shipToState || invoice.placeOfSupply || 'ASSAM'}</div>
+            <div class="party-detail"><span class="party-label">Pin Code :</span> ${invoice.shipToPincode || ''}</div>
+            <div class="party-detail"><span class="party-label">Mobile No :</span> ${invoice.shipToMobile || ''}</div>
+            <div class="party-detail"><span class="party-label">Email ID :</span> ${invoice.shipToEmail || ''}</div>
+          </div>
+        </div>
+
+        <!-- Items Table -->
+        <table class="items-table">
+          <thead class="items-header">
+            <tr>
+              <th style="width: 25%;">Item #</th>
+              <th style="width: 8%;">Qty</th>
+              <th style="width: 8%;">Unit</th>
+              <th style="width: 12%;">Ex Factory Rate</th>
+              <th style="width: 15%;">Amount(₹)</th>
+              <th style="width: 15%;">GST@${gstRate}%(₹)</th>
+              <th style="width: 17%;">Total Amount(₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${generateItemsRows()}
+          </tbody>
+        </table>
+
+        <!-- Bottom Section - Sales Person and Totals -->
+        <div class="bottom-section">
+          <div class="left-section">
+            <div style="margin-bottom: 10px;">
+              <span style="color: #E67E22; font-weight: bold;">Sales Person Name:</span>
+            </div>
+            <div style="margin-bottom: 15px; font-weight: bold;">${invoice.salesPersonName || invoice.salesPerson || ''}</div>
+            <div style="margin-bottom: 10px;">
+              <span style="color: #E67E22; font-weight: bold;">Description :</span>
+            </div>
+            <div style="font-weight: bold;">${invoice.description || invoice.remarks || ''}</div>
+          </div>
+          <div class="right-section">
+            <div class="totals-row">
+              <div class="totals-label">SubTotal</div>
+              <div class="totals-value">${formatIndianNumber(subtotal + gstAmount)}</div>
+            </div>
+            <div class="totals-row">
+              <div class="totals-label">Freight</div>
+              <div class="totals-value">${formatIndianNumber(freightAmount)}</div>
+            </div>
+            <div class="totals-row" style="background: #FFF3E0;">
+              <div class="totals-label" style="color: #E67E22;">Total</div>
+              <div class="totals-value" style="color: #E67E22;">${formatIndianNumber(totalAmount)}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Freight Note -->
+        <div class="freight-note">
+          FREIGHT ${freightAmount > 0 && items.length > 0 ? formatIndianNumber(freightAmount / parseFloat(items[0]?.quantity || 1)) : '0'} PER TON AS PER GROSS WT..
+        </div>
+
+        <!-- Terms and Bank Details -->
+        <div class="terms-bank">
+          <div class="terms">
+            <div class="terms-title">Terms and Conditions :</div>
+            <div>- Payment Should be made on or before 30th day of the Day of Billing.</div>
+            <div>- Incase Of Late Payment, Credit Limit will be Reduce by 10%.</div>
+            <div>- If the Payment is not done within the due terms of invoice then an interest of 24% per annum i.e 2% per month would be charged on due amount.</div>
+            <div>- All Cheques/Demand Drafts for payment of bills must be crossed "A/C Payee Only" and Drawn in Favor of "Company's Name".</div>
+            <div>- In case of Cheque Returned/Bounced, All the Penalties Will Be Bear by Buyer.</div>
+            <div>- Disputes are subject to jurisdiction of Guwahati courts and all the legal fees will be borne by the buyer.</div>
+            <div>- If the Payment Is Not Done within the 30 days of the due date then the rest of the pending order will be on hold.</div>
+            <div>- Telephonic Conversations Can be recorded for training and other official purposes.</div>
+            <div>- If Payment Received Before 30 Days Then a Special Discount will be given to you 200 / Per Ton.</div>
+            <div>- Detention of Rs 4000 per day will be charged,if the vehicle is not unloaded within 48 hrs of Reporting.</div>
+          </div>
+          <div class="bank-details">
+            <div class="bank-title">Bank Details :</div>
+            <div class="bank-row"><strong>Bank Name :</strong> State Bank of India</div>
+            <div class="bank-row"><strong>Account No. :</strong> 43063628954</div>
+            <div class="bank-row"><strong>Branch :</strong> Paltan, Bazar</div>
+            <div class="bank-row"><strong>IFSC Code :</strong> SBIN0013247</div>
+          </div>
+        </div>
+
+        <!-- Signature Section -->
+        <div class="signature-section">
+          <div class="signature-left"></div>
+          <div class="signature-right">
+            <div class="signature-company">For M/S SRI HM BITUMEN CO</div>
+            <div class="signature-line">Authorized Signatory</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="no-print">
+        <button onclick="window.print()" style="padding: 12px 25px; background: #E67E22; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;">
+          🖨️ Print / Save as PDF
+        </button>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+// Print Sales Order
+export const printSalesOrder = async (invoice: any, showError?: (msg: string) => void): Promise<void> => {
+  try {
+    // First load the logo as base64
+    let logoBase64 = '';
+    try {
+      const response = await fetch('/logo.jpg');
+      const blob = await response.blob();
+      logoBase64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    } catch (err) {
+      console.error('Failed to load logo:', err);
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      if (showError) {
+        showError('Please allow popups for this site');
+      }
+      return;
+    }
+
+    let orderHtml = generateSalesOrderHtml(invoice);
+    // Replace the logo src with base64
+    if (logoBase64) {
+      orderHtml = orderHtml.replace(/src="\/logo\.jpg"/g, `src="${logoBase64}"`);
+    }
+    printWindow.document.write(orderHtml);
+    printWindow.document.close();
+  } catch (err) {
+    console.error('Print error:', err);
+    if (showError) {
+      showError('Failed to print');
+    }
+  }
+};

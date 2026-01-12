@@ -967,10 +967,33 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
     lrNumber: '',
     partyMobileNumber: '',
     transitInsurance: 0,
+    destination: '',
+    loadingFrom: 'KANDLA',
+    paymentTerms: 'ADVANCE',
     customerId: '',
     customerName: '',
     customerGSTIN: '',
     customerAddress: '',
+    customerCity: '',
+    customerState: '',
+    customerPincode: '',
+    customerCountry: '',
+    customerContactPerson: '',
+    customerMobile: '',
+    customerEmail: '',
+    customerPaymentTerms: '',
+    // Shipping details (can be same as billing or different)
+    shipToName: '',
+    shipToAddress: '',
+    shipToCity: '',
+    shipToState: '',
+    shipToPincode: '',
+    shipToGstin: '',
+    shipToMobile: '',
+    shipToEmail: '',
+    // Sales info
+    salesPersonName: '',
+    description: '',
     items: [{
       id: 1,
       description: '',
@@ -1010,22 +1033,52 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
     const client = clients.find(c => c.id === clientId);
     
     if (client) {
-      // Build full address
-      const addressParts = [
-        client.billing_address_line || client.address,
-        client.billing_city || client.city,
-        client.billing_state || client.state,
-        client.billing_pincode || client.pincode
+      // Build full billing address
+      const billingAddressParts = [
+        client.billingAddressLine || client.billing_address_line || client.address,
+        client.billingCity || client.billing_city || client.city,
+        client.billingState || client.billing_state || client.state,
+        client.billingPincode || client.billing_pincode || client.pincode
       ].filter(Boolean);
       
-      const fullAddress = addressParts.join(', ') || 'N/A';
+      const fullBillingAddress = billingAddressParts.join(', ') || 'N/A';
+      
+      // Get customer details
+      const customerName = client.name || client.clientName || client.companyName || '';
+      const customerGSTIN = client.gstNumber || client.gst_number || client.gstin || '';
+      const customerCity = client.billingCity || client.billing_city || client.city || '';
+      const customerState = client.billingState || client.billing_state || client.state || '';
+      const customerPincode = client.billingPincode || client.billing_pincode || client.pincode || '';
+      const customerCountry = client.billingCountry || client.billing_country || 'India';
+      const customerContactPerson = client.contactPersonName || client.contact_person_name || '';
+      const customerMobile = client.mobileNumber || client.mobile_number || client.mobile || '';
+      const customerEmail = client.email || '';
+      const customerPaymentTerms = client.paymentTerms || client.payment_terms || '30 days';
       
       setFormData(prev => ({
         ...prev,
         customerId: client.id,
-        customerName: client.name || client.clientName || client.companyName || '',
-        customerGSTIN: client.gst_number || client.gstin || '',
-        customerAddress: fullAddress
+        customerName: customerName,
+        customerGSTIN: customerGSTIN,
+        customerAddress: fullBillingAddress,
+        customerCity: customerCity,
+        customerState: customerState,
+        customerPincode: customerPincode,
+        customerCountry: customerCountry,
+        customerContactPerson: customerContactPerson,
+        customerMobile: customerMobile,
+        customerEmail: customerEmail,
+        customerPaymentTerms: String(customerPaymentTerms),
+        partyMobileNumber: customerMobile,
+        // Also set Ship To same as Bill To by default
+        shipToName: customerName,
+        shipToAddress: fullBillingAddress,
+        shipToCity: customerCity,
+        shipToState: customerState,
+        shipToPincode: customerPincode,
+        shipToGstin: customerGSTIN,
+        shipToMobile: customerMobile,
+        shipToEmail: customerEmail
       }));
     }
   };
@@ -1184,12 +1237,16 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
         invoiceDate: formData.invoiceDate, // Keep as string, backend will handle
         invoiceType: 'TAX_INVOICE',
         customerId: formData.customerId,
-        placeOfSupply: formData.customerAddress || 'N/A',
+        placeOfSupply: formData.customerState || formData.customerAddress || 'N/A',
         placeOfSupplyStateCode: '00',
         ewayBillNumber: formData.ewayBillNo || null,
         ewayBillValidUpto: formData.ewayBillExpiryDate || null, // Keep as string
         dueDate: formData.dueDate || null, // Keep as string
-        paymentTerms: '30 Days Credit',
+        destination: formData.destination || null,
+        dispatchFrom: formData.loadingFrom || 'KANDLA',
+        vehicleNumber: formData.vehicleNumber || null,
+        lrRrNumber: formData.lrNumber || null,
+        paymentTerms: formData.paymentTerms || '30 Days Credit',
         subtotalAmount: totals.taxableAmount.toFixed(2),
         cgstAmount: totals.cgstAmount.toFixed(2),
         sgstAmount: totals.sgstAmount.toFixed(2),
@@ -1350,14 +1407,13 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sales Order Number * <span className="text-xs text-green-600">(Auto-generated)</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sales Invoice Order Number</label>
                   <input
                     type="text"
                     value={formData.invoiceNo}
-                    placeholder="Auto-generated (e.g., SO-001/2025)"
-                    required
-                    readOnly
-                    className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed"
+                    onChange={(e) => setFormData(prev => ({ ...prev, invoiceNo: e.target.value }))}
+                    placeholder="Enter Sales Invoice Order Number"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
                 <div>
@@ -1446,6 +1502,60 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                     onChange={(e) => setFormData(prev => ({ ...prev, transitInsurance: parseFloat(e.target.value) || 0 }))}
                     placeholder="Enter Transit Insurance"
                     step="0.01"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Destination *</label>
+                  <input
+                    type="text"
+                    value={formData.destination}
+                    onChange={(e) => setFormData(prev => ({ ...prev, destination: e.target.value }))}
+                    placeholder="Enter Destination (e.g., GUWAHATI)"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Loading From *</label>
+                  <input
+                    type="text"
+                    value={formData.loadingFrom}
+                    onChange={(e) => setFormData(prev => ({ ...prev, loadingFrom: e.target.value }))}
+                    placeholder="Enter Loading From (e.g., KANDLA)"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+                  <select
+                    value={formData.paymentTerms}
+                    onChange={(e) => setFormData(prev => ({ ...prev, paymentTerms: e.target.value }))}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="ADVANCE">ADVANCE</option>
+                    <option value="30 Days Credit">30 Days Credit</option>
+                    <option value="45 Days Credit">45 Days Credit</option>
+                    <option value="60 Days Credit">60 Days Credit</option>
+                    <option value="COD">COD (Cash on Delivery)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sales Person Name</label>
+                  <input
+                    type="text"
+                    value={formData.salesPersonName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, salesPersonName: e.target.value }))}
+                    placeholder="Enter Sales Person Name"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description / Remarks</label>
+                  <input
+                    type="text"
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Enter Description (e.g., 220 DRUM APPROX)"
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -2363,16 +2473,41 @@ const InvoiceManagement: React.FC = () => {
   };
 
   // Handle Print/PDF Invoice with Professional Tax Invoice Format
-  const handlePrintInvoice = (invoice: any, type: 'sales' | 'purchase') => {
-    // Import and use the printTaxInvoice utility
-    import('@/utils/printInvoice').then(({ printTaxInvoice }) => {
-      printTaxInvoice(invoice, type, (msg) => {
-        toast({ title: 'Error', description: msg, variant: 'destructive' });
-      });
-    }).catch((err) => {
+  const handlePrintInvoice = async (invoice: any, type: 'sales' | 'purchase') => {
+    try {
+      // Fetch full invoice with items if items are not present
+      let fullInvoice = invoice;
+      if (!invoice.items || invoice.items.length === 0) {
+        const endpoint = type === 'sales'
+          ? `/api/sales-operations/sales-invoices/${invoice.id}`
+          : `/api/sales-operations/purchase-invoices/${invoice.id}`;
+        
+        const response = await fetch(endpoint);
+        if (response.ok) {
+          const data = await response.json();
+          fullInvoice = data.invoice ? { ...data.invoice, items: data.items } : data;
+          console.log('✅ Fetched full invoice for printing:', fullInvoice);
+        }
+      }
+      
+      // Import and use the appropriate print utility based on type
+      if (type === 'sales') {
+        // Use Sales Order format for sales invoices
+        const { printSalesOrder } = await import('@/utils/printInvoice');
+        printSalesOrder(fullInvoice, (msg) => {
+          toast({ title: 'Error', description: msg, variant: 'destructive' });
+        });
+      } else {
+        // Use Tax Invoice format for purchase invoices
+        const { printTaxInvoice } = await import('@/utils/printInvoice');
+        printTaxInvoice(fullInvoice, type, (msg) => {
+          toast({ title: 'Error', description: msg, variant: 'destructive' });
+        });
+      }
+    } catch (err) {
       console.error('Failed to load print utility:', err);
       toast({ title: 'Error', description: 'Failed to load print functionality', variant: 'destructive' });
-    });
+    }
   };
 
   const isLoading = salesLoading || purchaseLoading;

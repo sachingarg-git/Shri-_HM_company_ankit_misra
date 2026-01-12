@@ -12,6 +12,7 @@ import FollowUpHub from "@/pages/follow-up-hub";
 import LeadFollowUpHub from "@/pages/lead-follow-up-hub";
 import OrderWorkflow from "@/pages/order-workflow";
 import CreditAgreements from "@/pages/credit-agreements";
+import CreditAgreementView from "@/pages/credit-agreement-view";
 import EwayBills from "@/pages/eway-bills";
 import PurchaseOrders from "@/pages/purchase-orders";
 import TeamPerformance from "@/pages/team-performance";
@@ -64,6 +65,7 @@ function Router() {
             <Route path="/lead-follow-up-hub" component={LeadFollowUpHub} />
             <Route path="/order-workflow" component={OrderWorkflow} />
             <Route path="/credit-agreements" component={CreditAgreements} />
+            <Route path="/credit-agreements/:id" component={CreditAgreementView} />
             <Route path="/eway-bills" component={EwayBills} />
             <Route path="/sales" component={Sales} />
             <Route path="/sales-operations" component={SalesOperations} />
