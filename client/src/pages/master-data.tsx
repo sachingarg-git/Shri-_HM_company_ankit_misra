@@ -518,6 +518,10 @@ function SuppliersSection() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [viewingSupplier, setViewingSupplier] = useState<Supplier | null>(null);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [bulkUploadFile, setBulkUploadFile] = useState<File | null>(null);
+  const [bulkUploadProgress, setBulkUploadProgress] = useState<string>('');
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: suppliers, isLoading } = useQuery<Supplier[]>({
@@ -525,6 +529,188 @@ function SuppliersSection() {
   });
 
   const { toast } = useToast();
+
+  // Download CSV template for bulk upload
+  const downloadTemplate = () => {
+    const headers = [
+      'Supplier Code*',
+      'Supplier Name*',
+      'Trade Name',
+      'Supplier Type*',
+      'Status',
+      'Contact Person Name',
+      'Contact Email',
+      'Contact Phone',
+      'Fax',
+      'Website',
+      'Address Street',
+      'City',
+      'State',
+      'Country',
+      'Postal Code',
+      'Tax ID / GST / PAN',
+      'Bank Account Number',
+      'Bank Name',
+      'Bank Branch',
+      'SWIFT / IBAN Code',
+      'Payment Terms (Days)',
+      'Preferred Currency'
+    ];
+    
+    const sampleData = [
+      'SUP001',
+      'ABC Suppliers Pvt Ltd',
+      'ABC Suppliers',
+      'VENDOR',
+      'ACTIVE',
+      'John Doe',
+      'john@abcsuppliers.com',
+      '9876543210',
+      '',
+      'www.abcsuppliers.com',
+      '123 Main Street',
+      'Mumbai',
+      'Maharashtra',
+      'India',
+      '400001',
+      '27AABCS1234D1ZP',
+      '1234567890',
+      'State Bank of India',
+      'Main Branch',
+      'SBININBB123',
+      '30',
+      'INR'
+    ];
+    
+    const csvContent = [
+      headers.join(','),
+      sampleData.join(','),
+      // Add more sample rows with different supplier types
+      'SUP002,XYZ Manufacturing Ltd,XYZ Mfg,MANUFACTURER,ACTIVE,Jane Smith,jane@xyz.com,9123456780,,www.xyz.com,456 Industrial Area,Delhi,Delhi,India,110001,07AABCX5678E1ZQ,0987654321,HDFC Bank,Industrial Branch,HDFCINBB456,ADVANCE,INR',
+      'SUP003,PQR Distributors,PQR Dist,DISTRIBUTOR,ACTIVE,Mike Johnson,mike@pqr.com,9988776655,,,789 Market Road,Kolkata,West Bengal,India,700001,19AABCP9012F1ZR,1122334455,ICICI Bank,Market Branch,ABORINBB789,60,INR'
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'supplier_bulk_upload_template.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    toast({ title: "Template Downloaded", description: "CSV template has been downloaded. Fill in the data and upload." });
+  };
+
+  // Parse CSV and create suppliers
+  const handleBulkUpload = async () => {
+    if (!bulkUploadFile) {
+      toast({ title: "Error", description: "Please select a CSV file", variant: "destructive" });
+      return;
+    }
+
+    setIsBulkUploading(true);
+    setBulkUploadProgress('Reading file...');
+
+    try {
+      const text = await bulkUploadFile.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length < 2) {
+        throw new Error('CSV file must have headers and at least one data row');
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const dataRows = lines.slice(1);
+      
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (let i = 0; i < dataRows.length; i++) {
+        setBulkUploadProgress(`Processing row ${i + 1} of ${dataRows.length}...`);
+        
+        const values = dataRows[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        
+        // Map CSV columns to supplier data
+        const supplierData: any = {
+          supplierCode: values[0] || `SUP${Date.now()}`,
+          supplierName: values[1] || '',
+          tradeName: values[2] || '',
+          supplierType: values[3] || 'VENDOR',
+          status: values[4] || 'ACTIVE',
+          contactPersonName: values[5] || '',
+          contactEmail: values[6] || '',
+          contactPhone: values[7] || '',
+          fax: values[8] || '',
+          website: values[9] || '',
+          registeredAddressStreet: values[10] || '',
+          registeredAddressCity: values[11] || '',
+          registeredAddressState: values[12] || '',
+          registeredAddressCountry: values[13] || 'India',
+          registeredAddressPostalCode: values[14] || '',
+          taxId: values[15] || '',
+          bankAccountNumber: values[16] || '',
+          bankName: values[17] || '',
+          bankBranch: values[18] || '',
+          swiftIbanCode: values[19] || '',
+          paymentTerms: values[20] === 'ADVANCE' ? 0 : (parseInt(values[20]) || 30),
+          preferredCurrency: values[21] || 'INR'
+        };
+
+        // Validate required fields
+        if (!supplierData.supplierName) {
+          errors.push(`Row ${i + 2}: Supplier Name is required`);
+          errorCount++;
+          continue;
+        }
+
+        try {
+          const response = await fetch('/api/suppliers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(supplierData)
+          });
+
+          if (response.ok) {
+            successCount++;
+          } else {
+            const error = await response.json();
+            errors.push(`Row ${i + 2}: ${error.message || 'Failed to create'}`);
+            errorCount++;
+          }
+        } catch (err) {
+          errors.push(`Row ${i + 2}: Network error`);
+          errorCount++;
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+      
+      setBulkUploadProgress('');
+      setShowBulkUpload(false);
+      setBulkUploadFile(null);
+      
+      if (successCount > 0) {
+        toast({ 
+          title: "Bulk Upload Complete", 
+          description: `Successfully created ${successCount} supplier(s).${errorCount > 0 ? ` ${errorCount} failed.` : ''}` 
+        });
+      }
+      
+      if (errors.length > 0) {
+        console.error('Bulk upload errors:', errors);
+        toast({ 
+          title: "Some Errors Occurred", 
+          description: errors.slice(0, 3).join('; ') + (errors.length > 3 ? `... and ${errors.length - 3} more` : ''),
+          variant: "destructive"
+        });
+      }
+    } catch (err: any) {
+      toast({ title: "Upload Failed", description: err.message || "Failed to process CSV file", variant: "destructive" });
+    } finally {
+      setIsBulkUploading(false);
+      setBulkUploadProgress('');
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertSupplier) => {
@@ -536,8 +722,9 @@ function SuppliersSection() {
       if (!response.ok) throw new Error('Failed to create supplier');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/suppliers'] });
       setShowForm(false);
       toast({ title: "Success", description: "Supplier created successfully" });
     },
@@ -556,8 +743,9 @@ function SuppliersSection() {
       if (!response.ok) throw new Error('Failed to update supplier');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/suppliers'] });
       setShowForm(false);
       setSelectedSupplier(null);
       toast({ title: "Success", description: "Supplier updated successfully" });
@@ -575,8 +763,9 @@ function SuppliersSection() {
       if (!response.ok) throw new Error('Failed to delete supplier');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/suppliers'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/suppliers'] });
       toast({ title: "Success", description: "Supplier deleted successfully" });
     },
     onError: () => {
@@ -596,11 +785,117 @@ function SuppliersSection() {
             <Building2 className="h-6 w-6 text-primary" />
             <h3 className="text-lg font-semibold">Supplier Database</h3>
           </div>
-          <Button onClick={() => { setShowForm(true); setSelectedSupplier(null); }} data-testid="button-add-supplier">
-            <Plus className="h-4 w-4 mr-2" />
-            Add New Supplier
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="outline" onClick={() => setShowBulkUpload(true)} data-testid="button-bulk-upload">
+              <Plus className="h-4 w-4 mr-2" />
+              Bulk Upload
+            </Button>
+            <Button onClick={() => { setShowForm(true); setSelectedSupplier(null); }} data-testid="button-add-supplier">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Supplier
+            </Button>
+          </div>
         </div>
+
+        {/* Bulk Upload Dialog */}
+        <Dialog open={showBulkUpload} onOpenChange={setShowBulkUpload}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Bulk Upload Suppliers</DialogTitle>
+              <DialogDescription>
+                Upload multiple suppliers at once using a CSV file
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-6 py-4">
+              {/* Step 1: Download Template */}
+              <div className="border rounded-lg p-4 bg-blue-50">
+                <h4 className="font-semibold mb-2">Step 1: Download Template</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Download the CSV template with the correct field format and sample data
+                </p>
+                <Button variant="outline" onClick={downloadTemplate}>
+                  📥 Download CSV Template
+                </Button>
+              </div>
+
+              {/* Field Format Reference */}
+              <div className="border rounded-lg p-4">
+                <h4 className="font-semibold mb-2">Field Format Reference</h4>
+                <div className="text-xs space-y-1 max-h-48 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-2 font-medium bg-gray-100 p-2 rounded">
+                    <span>Field Name</span>
+                    <span>Description / Valid Values</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-2 border-b">
+                    <span className="font-medium">Supplier Code*</span>
+                    <span>Unique code (e.g., SUP001)</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-2 border-b">
+                    <span className="font-medium">Supplier Name*</span>
+                    <span>Full supplier name (required)</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-2 border-b">
+                    <span className="font-medium">Supplier Type*</span>
+                    <span>MANUFACTURER, DISTRIBUTOR, SERVICE_PROVIDER, CONTRACTOR, VENDOR, OTHERS</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-2 border-b">
+                    <span className="font-medium">Status</span>
+                    <span>ACTIVE, INACTIVE, BLOCKED</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-2 border-b">
+                    <span className="font-medium">Payment Terms</span>
+                    <span>ADVANCE, 10, 15, 20, 30, 60 (days)</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-2 border-b">
+                    <span className="font-medium">Preferred Currency</span>
+                    <span>INR, USD, EUR</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-2">
+                    <span className="font-medium">Tax ID / GST / PAN</span>
+                    <span>GST or PAN number</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2: Upload File */}
+              <div className="border rounded-lg p-4 bg-green-50">
+                <h4 className="font-semibold mb-2">Step 2: Upload CSV File</h4>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Select the filled CSV file to upload
+                </p>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => setBulkUploadFile(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {bulkUploadFile && (
+                  <p className="text-sm text-green-600 mt-2">
+                    ✓ Selected: {bulkUploadFile.name}
+                  </p>
+                )}
+              </div>
+
+              {/* Progress */}
+              {bulkUploadProgress && (
+                <div className="text-center py-2">
+                  <div className="h-6 w-6 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600 mx-auto mb-2"></div>
+                  <p className="text-sm text-muted-foreground">{bulkUploadProgress}</p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setShowBulkUpload(false); setBulkUploadFile(null); }}>
+                Cancel
+              </Button>
+              <Button onClick={handleBulkUpload} disabled={!bulkUploadFile || isBulkUploading}>
+                {isBulkUploading ? 'Uploading...' : 'Upload & Create Suppliers'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {isLoading ? (
           <div className="text-center py-8">
@@ -657,6 +952,15 @@ function SuppliersSection() {
                     </div>
                   </div>
                   <div className="flex space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => { setViewingSupplier(supplier); setShowDetails(true); }}
+                      data-testid={`button-view-supplier-${supplier.id}`}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -1463,21 +1767,70 @@ function SupplierForm({
                 <FormField
                   control={form.control}
                   name="paymentTerms"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Payment Terms (Days)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          type="number" 
-                          placeholder="30" 
-                          onChange={e => field.onChange(parseInt(e.target.value) || 30)}
-                          data-testid="input-payment-terms"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const isCustomValue = field.value !== 0 && field.value !== 10 && field.value !== 15 && field.value !== 20 && field.value !== 30 && field.value !== 60;
+                    const [isCustomMode, setIsCustomMode] = useState(isCustomValue && field.value > 0);
+                    
+                    return (
+                      <FormItem>
+                        <FormLabel>Payment Terms (Days)</FormLabel>
+                        <Select 
+                          onValueChange={(value) => {
+                            if (value === 'custom') {
+                              setIsCustomMode(true);
+                              field.onChange(45); // default custom value
+                            } else {
+                              setIsCustomMode(false);
+                              field.onChange(parseInt(value));
+                            }
+                          }}
+                          value={isCustomMode ? 'custom' : (field.value?.toString() || '30')}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-payment-terms">
+                              <SelectValue placeholder="Select payment terms" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="0">ADVANCE</SelectItem>
+                            <SelectItem value="10">10 DAYS</SelectItem>
+                            <SelectItem value="15">15 DAYS</SelectItem>
+                            <SelectItem value="20">20 DAYS</SelectItem>
+                            <SelectItem value="30">30 DAYS</SelectItem>
+                            <SelectItem value="60">60 DAYS</SelectItem>
+                            <SelectItem value="custom">Custom</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {isCustomMode && (
+                          <div className="mt-2">
+                            <Input 
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              placeholder="Enter custom days" 
+                              defaultValue={field.value > 0 ? field.value.toString() : ''}
+                              onBlur={e => {
+                                const val = parseInt(e.target.value);
+                                if (!isNaN(val) && val >= 0) {
+                                  field.onChange(val);
+                                }
+                              }}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  const val = parseInt((e.target as HTMLInputElement).value);
+                                  if (!isNaN(val) && val >= 0) {
+                                    field.onChange(val);
+                                  }
+                                }
+                              }}
+                              data-testid="input-custom-payment-terms"
+                            />
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
               </TabsContent>
             </Tabs>

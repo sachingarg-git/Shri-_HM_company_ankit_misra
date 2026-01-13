@@ -369,8 +369,23 @@ export default function UserManagement() {
     }
   };
 
-  const handleViewUser = (user: User) => {
-    setViewingUser(user);
+  const handleViewUser = async (user: User) => {
+    // Fetch user permissions from API
+    try {
+      const response = await fetch(`/api/users/${user.id}/permissions`, {
+        credentials: "include"
+      });
+      
+      if (response.ok) {
+        const permissions = await response.json();
+        setViewingUser({ ...user, permissions });
+      } else {
+        setViewingUser({ ...user, permissions: [] });
+      }
+    } catch (error) {
+      console.error("Failed to fetch user permissions:", error);
+      setViewingUser({ ...user, permissions: [] });
+    }
     setIsViewDialogOpen(true);
   };
 
@@ -1119,32 +1134,72 @@ export default function UserManagement() {
                 </div>
 
                 {/* Permissions Summary */}
-                {viewingUser.permissions && viewingUser.permissions.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 pb-2 border-b">
-                      <Shield className="h-4 w-4 text-purple-600" />
-                      <Label className="text-base font-semibold">Permissions Summary</Label>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                        This user has permissions for the following modules:
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {Array.from(new Set(viewingUser.permissions
-                          .filter(p => p.granted)
-                          .map(p => p.module)))
-                          .map((module) => (
-                            <Badge key={module} variant="outline" className="text-xs">
-                              {MODULES.find(m => m.value === module)?.label || module}
-                            </Badge>
-                          ))}
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">
-                        Total granted permissions: {viewingUser.permissions.filter(p => p.granted).length}
-                      </p>
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b">
+                    <Shield className="h-4 w-4 text-purple-600" />
+                    <Label className="text-base font-semibold">Module Permissions</Label>
                   </div>
-                )}
+                  <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+                    {viewingUser.permissions && viewingUser.permissions.length > 0 ? (
+                      <>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                          Modules with access enabled:
+                        </p>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                          {MODULES.map((module) => {
+                            const modulePerms = viewingUser.permissions?.filter(
+                              p => p.module === module.value && p.granted
+                            ) || [];
+                            const permCount = modulePerms.length;
+                            
+                            // Only show modules that have at least one permission
+                            if (permCount === 0) return null;
+                            
+                            return (
+                              <div key={module.value} className="bg-white dark:bg-gray-800 p-3 border rounded-lg">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-sm text-gray-900 dark:text-white">
+                                    {module.label}
+                                  </span>
+                                  <Badge variant="default" className="text-xs bg-green-600">
+                                    {permCount}/{ACTIONS.length}
+                                  </Badge>
+                                </div>
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {ACTIONS.map((action) => {
+                                    const hasAction = modulePerms.some(p => p.action === action.value);
+                                    const Icon = action.icon;
+                                    return (
+                                      <span
+                                        key={action.value}
+                                        className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded ${
+                                          hasAction
+                                            ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                                            : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-500'
+                                        }`}
+                                      >
+                                        <Icon className="h-3 w-3" />
+                                        {action.label}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-3">
+                          Total granted permissions: {viewingUser.permissions.filter(p => p.granted).length} | 
+                          Modules with access: {new Set(viewingUser.permissions.filter(p => p.granted).map(p => p.module)).size}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        No permissions assigned to this user. All modules will show as 0/4.
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 

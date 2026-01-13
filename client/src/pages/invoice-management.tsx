@@ -1173,35 +1173,40 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
       totalTax += item.taxAmount || 0;
     });
     
-    // Add transit insurance to subtotal
+    // Add transit insurance to subtotal with 18% GST
     const transitInsurance = formData.transitInsurance || 0;
+    const transitInsuranceGst = transitInsurance * 0.18; // 18% GST on Transit Insurance
+    const transitInsuranceTotal = transitInsurance + transitInsuranceGst; // Total transit cost
     const subtotalWithInsurance = subtotal + transitInsurance;
     
     // Calculate CGST, SGST, or IGST based on gstType selection
+    // Include Transit Insurance GST in the totals
     let cgstAmount = 0;
     let sgstAmount = 0;
     let igstAmount = 0;
     
     if (gstType === 'IGST') {
-      // For inter-state: IGST = full tax amount
-      igstAmount = totalTax;
+      // For inter-state: IGST = full tax amount + transit insurance GST
+      igstAmount = totalTax + transitInsuranceGst;
     } else {
-      // For intra-state: CGST + SGST (split equally)
-      cgstAmount = totalTax / 2;
-      sgstAmount = totalTax / 2;
+      // For intra-state: CGST + SGST (split equally) + transit insurance GST split
+      cgstAmount = (totalTax / 2) + (transitInsuranceGst / 2);
+      sgstAmount = (totalTax / 2) + (transitInsuranceGst / 2);
     }
     
-    // Total = Subtotal + Transit Insurance + Tax
-    const totalBeforeRound = subtotalWithInsurance + totalTax;
+    // Total = Subtotal + Transit Insurance + Item Tax + Transit Insurance GST
+    const totalBeforeRound = subtotal + transitInsurance + totalTax + transitInsuranceGst;
     const roundedTotal = Math.round(totalBeforeRound);
 
     return {
       taxableAmount: subtotal, // Base amount before insurance and tax
-      transitInsurance, // Transit insurance from invoice level
+      transitInsurance, // Transit insurance base amount
+      transitInsuranceGst, // 18% GST on transit insurance
+      transitInsuranceTotal, // Transit insurance + its GST
       cgstAmount,
       sgstAmount,
       igstAmount,
-      totalAmount: roundedTotal // This includes insurance and tax
+      totalAmount: roundedTotal // This includes insurance, insurance GST, and item tax
     };
   };
 
@@ -1653,17 +1658,17 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                 <table className="w-full border-collapse border border-gray-300">
                   <thead>
                     <tr className="bg-blue-500 text-white">
-                      <th className="border border-gray-300 p-2 text-left">Product/Description</th>
-                      <th className="border border-gray-300 p-2 text-left">HSN/SAC</th>
-                      <th className="border border-gray-300 p-2 text-left">Unit</th>
-                      <th className="border border-gray-300 p-2 text-left">Qty</th>
-                      <th className="border border-gray-300 p-2 text-left">Rate</th>
-                      <th className="border border-gray-300 p-2 text-left">Amount</th>
-                      <th className="border border-gray-300 p-2 text-left">Tax Rate %</th>
-                      <th className="border border-gray-300 p-2 text-left">Total Amount</th>
-                      <th className="border border-gray-300 p-2 text-left">Tax Amount</th>
-                      <th className="border border-gray-300 p-2 text-left">Taxable Amount</th>
-                      <th className="border border-gray-300 p-2 text-center w-20">Action</th>
+                      <th className="border border-gray-300 p-2 text-left" style={{ minWidth: '180px' }}>Product/Description</th>
+                      <th className="border border-gray-300 p-2 text-left" style={{ minWidth: '100px' }}>HSN/SAC</th>
+                      <th className="border border-gray-300 p-2 text-left" style={{ minWidth: '70px' }}>Unit</th>
+                      <th className="border border-gray-300 p-2 text-left" style={{ minWidth: '80px' }}>Qty</th>
+                      <th className="border border-gray-300 p-2 text-left" style={{ minWidth: '110px' }}>Rate</th>
+                      <th className="border border-gray-300 p-2 text-left" style={{ minWidth: '120px' }}>Amount</th>
+                      <th className="border border-gray-300 p-2 text-left" style={{ minWidth: '80px' }}>Tax Rate %</th>
+                      <th className="border border-gray-300 p-2 text-left" style={{ minWidth: '120px' }}>Total Amount</th>
+                      <th className="border border-gray-300 p-2 text-left" style={{ minWidth: '110px' }}>Tax Amount</th>
+                      <th className="border border-gray-300 p-2 text-left" style={{ minWidth: '120px' }}>Taxable Amount</th>
+                      <th className="border border-gray-300 p-2 text-center" style={{ minWidth: '80px' }}>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1747,7 +1752,8 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                               newItems[index].taxableAmount = newItems[index].totalAmount + newItems[index].taxAmount;
                               setFormData(prev => ({ ...prev, items: newItems }));
                             }}
-                            className="w-full p-1 border border-gray-200 rounded"
+                            className="w-full p-1 border border-gray-200 rounded text-right"
+                            style={{ minWidth: '70px' }}
                             step="0.01"
                           />
                         </td>
@@ -1769,28 +1775,29 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                               newItems[index].taxableAmount = newItems[index].totalAmount + newItems[index].taxAmount;
                               setFormData(prev => ({ ...prev, items: newItems }));
                             }}
-                            className="w-full p-1 border border-gray-200 rounded"
+                            className="w-full p-1 border border-gray-200 rounded text-right"
+                            style={{ minWidth: '100px' }}
                             step="0.01"
                           />
                         </td>
-                        <td className="border border-gray-300 p-2 font-medium">
+                        <td className="border border-gray-300 p-2 font-medium text-right whitespace-nowrap" style={{ minWidth: '110px' }}>
                           ₹{item.amount.toFixed(2)}
                         </td>
-                        <td className="border border-gray-300 p-2">
+                        <td className="border border-gray-300 p-2" style={{ minWidth: '70px' }}>
                           <input
                             type="number"
                             value={item.taxRate}
                             readOnly
-                            className="w-full p-1 border border-gray-200 rounded bg-gray-50"
+                            className="w-full p-1 border border-gray-200 rounded bg-gray-50 text-right"
                           />
                         </td>
-                        <td className="border border-gray-300 p-2 font-medium">
+                        <td className="border border-gray-300 p-2 font-medium text-right whitespace-nowrap" style={{ minWidth: '110px' }}>
                           ₹{item.totalAmount.toFixed(2)}
                         </td>
-                        <td className="border border-gray-300 p-2 font-medium">
+                        <td className="border border-gray-300 p-2 font-medium text-right whitespace-nowrap" style={{ minWidth: '100px' }}>
                           ₹{item.taxAmount.toFixed(2)}
                         </td>
-                        <td className="border border-gray-300 p-2 font-medium">
+                        <td className="border border-gray-300 p-2 font-medium text-right whitespace-nowrap" style={{ minWidth: '110px' }}>
                           ₹{item.taxableAmount.toFixed(2)}
                         </td>
                         <td className="border border-gray-300 p-2 text-center">
@@ -1847,6 +1854,13 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                     className="w-32 p-1 border border-gray-300 rounded text-right font-semibold"
                   />
                 </div>
+                {/* Transit Insurance GST (18%) */}
+                {formData.transitInsurance > 0 && (
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span className="font-medium ml-4">↳ Transit Insurance GST (18%):</span>
+                    <span className="font-semibold">₹ {totals.transitInsuranceGst.toFixed(2)}</span>
+                  </div>
+                )}
                 {/* GST Type Selection */}
                 <div className="flex justify-between items-center border-t pt-2 mt-2">
                   <span className="font-medium">GST Type:</span>
@@ -2472,7 +2486,7 @@ const InvoiceManagement: React.FC = () => {
     });
   };
 
-  // Handle Print/PDF Invoice with Professional Tax Invoice Format
+  // Handle Print/PDF Invoice with Professional Sales Invoice Format
   const handlePrintInvoice = async (invoice: any, type: 'sales' | 'purchase') => {
     try {
       // Fetch full invoice with items if items are not present
@@ -2492,15 +2506,15 @@ const InvoiceManagement: React.FC = () => {
       
       // Import and use the appropriate print utility based on type
       if (type === 'sales') {
-        // Use Sales Order format for sales invoices
-        const { printSalesOrder } = await import('@/utils/printInvoice');
-        printSalesOrder(fullInvoice, (msg) => {
+        // Use Sales Invoice format for sales invoices
+        const { printTaxInvoice } = await import('@/utils/printInvoice');
+        await printTaxInvoice(fullInvoice, 'sales', (msg) => {
           toast({ title: 'Error', description: msg, variant: 'destructive' });
         });
       } else {
-        // Use Tax Invoice format for purchase invoices
+        // Use Sales Invoice format for purchase invoices
         const { printTaxInvoice } = await import('@/utils/printInvoice');
-        printTaxInvoice(fullInvoice, type, (msg) => {
+        await printTaxInvoice(fullInvoice, type, (msg) => {
           toast({ title: 'Error', description: msg, variant: 'destructive' });
         });
       }

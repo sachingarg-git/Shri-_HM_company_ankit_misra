@@ -4,11 +4,10 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Plus, Edit, Trash2, Search, CalendarDays, FileCheck, Save, X, Package, Truck, BarChart3, Calculator, Download, Printer } from "lucide-react";
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { SalesDashboard } from "@/components/analytics/sales-dashboard";
 import { DataTable } from "@/components/ui/data-table";
 import { format } from "date-fns";
+import { printSalesOrder } from "@/utils/printInvoice";
 
 // UI Components
 import { Button } from "@/components/ui/button";
@@ -182,247 +181,188 @@ export default function Sales() {
   const discountAmount = parseFloat(form.watch("discountAmount")?.toString() || '0') || 0;
   const totalAmount = subtotal + taxAmount - discountAmount;
 
-  // Preview PDF Function
-  const previewPDF = (salesData: any, isFormData = false) => {
-    const doc = generatePDFDocument(salesData, isFormData);
-    const pdfOutput = doc.output('blob');
-    setPdfBlob(pdfOutput);
-    setIsPDFPreviewOpen(true);
-  };
-
-  // Generate and Download PDF
-  const downloadPDF = (salesData: any, isFormData = false) => {
-    const doc = generatePDFDocument(salesData, isFormData);
-    const fileName = `Invoice_${salesData.invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
-  };
-
-  // Helper function to generate PDF with real company data
-  const generatePDFDocument = (salesData: any, isFormData = false) => {
-    const doc = new jsPDF();
+  // Build invoice data for printSalesOrder (same format as Sales Operations)
+  const buildInvoiceData = (salesData: any, isFormData = false) => {
     const selectedClient = clients.find(c => c.id === salesData.clientId);
     const selectedTransporter = transporters.find(t => t.id === salesData.transporterId);
     
-    // Company Header with real data
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text("BUSINESS INVOICE", 105, 20, { align: "center" });
-    
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(companyProfile?.legalName || "Your Company Name", 105, 30, { align: "center" });
-    doc.text(companyProfile?.registeredAddressLine1 || "Company Address Line 1", 105, 37, { align: "center" });
-    doc.text(companyProfile?.registeredAddressLine2 || "Company Address Line 2", 105, 44, { align: "center" });
-    
-    const contactLine = `Phone: ${companyProfile?.primaryContactMobile || '+91-XXXXXXXXXX'} | Email: ${companyProfile?.primaryContactEmail || 'company@email.com'}`;
-    doc.text(contactLine, 105, 51, { align: "center" });
-    
-    // Line separator
-    doc.line(20, 58, 190, 58);
-    
-    // Invoice Info Section
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text("Invoice Details:", 20, 70);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Invoice No: ${salesData.invoiceNumber}`, 20, 78);
-    doc.text(`Sales Order: ${salesData.salesOrderNumber}`, 20, 85);
-    doc.text(`Date: ${new Date(salesData.date).toLocaleDateString('en-IN')}`, 20, 92);
-    doc.text(`Status: ${salesData.deliveryStatus}`, 20, 99);
-    
-    // Client Info Section
-    doc.setFont("helvetica", "bold");
-    doc.text("Bill To:", 120, 70);
-    doc.setFont("helvetica", "normal");
-    doc.text(`${selectedClient?.name || 'N/A'}`, 120, 78);
-    doc.text(`${selectedClient?.billingAddressLine || 'Address not available'}`, 120, 85);
-    doc.text(`Contact: ${selectedClient?.contactPersonName || 'N/A'}`, 120, 92);
-    doc.text(`Phone: ${selectedClient?.mobileNumber || 'N/A'}`, 120, 99);
-    
-    // Transport Details (if available)
-    if (salesData.transporterId && selectedTransporter) {
-      doc.setFont("helvetica", "bold");
-      doc.text("Transport Details:", 20, 115);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Transporter: ${selectedTransporter.name}`, 20, 123);
-      doc.text(`Vehicle: ${salesData.vehicleNumber || 'N/A'}`, 20, 130);
-      doc.text(`Location: ${salesData.location || 'N/A'}`, 20, 137);
-    }
-    
-    // Items Table
-    const tableStartY = salesData.transporterId ? 150 : 115;
-    
-    // Prepare table data
-    let tableData;
-    let totalsInfo;
+    // Build items array
+    let items: any[] = [];
     
     if (isFormData && salesData.items) {
       // Form data with items array
-      tableData = salesData.items.map((item: any) => [
-        item.itemCode || 'N/A',
-        item.itemDescription || 'N/A',
-        item.quantity || 0,
-        item.unit || 'PCS',
-        `Rs ${(item.unitPrice || 0).toFixed(2)}`,
-        `Rs ${((item.quantity || 0) * (item.unitPrice || 0)).toFixed(2)}`
-      ]);
+      items = salesData.items.map((item: any) => {
+        const qty = parseFloat(item.quantity || 1);
+        const rate = parseFloat(item.unitPrice || 0);
+        const amount = qty * rate;
+        const gstRate = parseFloat(item.taxRate || 18);
+        const gstAmount = amount * (gstRate / 100);
+        return {
+          productName: item.itemDescription || item.itemCode || 'Product Item',
+          description: item.itemDescription || item.itemCode || 'Product Item',
+          quantity: qty,
+          unitOfMeasurement: item.unit || 'MT',
+          unit: item.unit || 'MT',
+          ratePerUnit: rate,
+          rate: rate,
+          grossAmount: amount,
+          taxableAmount: amount,
+          cgstRate: gstRate / 2,
+          cgstAmount: gstAmount / 2,
+          sgstRate: gstRate / 2,
+          sgstAmount: gstAmount / 2,
+          totalAmount: amount + gstAmount
+        };
+      });
+    } else if (salesData.notes && salesData.notes.startsWith('Items: ')) {
+      // Parse multiple items from notes
+      const itemDescriptions = salesData.notes.replace('Items: ', '').split(', ');
+      const totalQuantity = salesData.drumQuantity || 1;
+      const totalAmountValue = parseFloat(salesData.totalAmount?.toString() || '0');
+      const avgPrice = totalQuantity > 0 ? (totalAmountValue / 1.18) / totalQuantity : 0;
+      const quantityPerItem = Math.floor(totalQuantity / itemDescriptions.length);
       
-      const subtotal = salesData.items.reduce((sum: number, item: any) => {
-        return sum + (item.quantity || 0) * (item.unitPrice || 0);
-      }, 0);
-      
-      totalsInfo = {
-        subtotal,
-        tax: parseFloat(salesData.taxAmount?.toString() || '0') || 0,
-        discount: parseFloat(salesData.discountAmount?.toString() || '0') || 0,
-        total: subtotal + (parseFloat(salesData.taxAmount?.toString() || '0') || 0) - (parseFloat(salesData.discountAmount?.toString() || '0') || 0)
-      };
+      items = itemDescriptions.map((desc: string, index: number) => {
+        const isLastItem = index === itemDescriptions.length - 1;
+        const itemQuantity = isLastItem ? totalQuantity - (quantityPerItem * index) : quantityPerItem;
+        const amount = itemQuantity * avgPrice;
+        const gstAmount = amount * 0.18;
+        
+        return {
+          productName: desc.trim(),
+          description: desc.trim(),
+          quantity: itemQuantity,
+          unitOfMeasurement: 'MT',
+          unit: 'MT',
+          ratePerUnit: avgPrice,
+          rate: avgPrice,
+          grossAmount: amount,
+          taxableAmount: amount,
+          cgstRate: 9,
+          cgstAmount: gstAmount / 2,
+          sgstRate: 9,
+          sgstAmount: gstAmount / 2,
+          totalAmount: amount + gstAmount
+        };
+      });
     } else {
-      // Sales record - check if it has multiple items in notes field
-      if (salesData.notes && salesData.notes.startsWith('Items: ')) {
-        // Parse multiple items from notes for PDF display
-        const itemDescriptions = salesData.notes.replace('Items: ', '').split(', ');
-        const totalQuantity = salesData.drumQuantity || 1;
-        const totalAmount = parseFloat(salesData.totalAmount?.toString() || '0');
-        const avgPrice = totalQuantity > 0 ? (totalAmount / 1.18) / totalQuantity : 0; // Remove GST and calculate avg
-        const quantityPerItem = Math.floor(totalQuantity / itemDescriptions.length);
-        
-        tableData = itemDescriptions.map((desc: string, index: number) => {
-          const trimmedDesc = desc.trim();
-          let itemCode = '';
-          let itemDescription = trimmedDesc;
-          
-          // Extract item code from description (look for pattern like "VG40 BITUMEN VG-40")
-          const codeMatch = trimmedDesc.match(/^([A-Z0-9-]+)\s+(.+)/);
-          if (codeMatch && codeMatch[1].length <= 15) { // Only use if reasonable length
-            itemCode = codeMatch[1];
-            itemDescription = codeMatch[2];
-          } else {
-            // If no pattern match, use first few chars as code
-            const words = trimmedDesc.split(' ');
-            if (words.length > 1 && words[0].length <= 15) {
-              itemCode = words[0];
-              itemDescription = words.slice(1).join(' ');
-            } else {
-              itemCode = 'ITEM';
-              itemDescription = trimmedDesc;
-            }
-          }
-          
-          // Calculate quantity for this item (distribute remaining to last item)
-          const isLastItem = index === itemDescriptions.length - 1;
-          const itemQuantity = isLastItem ? 
-            totalQuantity - (quantityPerItem * index) : 
-            quantityPerItem;
-          
-          const itemTotal = itemQuantity * avgPrice;
-          
-          return [
-            itemCode,
-            itemDescription,
-            itemQuantity.toString(),
-            'PCS',
-            `Rs ${avgPrice.toFixed(2)}`,
-            `Rs ${itemTotal.toFixed(2)}`
-          ];
-        });
-        
-        const gstPercent = parseFloat(salesData.gstPercent?.toString() || '0');
-        const basicAmount = totalAmount / (1 + gstPercent / 100);
-        const gstAmount = totalAmount - basicAmount;
-        
-        totalsInfo = {
-          subtotal: basicAmount,
-          tax: gstAmount,
-          discount: 0,
-          total: totalAmount
-        };
-      } else {
-        // Legacy single product record
-        tableData = [[
-          salesData.productId || 'N/A',
-          'Legacy Product',
-          salesData.drumQuantity || 0,
-          'PCS',
-          `Rs ${parseFloat(salesData.basicRate?.toString() || '0').toFixed(2)}`,
-          `Rs ${parseFloat(salesData.totalAmount?.toString() || '0').toFixed(2)}`
-        ]];
-        
-        const totalAmount = parseFloat(salesData.totalAmount?.toString() || '0');
-        const gstPercent = parseFloat(salesData.gstPercent?.toString() || '0');
-        const basicAmount = totalAmount / (1 + gstPercent / 100);
-        const gstAmount = totalAmount - basicAmount;
-        
-        totalsInfo = {
-          subtotal: basicAmount,
-          tax: gstAmount,
-          discount: 0,
-          total: totalAmount
-        };
-      }
+      // Legacy single product record
+      const totalAmountValue = parseFloat(salesData.totalAmount?.toString() || '0');
+      const gstPercent = parseFloat(salesData.gstPercent?.toString() || '18');
+      const basicAmount = totalAmountValue / (1 + gstPercent / 100);
+      const gstAmount = totalAmountValue - basicAmount;
+      
+      items = [{
+        productName: 'Product Item',
+        description: 'Product Item',
+        quantity: salesData.drumQuantity || 1,
+        unitOfMeasurement: 'MT',
+        unit: 'MT',
+        ratePerUnit: parseFloat(salesData.basicRate?.toString() || '0'),
+        rate: parseFloat(salesData.basicRate?.toString() || '0'),
+        grossAmount: basicAmount,
+        taxableAmount: basicAmount,
+        cgstRate: gstPercent / 2,
+        cgstAmount: gstAmount / 2,
+        sgstRate: gstPercent / 2,
+        sgstAmount: gstAmount / 2,
+        totalAmount: totalAmountValue
+      }];
     }
     
-    // Add table
-    autoTable(doc, {
-      startY: tableStartY,
-      head: [['Item Code', 'Description', 'Qty', 'Unit', 'Rate', 'Amount']],
-      body: tableData,
-      theme: 'grid',
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-      },
-      headStyles: {
-        fillColor: [41, 128, 185],
-        textColor: 255,
-        fontStyle: 'bold'
-      },
-      columnStyles: {
-        0: { cellWidth: 22 },  // Item Code
-        1: { cellWidth: 50 },  // Description  
-        2: { cellWidth: 18 },  // Qty
-        3: { cellWidth: 18 },  // Unit
-        4: { cellWidth: 28, halign: 'right' as const },  // Rate (right aligned)
-        5: { cellWidth: 30, halign: 'right' as const }   // Amount (right aligned)
-      }
-    });
+    // Calculate totals
+    const subtotalAmount = items.reduce((sum, item) => sum + (item.taxableAmount || 0), 0);
+    const cgstAmount = items.reduce((sum, item) => sum + (item.cgstAmount || 0), 0);
+    const sgstAmount = items.reduce((sum, item) => sum + (item.sgstAmount || 0), 0);
+    const totalInvoiceAmount = items.reduce((sum, item) => sum + (item.totalAmount || 0), 0);
     
-    // Get final Y position after table
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-    
-    // Totals Section
-    const totalsX = 140;
-    
-    doc.setFont("helvetica", "normal");
-    doc.text(`Subtotal: Rs ${totalsInfo.subtotal.toFixed(2)}`, totalsX, finalY);
-    doc.text(`Tax: Rs ${totalsInfo.tax.toFixed(2)}`, totalsX, finalY + 7);
-    doc.text(`Discount: Rs ${totalsInfo.discount.toFixed(2)}`, totalsX, finalY + 14);
-    
-    doc.setFont("helvetica", "bold");
-    doc.text(`Total: Rs ${totalsInfo.total.toFixed(2)}`, totalsX, finalY + 21);
-    
-    // Footer
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "italic");
-    doc.text("Thank you for your business!", 105, finalY + 40, { align: "center" });
-    doc.text("This is a computer generated invoice.", 105, finalY + 47, { align: "center" });
-    
-    return doc;
+    return {
+      invoiceNumber: salesData.salesOrderNumber || salesData.invoiceNumber || 'N/A',
+      orderNumber: salesData.salesOrderNumber || salesData.invoiceNumber || 'N/A',
+      invoiceDate: salesData.date || new Date().toISOString(),
+      orderDate: salesData.date || new Date().toISOString(),
+      dueDate: salesData.date,
+      deliveryTerms: 'With In 10 to 12 Days',
+      paymentTerms: 'ADVANCE',
+      destination: selectedClient?.billingCity || '',
+      dispatchFrom: 'KANDLA',
+      loadingFrom: 'KANDLA',
+      placeOfSupply: selectedClient?.billingState || selectedClient?.state || 'ASSAM',
+      
+      // Customer (Bill To) details
+      customerName: selectedClient?.name || 'N/A',
+      customerGstin: selectedClient?.gstNumber || '',
+      customerGSTIN: selectedClient?.gstNumber || '',
+      customerAddress: `${selectedClient?.billingAddressLine || selectedClient?.addressLine1 || ''}, ${selectedClient?.billingCity || ''}, ${selectedClient?.billingState || selectedClient?.state || ''}, ${selectedClient?.billingCountry || 'India'}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ', '),
+      customerState: selectedClient?.billingState || selectedClient?.state || '',
+      customerPincode: selectedClient?.billingPincode || selectedClient?.pinCode || '',
+      customerMobile: selectedClient?.mobileNumber || '',
+      customerPhone: selectedClient?.mobileNumber || '',
+      customerEmail: selectedClient?.email || '',
+      partyMobileNumber: selectedClient?.mobileNumber || '',
+      
+      // Ship To details (same as Bill To)
+      shipToName: selectedClient?.name || 'N/A',
+      shipToGstin: selectedClient?.gstNumber || '',
+      shipToAddress: `${selectedClient?.billingAddressLine || selectedClient?.addressLine1 || ''}, ${selectedClient?.billingCity || ''}, ${selectedClient?.billingState || selectedClient?.state || ''}, ${selectedClient?.billingCountry || 'India'}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ', '),
+      shipToState: selectedClient?.billingState || selectedClient?.state || '',
+      shipToPincode: selectedClient?.billingPincode || selectedClient?.pinCode || '',
+      shipToMobile: selectedClient?.mobileNumber || '',
+      shipToEmail: selectedClient?.email || '',
+      
+      // Transport details
+      vehicleNumber: salesData.vehicleNumber || '',
+      transporterName: selectedTransporter?.name || '',
+      
+      // Items
+      items: items,
+      
+      // Totals
+      subtotalAmount: subtotalAmount,
+      cgstAmount: cgstAmount,
+      sgstAmount: sgstAmount,
+      totalInvoiceAmount: totalInvoiceAmount,
+      freightCharges: 0,
+      transportCharges: 0,
+      
+      salesPersonName: '',
+      description: salesData.notes || ''
+    };
+  };
+
+  // Print Sales Order PDF (same format as Sales Operations)
+  const handlePrintSalesOrder = async (salesData: any, isFormData = false) => {
+    try {
+      const invoiceData = buildInvoiceData(salesData, isFormData);
+      await printSalesOrder(invoiceData, (msg) => {
+        toast({
+          title: "Error",
+          description: msg,
+          variant: "destructive",
+        });
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate Sales Order PDF",
+        variant: "destructive",
+      });
+    }
   };
   
-  // Updated PDF functions using the helper
+  // Updated PDF functions using the same format as Sales Operations
   const generateInvoicePDFForSales = (salesRecord: Sales) => {
-    downloadPDF(salesRecord, false);
+    handlePrintSalesOrder(salesRecord, false);
   };
   
   const generateInvoicePDF = () => {
     const formData = form.getValues();
-    downloadPDF(formData, true);
+    handlePrintSalesOrder(formData, true);
   };
   
   const previewInvoicePDF = () => {
     const formData = form.getValues();
-    previewPDF(formData, true);
+    handlePrintSalesOrder(formData, true);
   };
 
   // Product selection handler
@@ -1048,10 +988,10 @@ export default function Sales() {
                               variant="outline"
                               size="sm"
                               onClick={() => {
-                                previewPDF(sales, false);
+                                handlePrintSalesOrder(sales, false);
                               }}
                               className="text-blue-600 hover:text-blue-700"
-                              title="Preview Invoice"
+                              title="Preview Sales Order"
                             >
                               <Package className="h-3 w-3" />
                             </Button>
@@ -1060,7 +1000,7 @@ export default function Sales() {
                               size="sm"
                               onClick={() => generateInvoicePDFForSales(sales)}
                               className="text-green-600 hover:text-green-700"
-                              title="Download PDF"
+                              title="Download Sales Order PDF"
                             >
                               <Download className="h-3 w-3" />
                             </Button>

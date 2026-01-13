@@ -183,22 +183,28 @@ export default function ClientManagement() {
 
   const categoryStats = [
     {
+      name: "Total Clients",
+      count: Array.isArray(clients) ? clients.length : 0,
+      description: "All categories",
+      color: "bg-blue-600"
+    },
+    {
       name: "Alpha",
       count: (stats as any)?.clientCategories?.ALFA || 0,
-      description: "Premium clients",
+      description: "Priority clients",
       color: "bg-green-500"
     },
     {
       name: "Beta", 
       count: (stats as any)?.clientCategories?.BETA || 0,
-      description: "Standard clients",
-      color: "bg-blue-500"
+      description: "Regular clients",
+      color: "bg-yellow-500"
     },
     {
       name: "Gamma",
       count: (stats as any)?.clientCategories?.GAMMA || 0,
-      description: "Regular clients", 
-      color: "bg-yellow-500"
+      description: "Standard clients", 
+      color: "bg-orange-500"
     },
     {
       name: "Delta",
@@ -209,75 +215,30 @@ export default function ClientManagement() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Client Management</h1>
-        <p className="text-gray-600 mt-1">Manage client information and categorization</p>
-      </div>
-      
-      {/* Category Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              {categoryStats.map((category, index) => (
-                <Card key={index} className="p-6">
-                  <div className="flex items-center">
-                    <div className={`w-3 h-3 ${category.color} rounded-full`}></div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-600">{category.name}</p>
-                      <p className="text-2xl font-bold text-gray-900">{category.count}</p>
-                      <p className="text-xs text-gray-500">{category.description}</p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-
-            {/* Filters and Actions */}
-            <Card className="mb-6">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Client Directory</h3>
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                      <Input 
-                        type="text" 
-                        placeholder="Search clients..." 
-                        className="w-64 pl-10"
-                      />
-                    </div>
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger className="w-40">
-                        <SelectValue placeholder="Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Categories</SelectItem>
-                        <SelectItem value="ALFA">Alpha</SelectItem>
-                        <SelectItem value="BETA">Beta</SelectItem>
-                        <SelectItem value="GAMMA">Gamma</SelectItem>
-                        <SelectItem value="DELTA">Delta</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" size="sm">
-                      <Filter size={16} className="mr-2" />
-                      Filter
-                    </Button>
-                    <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
-                      <DialogTrigger asChild>
-                        <Button size="sm">
-                          <Plus size={16} className="mr-2" />
-                          Add Client
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle>{editingClient ? 'Edit Client' : 'Add New Client'}</DialogTitle>
-                        </DialogHeader>
-                        <Form {...form}>
-                          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <FormField
-                                control={form.control}
-                                name="name"
+    <div className="space-y-3 w-full min-w-0">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Client Management</h1>
+          <p className="text-gray-600 text-sm">Manage your clients and their information</p>
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+              <Plus size={16} className="mr-2" />
+              Add Client
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingClient ? 'Edit Client' : 'Add New Client'}</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel>Client Name</FormLabel>
@@ -460,200 +421,257 @@ export default function ClientManagement() {
                         </Form>
                       </DialogContent>
                     </Dialog>
+      </div>
+
+      {/* Category Stats - Full Width 5 Columns */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        {categoryStats.map((category, index) => (
+          <Card key={index} className={`${category.color} text-white`}>
+            <CardContent className="p-3">
+              <p className="text-sm font-medium opacity-90">{category.name}</p>
+              <p className="text-xl font-bold">{category.count}</p>
+              <p className="text-xs opacity-75">{category.description}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Search & Filters */}
+      <Card>
+        <CardContent className="p-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter size={14} className="text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Search & Filters</span>
+            </div>
+            <div className="flex-1 flex items-center gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[200px] max-w-xs">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+                <Input 
+                  type="text" 
+                  placeholder="Search clients..." 
+                  className="pl-9 h-8 text-sm"
+                />
+              </div>
+              <Input type="date" className="w-32 h-8 text-sm" placeholder="dd-mm-yyyy" />
+              <Input type="date" className="w-32 h-8 text-sm" placeholder="dd-mm-yyyy" />
+              <Button variant="outline" size="sm" className="h-8">
+                <Download size={14} className="mr-1" />
+                Export Excel
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8">
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Clients Table */}
+      <Card className="flex-1 min-w-0">
+        <CardHeader className="py-2 px-3 border-b">
+          <h3 className="text-base font-semibold">Clients ({Array.isArray(filteredClients) ? filteredClients.length : 0})</h3>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-2 whitespace-nowrap">Client Name</th>
+                  <th className="px-2 py-2 whitespace-nowrap">Category</th>
+                  <th className="px-2 py-2 whitespace-nowrap">Contact</th>
+                  <th className="px-2 py-2 whitespace-nowrap">Sales Person</th>
+                  <th className="px-2 py-2 whitespace-nowrap">Compliance</th>
+                  <th className="px-2 py-2 whitespace-nowrap">Documents</th>
+                  <th className="px-2 py-2 whitespace-nowrap">Payment Terms</th>
+                  <th className="px-2 py-2 whitespace-nowrap">Credit Limit</th>
+                  <th className="px-2 py-2 whitespace-nowrap">Created</th>
+                  <th className="px-2 py-2 w-8"></th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {isLoading ? (
+                  [...Array(5)].map((_, i) => (
+                    <tr key={i}>
+                      <td className="px-2 py-2"><div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div></td>
+                      <td className="px-2 py-2"><div className="h-5 bg-gray-200 rounded w-14 animate-pulse"></div></td>
+                      <td className="px-2 py-2"><div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div></td>
+                      <td className="px-2 py-2"><div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div></td>
+                      <td className="px-2 py-2"><div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div></td>
+                      <td className="px-2 py-2"><div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div></td>
+                      <td className="px-2 py-2"><div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div></td>
+                      <td className="px-2 py-2"><div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div></td>
+                      <td className="px-2 py-2"><div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div></td>
+                      <td className="px-2 py-2"><div className="h-4 bg-gray-200 rounded w-6 animate-pulse"></div></td>
+                    </tr>
+                  ))
+                ) : !filteredClients || (Array.isArray(filteredClients) && filteredClients.length === 0) ? (
+                  <tr>
+                    <td colSpan={10} className="px-2 py-8 text-center text-gray-500">
+                      <Users className="mx-auto h-10 w-10 text-gray-400 mb-3" />
+                      <p>No clients found</p>
+                    </td>
+                  </tr>
+                ) : (
+                  (filteredClients as any[]).map((client: any, index: number) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-2 py-2">
+                        <div>
+                          <div 
+                            onClick={() => handleViewClient(client)}
+                            className="font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-sm"
+                          >
+                            {client.name}
+                          </div>
+                          <div className="text-xs text-gray-500">{client.companyType || 'Pvt Ltd'}</div>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2">
+                        <Badge className={`${getCategoryColor(client.category)} text-xs px-2 py-0.5`}>
+                          {client.category === 'ALFA' ? 'Alpha' : client.category}
+                        </Badge>
+                      </td>
+                      <td className="px-2 py-2">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{client.contactPersonName || client.name}</div>
+                          <div className="text-xs text-gray-500">{client.mobileNumber || '-'}</div>
+                          <div className="text-xs text-gray-500 max-w-[180px] truncate">{client.email || '-'}</div>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{client.salesPersonName || 'TANAY MONDAL'}</div>
+                          <div className="text-xs text-gray-500">ADMIN</div>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="text-xs text-gray-900">
+                          {client.gstNumber ? <span>GST: {client.gstNumber}</span> : <span className="text-gray-400">-</span>}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2">
+                        <DocumentStatus client={client} />
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="text-sm text-gray-900">
+                          {client.paymentTerms || 30} days
+                          <div className="text-xs text-gray-500">{client.poRequired ? 'PO: Required' : 'PO: Not Required'}</div>
+                        </div>
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="text-sm font-medium text-gray-900 whitespace-nowrap">
+                          {client.creditLimit ? `₹${parseInt(client.creditLimit).toLocaleString()}` : '-'}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 text-xs text-gray-500 whitespace-nowrap">
+                        {client.createdAt ? new Date(client.createdAt).toLocaleDateString('en-GB') : '-'}
+                      </td>
+                      <td className="px-2 py-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-36">
+                            <DropdownMenuItem onClick={() => handleViewClient(client)}>
+                              <Eye className="mr-2 h-3 w-3" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditClient(client)}>
+                              <Edit className="mr-2 h-3 w-3" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteClient(client)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-3 w-3" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Client View Dialog */}
+      {viewingClient && (
+        <Dialog open={!!viewingClient} onOpenChange={() => setViewingClient(null)}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5 text-[#dc322f]" />
+                {viewingClient.name}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900 border-b pb-2">Basic Information</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Category:</span>
+                      <Badge className={`ml-2 ${getCategoryColor(viewingClient.category)}`}>
+                        {viewingClient.category}
+                      </Badge>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Email:</span>
+                      <span className="ml-2">{viewingClient.email || 'Not provided'}</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Phone:</span>
+                      <span className="ml-2">{viewingClient.mobileNumber || 'Not provided'}</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">GST Number:</span>
+                      <span className="ml-2">{viewingClient.gstNumber || 'Not provided'}</span>
+                    </div>
                   </div>
                 </div>
-              </CardHeader>
-            </Card>
 
-            {/* Clients Table */}
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        <th className="px-6 py-3">Client</th>
-                        <th className="px-6 py-3">Category</th>
-                        <th className="px-6 py-3">Contact</th>
-                        <th className="px-6 py-3">Documents</th>
-                        <th className="px-6 py-3">Credit Limit</th>
-                        <th className="px-6 py-3">Payment Terms</th>
-                        <th className="px-6 py-3">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {isLoading ? (
-                        [...Array(5)].map((_, i) => (
-                          <tr key={i}>
-                            <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
-                            <td className="px-6 py-4"><div className="h-6 bg-gray-200 rounded w-16"></div></td>
-                            <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-                            <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-                            <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-                            <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-                            <td className="px-6 py-4"><div className="h-8 bg-gray-200 rounded w-20"></div></td>
-                          </tr>
-                        ))
-                      ) : !filteredClients || (Array.isArray(filteredClients) && filteredClients.length === 0) ? (
-                        <tr>
-                          <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                            <Users className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                            <p>No clients found</p>
-                          </td>
-                        </tr>
-                      ) : (
-                        (filteredClients as any[]).map((client: any, index: number) => (
-                          <tr key={index} className="hover:bg-gray-50">
-                            <td className="px-6 py-4">
-                              <div>
-                                <div 
-                                  onClick={() => handleViewClient(client)}
-                                  className="font-medium hover:underline cursor-pointer"
-                                  style={{
-                                    color: '#2563eb',
-                                    textDecoration: 'none'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.target.style.color = '#1d4ed8';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.target.style.color = '#2563eb';
-                                  }}
-                                  data-testid={`link-client-${client.id}`}
-                                >
-                                  {client.name}
-                                </div>
-                                <div className="text-sm text-gray-500">{client.gstNumber || 'No GST'}</div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <Badge className={getCategoryColor(client.category)}>
-                                {client.category}
-                              </Badge>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div>
-                                <div className="text-gray-900">{client.email || 'No email'}</div>
-                                <div className="text-sm text-gray-500">{client.mobileNumber || 'No phone'}</div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <DocumentStatus client={client} />
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="font-semibold text-gray-900">
-                                {client.creditLimit ? `₹${parseInt(client.creditLimit).toLocaleString()}` : 'Not set'}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="text-gray-900">{client.paymentTerms || 30} days</div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem onClick={() => handleViewClient(client)}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleEditClient(client)}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit Client
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDeleteClient(client)}
-                                    className="text-red-600 focus:text-red-600"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete Client
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900 border-b pb-2">Address Information</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Address Line:</span>
+                      <span className="ml-2">{viewingClient.billingAddressLine || 'Not provided'}</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">City:</span>
+                      <span className="ml-2">{viewingClient.billingCity || 'Not provided'}</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">State:</span>
+                      <span className="ml-2">{viewingClient.billingState || 'Not provided'}</span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Pincode:</span>
+                      <span className="ml-2">{viewingClient.billingPincode || 'Not provided'}</span>
+                    </div>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Client View Dialog */}
-            {viewingClient && (
-              <Dialog open={!!viewingClient} onOpenChange={() => setViewingClient(null)}>
-                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Building className="h-5 w-5 text-[#dc322f]" />
-                      {viewingClient.name}
-                    </DialogTitle>
-                  </DialogHeader>
-                  
-                  <div className="space-y-6">
-                    {/* Basic Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-4">
-                        <h4 className="font-semibold text-gray-900 border-b pb-2">Basic Information</h4>
-                        <div className="space-y-3">
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Category:</span>
-                            <Badge className={`ml-2 ${getCategoryColor(viewingClient.category)}`}>
-                              {viewingClient.category}
-                            </Badge>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Email:</span>
-                            <span className="ml-2">{viewingClient.email || 'Not provided'}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Phone:</span>
-                            <span className="ml-2">{viewingClient.mobileNumber || 'Not provided'}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">GST Number:</span>
-                            <span className="ml-2">{viewingClient.gstNumber || 'Not provided'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h4 className="font-semibold text-gray-900 border-b pb-2">Address Information</h4>
-                        <div className="space-y-3">
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Address Line:</span>
-                            <span className="ml-2">{viewingClient.billingAddressLine || 'Not provided'}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">City:</span>
-                            <span className="ml-2">{viewingClient.billingCity || 'Not provided'}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">State:</span>
-                            <span className="ml-2">{viewingClient.billingState || 'Not provided'}</span>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Pincode:</span>
-                            <span className="ml-2">{viewingClient.billingPincode || 'Not provided'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <h4 className="font-semibold text-gray-900 border-b pb-2">Financial Information</h4>
-                        <div className="space-y-3">
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Credit Limit:</span>
-                            <span className="ml-2 font-semibold text-lg text-[#dc322f]">
-                              {viewingClient.creditLimit ? `₹${parseInt(viewingClient.creditLimit).toLocaleString()}` : 'Not set'}
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-500">Payment Terms:</span>
+                <div className="space-y-4">
+                  <h4 className="font-semibold text-gray-900 border-b pb-2">Financial Information</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Credit Limit:</span>
+                      <span className="ml-2 font-semibold text-lg text-[#dc322f]">
+                        {viewingClient.creditLimit ? `₹${parseInt(viewingClient.creditLimit).toLocaleString()}` : 'Not set'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Payment Terms:</span>
                             <span className="ml-2">{viewingClient.paymentTerms || 30} days</span>
                           </div>
                           <div>

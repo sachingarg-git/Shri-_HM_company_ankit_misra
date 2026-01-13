@@ -51,9 +51,9 @@ function Router() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
-      <main className="flex-1 overflow-auto flex flex-col">
+      <main className="flex-1 overflow-auto flex flex-col min-w-0">
         <TopBar title="Business Management" subtitle="Comprehensive business operations platform" />
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-4 overflow-auto">
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/credit-payments" component={CreditPayments} />

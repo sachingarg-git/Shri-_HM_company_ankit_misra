@@ -60,6 +60,7 @@ import { insertLeadSchema } from "@shared/schema";
 import { z } from "zod";
 import { generateBitumenQuotationPDF } from "@/components/quotation-template";
 import { generateBitumenSalesOrderPDF } from "@/components/sales-order-template";
+import { printSalesOrder } from "@/utils/printInvoice";
 
 // Edit Sales Order Form Component
 function EditSalesOrderForm({ salesOrder, onClose, onSave }: any) {
@@ -4287,76 +4288,100 @@ M/S SRI HM BITUMEN CO`;
       
       // Get client details
       const client = (clients as any[])?.find((c: any) => c.id === salesOrder.clientId);
-      const clientDetails = client ? {
-        name: client.name,
-        gstNumber: client.gstNumber || '',
-        address: `${client.addressLine1 || ''} ${client.billingAddressLine || ''}`,
-        state: client.state || client.billingState || '',
-        pinCode: client.pinCode || client.billingPincode || '',
-        mobileNumber: client.mobileNumber || '',
-        email: client.email || ''
-      } : {
-        name: getSalesOrderClientName(salesOrder),
-        gstNumber: '',
-        address: '',
-        state: '',
-        pinCode: '',
-        mobileNumber: '',
-        email: ''
-      };
-
-      // Transform items from quotation
-      const items = (quotation?.items || []).map((item: any) => ({
-        description: item.description || 'Product Item',
-        quantity: parseFloat(item.quantity || 1),
-        unit: item.unit || 'Nos',
-        rate: parseFloat(item.unitPrice || item.rate || 0),
-        amount: parseFloat(item.totalPrice || item.amount || 0),
-        gstRate: 18,
-        gstAmount: parseFloat(item.totalPrice || item.amount || 0) * 0.18,
-        totalAmount: parseFloat(item.totalPrice || item.amount || 0) * 1.18
-      }));
-
-      const subtotal = items.reduce((sum: number, item: any) => sum + item.amount, 0);
-      const total = subtotal * 1.18; // Including 18% GST
-
-      const salesOrderData = {
-        orderNumber: salesOrder.orderNumber,
-        orderDate: new Date(salesOrder.orderDate || salesOrder.createdAt),
-        deliveryTerms: 'With In 10 to 12 Days',
-        paymentTerms: '30 Days Credit. Interest will be charged Day 1st Of Billing @18%P.A',
-        destination: '',
-        loadingFrom: 'Kandla',
-        client: clientDetails,
-        items: items,
-        salesPersonName: 'Sales Representative',
-        description: '',
-        note: '',
-        subtotal: subtotal,
-        freight: 0,
-        total: total,
-        companyDetails: {
-          name: 'M/S SRI HM BITUMEN CO',
-          address: 'Dag No : 1071, Patta No : 264, Mkirpara, Chakardaigaon\nMouza - Ramcharani, Guwahati, Assam - 781035',
-          gstNumber: '18CGMPP6536N2ZG',
-          mobile: '+91 8453059698',
-          email: 'info.srihmbitumen@gmail.com',
-          bankDetails: {
-            bankName: 'State Bank of India',
-            accountNumber: '40464693538',
-            branch: 'Guwahati Branch',
-            ifscCode: 'SBIN0040464'
-          }
-        }
-      };
-
-      const doc = generateBitumenSalesOrderPDF(salesOrderData);
-      doc.save(`sales-order-${salesOrder.orderNumber}.pdf`);
       
-      toast({
-        title: "Success",
-        description: "Sales Order PDF downloaded successfully",
+      // Build invoice data for printSalesOrder (same format as Invoice Management)
+      const invoiceData = {
+        invoiceNumber: salesOrder.orderNumber,
+        orderNumber: salesOrder.orderNumber,
+        invoiceDate: salesOrder.orderDate || salesOrder.createdAt,
+        orderDate: salesOrder.orderDate || salesOrder.createdAt,
+        dueDate: salesOrder.expectedDeliveryDate,
+        deliveryTerms: salesOrder.expectedDeliveryDate ? `Expected: ${new Date(salesOrder.expectedDeliveryDate).toLocaleDateString()}` : 'With In 10 to 12 Days',
+        paymentTerms: salesOrder.paymentTerms || 'ADVANCE',
+        destination: salesOrder.destination || '',
+        dispatchFrom: 'KANDLA',
+        loadingFrom: 'KANDLA',
+        placeOfSupply: client?.billingState || client?.state || 'ASSAM',
+        
+        // Customer (Bill To) details
+        customerName: client?.name || getSalesOrderClientName(salesOrder),
+        customerGstin: client?.gstNumber || '',
+        customerGSTIN: client?.gstNumber || '',
+        customerAddress: `${client?.billingAddressLine || client?.addressLine1 || ''}, ${client?.billingCity || ''}, ${client?.billingState || client?.state || ''}, ${client?.billingCountry || 'India'}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ', '),
+        customerState: client?.billingState || client?.state || '',
+        customerPincode: client?.billingPincode || client?.pinCode || '',
+        customerMobile: client?.mobileNumber || '',
+        customerPhone: client?.mobileNumber || '',
+        customerEmail: client?.email || '',
+        partyMobileNumber: client?.mobileNumber || '',
+        
+        // Ship To details (same as Bill To)
+        shipToName: client?.name || getSalesOrderClientName(salesOrder),
+        shipToGstin: client?.gstNumber || '',
+        shipToAddress: `${client?.billingAddressLine || client?.addressLine1 || ''}, ${client?.billingCity || ''}, ${client?.billingState || client?.state || ''}, ${client?.billingCountry || 'India'}`.replace(/^,\s*|,\s*$/g, '').replace(/,\s*,/g, ', '),
+        shipToState: client?.billingState || client?.state || '',
+        shipToPincode: client?.billingPincode || client?.pinCode || '',
+        shipToMobile: client?.mobileNumber || '',
+        shipToEmail: client?.email || '',
+        
+        // Items from quotation
+        items: (quotation?.items || []).map((item: any) => {
+          const qty = parseFloat(item.quantity || 1);
+          const rate = parseFloat(item.unitPrice || item.rate || 0);
+          const amount = qty * rate;
+          const gstRate = 18;
+          const gstAmount = amount * (gstRate / 100);
+          return {
+            productName: item.description || item.productName || 'Product Item',
+            description: item.description || item.productName || 'Product Item',
+            quantity: qty,
+            unitOfMeasurement: item.unit || 'MT',
+            unit: item.unit || 'MT',
+            ratePerUnit: rate,
+            rate: rate,
+            grossAmount: amount,
+            taxableAmount: amount,
+            cgstRate: 9,
+            cgstAmount: gstAmount / 2,
+            sgstRate: 9,
+            sgstAmount: gstAmount / 2,
+            totalAmount: amount + gstAmount
+          };
+        }),
+        
+        // Totals
+        subtotalAmount: (quotation?.items || []).reduce((sum: number, item: any) => {
+          const qty = parseFloat(item.quantity || 1);
+          const rate = parseFloat(item.unitPrice || item.rate || 0);
+          return sum + (qty * rate);
+        }, 0),
+        cgstAmount: (quotation?.items || []).reduce((sum: number, item: any) => {
+          const qty = parseFloat(item.quantity || 1);
+          const rate = parseFloat(item.unitPrice || item.rate || 0);
+          return sum + ((qty * rate) * 0.09);
+        }, 0),
+        sgstAmount: (quotation?.items || []).reduce((sum: number, item: any) => {
+          const qty = parseFloat(item.quantity || 1);
+          const rate = parseFloat(item.unitPrice || item.rate || 0);
+          return sum + ((qty * rate) * 0.09);
+        }, 0),
+        totalInvoiceAmount: parseFloat(salesOrder.totalAmount || 0),
+        freightCharges: 0,
+        transportCharges: 0,
+        
+        salesPersonName: '',
+        description: salesOrder.notes || ''
+      };
+
+      // Use the same print format as Invoice Management
+      await printSalesOrder(invoiceData, (msg) => {
+        toast({
+          title: "Error",
+          description: msg,
+          variant: "destructive",
+        });
       });
+      
     } catch (error) {
       toast({
         title: "Error",

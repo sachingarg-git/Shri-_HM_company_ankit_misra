@@ -3237,9 +3237,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid client reference" });
       }
       
+      // Generate proper Sales Order number with financial year format (SO-001/25-26)
+      const generateSalesOrderNumber = async () => {
+        const now = new Date();
+        const currentMonth = now.getMonth(); // 0-11
+        const currentYear = now.getFullYear();
+        
+        // Financial year starts in April (month 3)
+        // If current month is Jan-Mar (0-2), we're in the previous FY
+        let fyStart, fyEnd;
+        if (currentMonth < 3) { // Jan, Feb, Mar
+          fyStart = currentYear - 1;
+          fyEnd = currentYear;
+        } else { // Apr-Dec
+          fyStart = currentYear;
+          fyEnd = currentYear + 1;
+        }
+        
+        const fyString = `${fyStart.toString().slice(-2)}-${fyEnd.toString().slice(-2)}`;
+        
+        // Get all sales orders to find the next sequence number for this FY
+        const allOrders = await storage.getAllSalesOrders();
+        const fyPattern = new RegExp(`^SO-\\d+/${fyString}$`);
+        const fyOrders = allOrders.filter(order => fyPattern.test(order.orderNumber));
+        
+        // Find the highest sequence number
+        let maxSeq = 0;
+        fyOrders.forEach(order => {
+          const match = order.orderNumber.match(/^SO-(\d+)\//);
+          if (match) {
+            const seq = parseInt(match[1], 10);
+            if (seq > maxSeq) maxSeq = seq;
+          }
+        });
+        
+        const nextSeq = maxSeq + 1;
+        const seqStr = nextSeq.toString().padStart(3, '0');
+        
+        return `SO-${seqStr}/${fyString}`;
+      };
+      
+      const orderNumber = await generateSalesOrderNumber();
+      
       // Create sales order from quotation data
       const salesOrderData = {
-        orderNumber: `SO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        orderNumber: orderNumber,
         quotationId: quotation.id,
         clientId: actualClientId,
         orderDate: new Date(),
@@ -3342,7 +3384,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/sales-orders", async (req, res) => {
     try {
-      const validatedData = insertSalesOrderSchema.parse(req.body);
+      // Generate proper Sales Order number with financial year format (SO-001/25-26)
+      const generateSalesOrderNumber = async () => {
+        const now = new Date();
+        const currentMonth = now.getMonth(); // 0-11
+        const currentYear = now.getFullYear();
+        
+        // Financial year starts in April (month 3)
+        let fyStart, fyEnd;
+        if (currentMonth < 3) { // Jan, Feb, Mar
+          fyStart = currentYear - 1;
+          fyEnd = currentYear;
+        } else { // Apr-Dec
+          fyStart = currentYear;
+          fyEnd = currentYear + 1;
+        }
+        
+        const fyString = `${fyStart.toString().slice(-2)}-${fyEnd.toString().slice(-2)}`;
+        
+        // Get all sales orders to find the next sequence number for this FY
+        const allOrders = await storage.getAllSalesOrders();
+        const fyPattern = new RegExp(`^SO-\\d+/${fyString}$`);
+        const fyOrders = allOrders.filter(order => fyPattern.test(order.orderNumber));
+        
+        // Find the highest sequence number
+        let maxSeq = 0;
+        fyOrders.forEach(order => {
+          const match = order.orderNumber.match(/^SO-(\d+)\//);
+          if (match) {
+            const seq = parseInt(match[1], 10);
+            if (seq > maxSeq) maxSeq = seq;
+          }
+        });
+        
+        const nextSeq = maxSeq + 1;
+        const seqStr = nextSeq.toString().padStart(3, '0');
+        
+        return `SO-${seqStr}/${fyString}`;
+      };
+
+      const orderNumber = await generateSalesOrderNumber();
+      const validatedData = insertSalesOrderSchema.parse({
+        ...req.body,
+        orderNumber: orderNumber
+      });
       const salesOrder = await storage.createSalesOrder(validatedData);
       res.status(201).json(salesOrder);
     } catch (error) {
