@@ -83,6 +83,7 @@ export const generateTaxInvoiceHtml = (invoice: any, type: 'sales' | 'purchase')
   // Debug log to check items
   console.log('Invoice items for printing:', items);
   console.log('Full invoice object:', invoice);
+  console.log('Invoice type:', type);
 
   // Calculate total quantity with unit
   const getTotalQtyWithUnit = (): string => {
@@ -190,7 +191,7 @@ export const generateTaxInvoiceHtml = (invoice: any, type: 'sales' | 'purchase')
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Sales Invoice - ${invoice.invoiceNumber}</title>
+      <title>${type === 'purchase' ? 'Purchase' : 'Sales'} Invoice - ${invoice.invoiceNumber}</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; font-size: 9px; line-height: 1.2; padding: 10px; background: #fff; }
@@ -241,7 +242,7 @@ export const generateTaxInvoiceHtml = (invoice: any, type: 'sales' | 'purchase')
       <div class="invoice-container">
         <!-- Header Row -->
         <div class="header-row">
-          <div class="header-center">Sales Invoice</div>
+          <div class="header-center">${type === 'purchase' ? 'Purchase Invoice' : 'Sales Invoice'}</div>
         </div>
 
         <!-- Main Content - Company and Invoice Details -->
@@ -324,22 +325,23 @@ export const generateTaxInvoiceHtml = (invoice: any, type: 'sales' | 'purchase')
           </div>
         </div>
 
-        <!-- Consignee and Buyer -->
+        <!-- Consignee and Buyer / Supplier for Purchase -->
         <div class="party-row">
           <div class="party-section">
-            <div class="section-title">Consignee (Ship to)</div>
-            <div><strong>${invoice.shipToName || invoice.customerName || ''}</strong></div>
-            <div>${invoice.shipToAddress || invoice.shippingAddress || invoice.customerAddress || ''}</div>
-            <div>GSTIN/UIN : <strong>${invoice.shipToGstin || invoice.customerGstin || ''}</strong></div>
-            <div>State Name : <strong>${invoice.shipToState || invoice.placeOfSupply || 'Assam'}</strong>, Code : <strong>${invoice.shipToStateCode || invoice.placeOfSupplyStateCode || '18'}</strong></div>
+            <div class="section-title">${type === 'purchase' ? 'Buyer (Bill to)' : 'Consignee (Ship to)'}</div>
+            <div><strong>${type === 'purchase' ? invoice.buyerName || invoice.customerName || '' : invoice.shipToName || invoice.customerName || ''}</strong></div>
+            <div>${type === 'purchase' ? invoice.buyerAddress || invoice.customerAddress || '' : invoice.shipToAddress || invoice.shippingAddress || invoice.customerAddress || ''}</div>
+            <div>GSTIN/UIN : <strong>${type === 'purchase' ? invoice.buyerGstin || invoice.customerGstin || '' : invoice.shipToGstin || invoice.customerGstin || ''}</strong></div>
+            <div>State Name : <strong>${type === 'purchase' ? invoice.buyerState || invoice.placeOfSupply || 'Assam' : invoice.shipToState || invoice.placeOfSupply || 'Assam'}</strong>, Code : <strong>${type === 'purchase' ? invoice.buyerStateCode || invoice.placeOfSupplyStateCode || '18' : invoice.shipToStateCode || invoice.placeOfSupplyStateCode || '18'}</strong></div>
+            ${type !== 'purchase' ? `<div>Place of Supply : <strong>${invoice.placeOfSupply || 'Assam'}</strong></div>` : ''}
           </div>
           <div class="party-section">
-            <div class="section-title">Buyer (Bill to)</div>
-            <div><strong>${invoice.customerName || ''}</strong></div>
-            <div>${invoice.customerAddress || invoice.billingAddress || ''}</div>
-            <div>GSTIN/UIN : <strong>${invoice.customerGstin || invoice.customerGSTIN || ''}</strong></div>
-            <div>State Name : <strong>${invoice.customerState || invoice.placeOfSupply || 'Assam'}</strong>, Code : <strong>${invoice.customerStateCode || invoice.placeOfSupplyStateCode || '18'}</strong></div>
-            <div>Place of Supply : <strong>${invoice.placeOfSupply || 'Assam'}</strong></div>
+            <div class="section-title">${type === 'purchase' ? 'Supplier (Ship from)' : 'Buyer (Bill to)'}</div>
+            <div><strong>${type === 'purchase' ? invoice.supplierName || invoice.vendorName || '' : invoice.customerName || ''}</strong></div>
+            <div>${type === 'purchase' ? invoice.supplierAddress || invoice.vendorAddress || '' : invoice.customerAddress || invoice.billingAddress || ''}</div>
+            <div>GSTIN/UIN : <strong>${type === 'purchase' ? invoice.supplierGstin || invoice.vendorGstin || '' : invoice.customerGstin || invoice.customerGSTIN || ''}</strong></div>
+            <div>State Name : <strong>${type === 'purchase' ? invoice.supplierState || invoice.placeOfSupply || 'Assam' : invoice.customerState || invoice.placeOfSupply || 'Assam'}</strong>, Code : <strong>${type === 'purchase' ? invoice.supplierStateCode || invoice.placeOfSupplyStateCode || '18' : invoice.customerStateCode || invoice.placeOfSupplyStateCode || '18'}</strong></div>
+            ${type === 'purchase' ? `<div>Place of Supply : <strong>${invoice.placeOfSupply || 'Assam'}</strong></div>` : ''}
           </div>
         </div>
 
@@ -490,7 +492,6 @@ export const generateTaxInvoiceHtml = (invoice: any, type: 'sales' | 'purchase')
           </div>
           <div class="signature-right">
             <div style="font-weight: bold;">for ${COMPANY_DETAILS.name}</div>
-            <img src="/logo.jpg" alt="" class="auth-stamp" onerror="this.style.display='none'" />
             <div style="position: absolute; bottom: 5px; right: 10px; font-weight: bold; color: #E67E22;">Authorised Signatory</div>
           </div>
         </div>

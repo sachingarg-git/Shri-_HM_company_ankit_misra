@@ -6,8 +6,8 @@ import * as storage from "./sales-operations-storage";
 import { requireAuth } from "./auth";
 import { storage as mainStorage } from "./storage";
 import { db } from "./db";
-import { clients, productMaster } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { clients, productMaster, invoicePayments } from "@shared/schema";
+import { eq, sum, sql } from "drizzle-orm";
 
 export default function setupSalesOperationsRoutes(app: Express) {
   
@@ -508,12 +508,27 @@ export default function setupSalesOperationsRoutes(app: Express) {
       delete invoice.modifiedAt;
       delete invoice.updatedAt;
       
-      // ALWAYS generate invoice number at save time to ensure uniqueness
-      // This prevents race conditions when multiple users create invoices simultaneously
+      // Only generate invoice number if not provided by user (manual entry)
+      // If user provided an invoice number, respect it
       const financialYear = invoice.financialYear || await storage.getCurrentFinancialYear();
-      invoice.invoiceNumber = await storage.generateInvoiceNumber('PURCHASE', financialYear);
+      
+      // Debug logging for invoice number
+      console.log('=== INVOICE NUMBER DEBUG ===');
+      console.log('Invoice object keys:', Object.keys(invoice));
+      console.log('invoiceNumber value:', invoice.invoiceNumber);
+      console.log('invoiceNumber type:', typeof invoice.invoiceNumber);
+      console.log('invoiceNumber trimmed:', invoice.invoiceNumber?.trim());
+      console.log('isEmpty check:', !invoice.invoiceNumber || invoice.invoiceNumber.trim() === '');
+      
+      if (!invoice.invoiceNumber || invoice.invoiceNumber.trim() === '') {
+        // Auto-generate only if empty
+        invoice.invoiceNumber = await storage.generateInvoiceNumber('PURCHASE', financialYear);
+        console.log('Generated auto invoice number at save time:', invoice.invoiceNumber);
+      } else {
+        // User provided manual invoice number
+        console.log('Using user-provided invoice number:', invoice.invoiceNumber);
+      }
       invoice.financialYear = financialYear;
-      console.log('Generated invoice number at save time:', invoice.invoiceNumber);
       
       // Set creator
       invoice.createdBy = currentUser.id;
@@ -637,17 +652,6 @@ export default function setupSalesOperationsRoutes(app: Express) {
     }
   });
 
-  // Get payments for invoice
-  app.get("/api/sales-operations/invoices/:id/payments", requireAuth, async (req, res) => {
-    try {
-      const totalPaid = await storage.getTotalPaymentsForInvoice(req.params.id);
-      res.json({ totalPaid });
-    } catch (error: any) {
-      console.error("Error fetching payments:", error);
-      res.status(500).json({ error: "Failed to fetch payments" });
-    }
-  });
-
   // ============ STOCK MANAGEMENT ============
   
   // Get stock ledger
@@ -748,6 +752,242 @@ export default function setupSalesOperationsRoutes(app: Express) {
     } catch (error: any) {
       console.error("Error validating GSTIN:", error);
       res.status(500).json({ error: "Failed to validate GSTIN" });
+    }
+  });
+
+  // ============ LEDGER MANAGEMENT ============
+
+  // Get company-wise ledger for sales order
+  app.get("/api/sales-orders/:salesOrderId/company-ledger", requireAuth, async (req, res) => {
+    try {
+      const { salesOrderId } = req.params;
+
+      // Get sales order with client info
+      const salesOrder = await mainStorage.getSalesOrderById(salesOrderId);
+      if (!salesOrder) {
+        return res.status(404).json({ error: "Sales order not found" });
+      }
+
+      // Get all sales invoices for this client
+      const invoices = await mainStorage.getSalesInvoicesForClient(salesOrder.clientId);
+
+      // Build ledger data
+      let totalAmount = 0;
+      let totalPaid = 0;
+      let totalPending = 0;
+
+      const ledgerEntries = invoices.map((invoice: any) => {
+        const paid = invoice.paidAmount || 0;
+        const pending = (invoice.totalAmount || 0) - paid;
+        
+        totalAmount += invoice.totalAmount || 0;
+        totalPaid += paid;
+        totalPending += pending;
+
+        let status = "PENDING";
+        if (paid >= (invoice.totalAmount || 0)) {
+          status = "PAID";
+        } else if (paid > 0) {
+          status = "PARTIAL";
+        }
+
+        // Check if overdue
+        const dueDate = new Date(invoice.dueDate || invoice.invoiceDate);
+        if (dueDate < new Date() && paid < (invoice.totalAmount || 0)) {
+          status = "OVERDUE";
+        }
+
+        return {
+          id: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+          invoiceDate: invoice.invoiceDate,
+          dueDate: invoice.dueDate || new Date(new Date(invoice.invoiceDate).getTime() + 30 * 24 * 60 * 60 * 1000),
+          totalAmount: invoice.totalAmount || 0,
+          paidAmount: paid,
+          pendingAmount: pending,
+          status,
+          paymentDetails: invoice.payments || []
+        };
+      });
+
+      const client = await mainStorage.getClientById(salesOrder.clientId);
+
+      res.json({
+        companyId: salesOrder.clientId,
+        companyName: client?.name || "Unknown",
+        totalInvoices: ledgerEntries.length,
+        totalAmount,
+        totalPaid,
+        totalPending,
+        ledgerEntries: ledgerEntries.sort((a: any, b: any) => 
+          new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime()
+        )
+      });
+    } catch (error: any) {
+      console.error("Error fetching company ledger:", error);
+      res.status(500).json({ error: "Failed to fetch company ledger" });
+    }
+  });
+
+  // ============ RECORD PAYMENT ============
+
+  // Record payment for invoice
+  app.post("/api/sales-operations/record-payment", requireAuth, async (req, res) => {
+    try {
+      const { invoiceId, amount, paymentDate, paymentMode, referenceNumber } = req.body;
+      const currentUser = (req as any).user;
+
+      if (!invoiceId || !amount) {
+        return res.status(400).json({ error: "Invoice ID and payment amount are required" });
+      }
+
+      // Get the invoice
+      const invoice = await storage.getSalesInvoiceById(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      // Create payment record
+      await db.insert(invoicePayments).values({
+        invoiceId: invoiceId,
+        paymentAmount: amount.toString(),
+        paymentDate: new Date(paymentDate || new Date()),
+        paymentMode: paymentMode || 'CASH',
+        referenceNumber: referenceNumber || null,
+        createdBy: currentUser.id,
+      });
+
+      // Get all payments for this invoice and recalculate totals
+      const allPayments = await db.select({
+        total: sum(invoicePayments.paymentAmount),
+      }).from(invoicePayments).where(eq(invoicePayments.invoiceId, invoiceId));
+
+      const totalPaid = parseFloat(allPayments[0]?.total || 0);
+      const totalInvoiceAmount = parseFloat(invoice.totalInvoiceAmount || 0);
+      const remainingBalance = totalInvoiceAmount - totalPaid;
+
+      let paymentStatus = 'PENDING';
+      if (remainingBalance <= 0) {
+        paymentStatus = 'PAID';
+      } else if (totalPaid > 0) {
+        paymentStatus = 'PARTIAL';
+      }
+
+      // Update invoice with new totals
+      const updatedInvoice = await storage.updateSalesInvoice(invoiceId, {
+        paidAmount: totalPaid.toFixed(2),
+        remainingBalance: remainingBalance.toFixed(2),
+        paymentStatus: paymentStatus,
+        modifiedBy: currentUser.id,
+      });
+
+      res.json(updatedInvoice);
+    } catch (error: any) {
+      console.error("Error recording payment:", error);
+      res.status(500).json({ error: "Failed to record payment" });
+    }
+  });
+
+  // Get all payments for an invoice
+  app.get("/api/sales-operations/invoices/:invoiceId/payments", requireAuth, async (req, res) => {
+    try {
+      const { invoiceId } = req.params;
+      console.log(`🔍 Fetching payments for invoice: ${invoiceId}`);
+
+      // First, verify invoicePayments table is accessible
+      console.log('📋 invoicePayments schema:', invoicePayments);
+
+      const payments = await db
+        .select()
+        .from(invoicePayments)
+        .where(eq(invoicePayments.invoiceId, invoiceId));
+
+      console.log(`✅ Fetched ${payments.length} payments for invoice ${invoiceId}`);
+      if (payments.length > 0) {
+        console.log('First payment:', JSON.stringify(payments[0]));
+      }
+      res.json(payments || []);
+    } catch (error: any) {
+      console.error("❌ Error fetching payments:");
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
+      res.status(500).json({ error: error.message || "Failed to fetch payments", details: error.stack });
+    }
+  });
+
+  // ============ INVOICE LEDGER ============
+
+  // Get invoice payment ledger details
+  app.get("/api/sales-operations/invoices/:invoiceId/ledger", requireAuth, async (req, res) => {
+    try {
+      const { invoiceId } = req.params;
+      
+      const invoices = await storage.getAllSalesInvoices();
+      const invoice = invoices.find((inv: any) => inv.id === invoiceId);
+      
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+
+      // Fetch all invoices for this customer to show in ledger
+      const customerInvoices = invoices.filter((inv: any) => inv.customerId === invoice.customerId);
+      
+      let totalAmount = 0;
+      let totalPaid = 0;
+      let totalPending = 0;
+
+      const ledgerEntries = customerInvoices.map((inv: any) => {
+        const invoiceAmount = parseFloat(inv.totalInvoiceAmount || 0);
+        const paid = parseFloat(inv.paidAmount || 0);
+        const pending = invoiceAmount - paid;
+
+        totalAmount += invoiceAmount;
+        totalPaid += paid;
+        totalPending += pending;
+
+        // Determine status based on payment and due date
+        let status = "PENDING";
+        if (paid >= invoiceAmount) {
+          status = "PAID";
+        } else if (paid > 0) {
+          status = "PARTIAL";
+        } else if (inv.dueDate) {
+          const dueDate = new Date(inv.dueDate);
+          const today = new Date();
+          if (dueDate < today) {
+            status = "OVERDUE";
+          }
+        }
+
+        return {
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          invoiceDate: inv.invoiceDate,
+          dueDate: inv.dueDate || new Date(new Date(inv.invoiceDate).getTime() + 30 * 24 * 60 * 60 * 1000),
+          totalAmount: invoiceAmount,
+          paidAmount: paid,
+          pendingAmount: pending,
+          status,
+          paymentDetails: inv.payments || []
+        };
+      });
+
+      const customer = await mainStorage.getClientById(invoice.customerId);
+
+      res.json({
+        customerId: invoice.customerId,
+        customerName: customer?.name || invoice.customerName || "Unknown",
+        totalInvoices: ledgerEntries.length,
+        totalAmount,
+        totalPaid,
+        totalPending,
+        ledgerEntries: ledgerEntries.sort((a: any, b: any) => 
+          new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime()
+        )
+      });
+    } catch (error: any) {
+      console.error("Error fetching invoice ledger:", error);
+      res.status(500).json({ error: "Failed to fetch invoice ledger" });
     }
   });
 }

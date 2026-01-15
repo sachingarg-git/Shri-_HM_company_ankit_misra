@@ -50,6 +50,13 @@
       "when": 1768129949805,
       "tag": "0006_careful_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1768479698755,
+      "tag": "0007_square_tarantula",
+      "breakpoints": true
     }
   ]
 }

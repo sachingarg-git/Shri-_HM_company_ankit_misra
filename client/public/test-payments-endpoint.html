@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test Payments Endpoint</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    pre { background: #f0f0f0; padding: 10px; overflow-x: auto; }
+    button { padding: 10px 20px; cursor: pointer; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Test Payments Endpoint</h1>
+  <button onclick="testEndpoint()">Test GET /api/sales-operations/invoices/.../payments</button>
+  <div id="result"></div>
+
+  <script>
+    async function testEndpoint() {
+      const invoiceId = "b5458615-7a5b-4adf-9693-221a040a51f9";
+      const resultDiv = document.getElementById('result');
+      
+      try {
+        resultDiv.innerHTML = '<p>Loading...</p>';
+        const response = await fetch(`/api/sales-operations/invoices/${invoiceId}/payments`);
+        
+        resultDiv.innerHTML += `<p>Response Status: ${response.status} ${response.statusText}</p>`;
+        
+        if (response.ok) {
+          const data = await response.json();
+          resultDiv.innerHTML += `<p class="success">✅ Success! Got ${data.length} payments</p>`;
+          resultDiv.innerHTML += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } else {
+          const errorData = await response.text();
+          resultDiv.innerHTML += `<p class="error">❌ Error: ${response.status}</p>`;
+          resultDiv.innerHTML += `<pre>${errorData}</pre>`;
+        }
+      } catch (error) {
+        resultDiv.innerHTML += `<p class="error">❌ Exception: ${error.message}</p>`;
+        resultDiv.innerHTML += `<pre>${error.stack}</pre>`;
+      }
+    }
+  </script>
+</body>
+</html>

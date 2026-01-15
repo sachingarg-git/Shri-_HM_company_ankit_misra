@@ -34,11 +34,13 @@ import {
   Printer,
   Download,
   RefreshCw,
-  IndianRupee
+  IndianRupee,
+  DollarSign
 } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PrintableTaxInvoice } from '@/components/PrintableTaxInvoice';
+import { InvoiceLedger } from '@/components/InvoiceLedger';
 
 type ViewMode = 'main' | 'sales-form' | 'purchase-form' | 'sales-list' | 'purchase-list';
 
@@ -296,7 +298,8 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
     // Final total = Taxable Amount + Total Tax
     const totalBeforeRound = taxableAmount + totalTaxAmount;
     const roundedTotal = Math.round(totalBeforeRound);
-    const roundOff = roundedTotal - totalBeforeRound;
+    // FIX: Proper decimal rounding to avoid floating point precision issues
+    const roundOff = Math.round((roundedTotal - totalBeforeRound) * 100) / 100;
 
     return {
       taxableAmount: taxableAmount,
@@ -412,7 +415,7 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
         
         // Payment terms
         paymentTerms: formData.paymentTerms || '30 Days Credit',
-        dueDate: formData.dueDate || null,
+        dueDate: (formData.dueDate && formData.dueDate !== '') ? formData.dueDate : null, // FIX: Ensure string or null
         
         // Amounts
         subtotalAmount: totals.taxableAmount,
@@ -459,9 +462,12 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
     
     console.log('=== CLIENT: Prepared invoice data ===');
     console.log('Invoice:', invoiceData.invoice);
+    console.log('Invoice Number:', invoiceData.invoice.invoiceNumber);
     console.log('Invoice Date Type:', typeof invoiceData.invoice.invoiceDate);
     console.log('Due Date:', invoiceData.invoice.dueDate);
     console.log('Due Date Type:', typeof invoiceData.invoice.dueDate);
+    console.log('Round Off Value:', invoiceData.invoice.roundOff, 'Type:', typeof invoiceData.invoice.roundOff);
+    console.log('State Code:', invoiceData.invoice.placeOfSupplyStateCode);
     console.log('Items:', invoiceData.items);
     saveMutation.mutate(invoiceData);
   };
@@ -2133,10 +2139,19 @@ const InvoiceManagement: React.FC = () => {
   const [ewayBillFilteredInvoices, setEwayBillFilteredInvoices] = useState<any[]>([]);
   const [ewayBillDialogTitle, setEwayBillDialogTitle] = useState<string>('');
 
+  // State for invoice ledger dialog
+  const [isLedgerDialogOpen, setIsLedgerDialogOpen] = useState(false);
+  const [selectedInvoiceForLedger, setSelectedInvoiceForLedger] = useState<any>(null);
+
   // Debug: Monitor viewDialogOpen state
   useEffect(() => {
     console.log('📊 viewDialogOpen state changed:', viewDialogOpen);
   }, [viewDialogOpen]);
+
+  // Debug: Monitor ledger dialog state
+  useEffect(() => {
+    console.log('💰 Ledger dialog state changed:', { isLedgerDialogOpen, selectedInvoiceId: selectedInvoiceForLedger?.id });
+  }, [isLedgerDialogOpen, selectedInvoiceForLedger]);
 
   useEffect(() => {
     console.log('📊 selectedInvoice state changed:', selectedInvoice?.invoiceNumber || 'null');
@@ -2839,10 +2854,18 @@ const InvoiceManagement: React.FC = () => {
             </Button>
             <h1 className="text-2xl font-bold text-gray-900">All Sales Invoices</h1>
           </div>
-          <Button onClick={() => handleTypeSelection('sales')} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            New Sales Invoice
-          </Button>
+          <div className="flex items-center space-x-3">
+            <a href="/company-ledger">
+              <Button variant="outline" className="flex items-center space-x-2 border-purple-300 text-purple-700 hover:bg-purple-50">
+                <DollarSign className="w-4 h-4" />
+                <span>View Ledger</span>
+              </Button>
+            </a>
+            <Button onClick={() => handleTypeSelection('sales')} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              New Sales Invoice
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -2984,15 +3007,15 @@ const InvoiceManagement: React.FC = () => {
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b">
+              <table className="w-full min-w-full">
+                <thead className="bg-gray-50 border-b sticky top-0 z-10">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice No</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-max">Invoice No</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-max">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-max">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-max">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-max">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-max">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -3005,19 +3028,29 @@ const InvoiceManagement: React.FC = () => {
                   ) : (
                     filteredInvoices.map((invoice) => (
                       <tr key={invoice.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 min-w-max">
                           {invoice.invoiceNumber}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 min-w-max">
                           {invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-IN') : 'N/A'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {invoice.customerName || 'N/A'}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm min-w-max">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              console.log("💜 Customer name clicked!", invoice);
+                              setSelectedInvoiceForLedger(invoice);
+                              setIsLedgerDialogOpen(true);
+                            }}
+                            className="text-purple-600 hover:text-purple-800 underline font-semibold cursor-pointer hover:bg-purple-50 px-2 py-1 rounded"
+                          >
+                            {invoice.customerName || 'N/A'}
+                          </button>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 min-w-max">
                           ₹{parseFloat(invoice.totalInvoiceAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap min-w-max">
                           <Badge className={
                             (invoice.paymentStatus || invoice.status) === 'PAID' ? 'bg-green-100 text-green-800' :
                             (invoice.paymentStatus || invoice.status) === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
@@ -3027,7 +3060,7 @@ const InvoiceManagement: React.FC = () => {
                             {invoice.paymentStatus || invoice.status || 'PENDING'}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium min-w-max">
                           <div className="flex gap-2 items-center">
                             <Select
                               value={invoice.paymentStatus || invoice.status || 'PENDING'}
@@ -3043,28 +3076,52 @@ const InvoiceManagement: React.FC = () => {
                                 <SelectItem value="OVERDUE">Overdue</SelectItem>
                               </SelectContent>
                             </Select>
-                            <Button
-                              size="sm"
-                              variant="outline"
+                            <button
+                              type="button"
                               onClick={() => handleViewInvoice(invoice, 'sales')}
+                              title="View"
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded border border-gray-200 cursor-pointer"
+                              style={{ pointerEvents: 'auto' }}
                             >
                               <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handlePrintInvoice(invoice, 'sales')}
+                              title="Print"
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded border border-gray-200 cursor-pointer"
+                              style={{ pointerEvents: 'auto' }}
                             >
                               <Printer className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-red-600 hover:text-red-700"
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log("💜 LEDGER BUTTON CLICKED!", {
+                                  invoiceId: invoice.id,
+                                  customerId: invoice.customerId,
+                                  invoiceNumber: invoice.invoiceNumber
+                                });
+                                setSelectedInvoiceForLedger(invoice);
+                                setTimeout(() => setIsLedgerDialogOpen(true), 0);
+                              }}
+                              title="Customer Ledger"
+                              className="p-2 text-purple-700 bg-purple-50 hover:bg-purple-100 rounded border border-purple-300 cursor-pointer font-bold"
+                              style={{ pointerEvents: 'auto' }}
+                            >
+                              <DollarSign className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleDeleteClick(invoice, 'sales')}
+                              title="Delete"
+                              className="p-2 text-red-600 hover:bg-red-100 rounded border border-red-200 cursor-pointer"
+                              style={{ pointerEvents: 'auto' }}
                             >
                               <Trash2 className="w-4 h-4" />
-                            </Button>
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -3267,8 +3324,27 @@ const InvoiceManagement: React.FC = () => {
                           <td className="p-3 text-right font-semibold text-gray-900">
                             ₹{totalAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
-                          <td className="p-3 text-right font-semibold text-green-600">
-                            ₹{paidAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <input
+                                type="number"
+                                value={paidAmt}
+                                onChange={(e) => {
+                                  const newPaid = parseFloat(e.target.value) || 0;
+                                  const newBalance = Math.max(0, totalAmt - newPaid);
+                                  const newStatus = newBalance <= 0 ? 'PAID' : newBalance < totalAmt ? 'PARTIAL' : 'PENDING';
+                                  
+                                  // Update the invoice
+                                  recordPaymentMutation.mutate({
+                                    id: invoice.id,
+                                    paidAmount: newPaid,
+                                    type: 'purchase'
+                                  });
+                                }}
+                                className="w-20 px-2 py-1 text-right text-sm border border-green-300 rounded font-semibold text-green-600 focus:outline-none focus:ring-2 focus:ring-green-500"
+                                placeholder="0.00"
+                              />
+                            </div>
                           </td>
                           <td className="p-3 text-right font-semibold">
                             {isFullyPaid ? (
@@ -3278,50 +3354,34 @@ const InvoiceManagement: React.FC = () => {
                             )}
                           </td>
                           <td className="p-3 text-center">
-                            <Badge 
-                              variant={
-                                isFullyPaid ? 'default' :
-                                invoice.paymentStatus === 'PAID' ? 'default' : 
-                                invoice.paymentStatus === 'PENDING' ? 'secondary' : 
-                                'destructive'
-                              }
-                              className={
-                                isFullyPaid ? 'bg-green-100 text-green-800' :
-                                invoice.paymentStatus === 'PAID' ? 'bg-green-100 text-green-800' :
-                                invoice.paymentStatus === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                invoice.paymentStatus === 'PARTIAL' ? 'bg-blue-100 text-blue-800' :
-                                invoice.paymentStatus === 'OVERDUE' ? 'bg-red-100 text-red-800' :
-                                invoice.paymentStatus === 'CANCELLED' ? 'bg-gray-100 text-gray-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }
-                            >
-                              {isFullyPaid ? 'PAID' : (invoice.paymentStatus || 'PENDING')}
-                            </Badge>
+                            {(() => {
+                              const displayStatus = remainingAmt <= 0 ? 'PAID' : 
+                                                   remainingAmt < totalAmt && paidAmt > 0 ? 'PARTIAL' : 
+                                                   'PENDING';
+                              return (
+                                <Badge 
+                                  variant={
+                                    displayStatus === 'PAID' ? 'default' : 
+                                    displayStatus === 'PENDING' ? 'secondary' : 
+                                    'destructive'
+                                  }
+                                  className={
+                                    displayStatus === 'PAID' ? 'bg-green-100 text-green-800' :
+                                    displayStatus === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                    displayStatus === 'PARTIAL' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-yellow-100 text-yellow-800'
+                                  }
+                                >
+                                  {displayStatus}
+                                </Badge>
+                              );
+                            })()}
                           </td>
                           <td className="p-3">
                             <div className="flex justify-center gap-2 items-center">
-                              <Select
-                                value={isFullyPaid ? 'PAID' : (invoice.paymentStatus || 'PENDING')}
-                                onValueChange={(value) => handleStatusChange(invoice.id, value, 'purchase')}
-                              >
-                                <SelectTrigger className="w-28 h-8 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="PENDING">Pending</SelectItem>
-                                  <SelectItem value="PARTIAL">Partial</SelectItem>
-                                  <SelectItem value="PAID">Paid</SelectItem>
-                                  <SelectItem value="OVERDUE">Overdue</SelectItem>
-                                </SelectContent>
-                              </Select>
                               <Button variant="outline" size="sm" title="View Invoice" onClick={() => handleViewInvoice(invoice, 'purchase')}>
                                 <Eye className="w-4 h-4" />
                               </Button>
-                              {!isFullyPaid && (
-                                <Button variant="outline" size="sm" title="Record Payment" className="text-green-600 hover:bg-green-50" onClick={() => handleRecordPayment(invoice, 'purchase')}>
-                                  <IndianRupee className="w-4 h-4" />
-                                </Button>
-                              )}
                               <Button variant="outline" size="sm" title="Print/PDF Invoice" onClick={() => handlePrintInvoice(invoice, 'purchase')}>
                                 <Printer className="w-4 h-4" />
                               </Button>
@@ -3547,6 +3607,17 @@ const InvoiceManagement: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Invoice Ledger Dialog */}
+        <InvoiceLedger
+          invoiceId={selectedInvoiceForLedger?.id || ""}
+          customerId={selectedInvoiceForLedger?.customerId || ""}
+          isOpen={isLedgerDialogOpen}
+          onClose={() => {
+            setIsLedgerDialogOpen(false);
+            setSelectedInvoiceForLedger(null);
+          }}
+        />
       </div>
     </div>
     </>

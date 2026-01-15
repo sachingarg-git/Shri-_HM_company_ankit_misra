@@ -1346,6 +1346,8 @@ export const quotations = pgTable("quotations", {
   grandTotal: decimal("grand_total", { precision: 15, scale: 2 }).notNull(),
   paymentTerms: text("payment_terms"),
   deliveryTerms: text("delivery_terms"),
+  destination: text("destination"),
+  loadingFrom: text("loading_from"),
   specialInstructions: text("special_instructions"),
   preparedByUserId: varchar("prepared_by_user_id").notNull().references(() => users.id),
   approvedByUserId: varchar("approved_by_user_id").references(() => users.id),
@@ -1384,6 +1386,8 @@ export const salesOrders = pgTable("sales_orders", {
   creditLimit: decimal("credit_limit", { precision: 15, scale: 2 }),
   paymentTerms: text("payment_terms"),
   deliveryAddress: text("delivery_address"),
+  destination: text("destination"),
+  loadingFrom: text("loading_from"),
   specialInstructions: text("special_instructions"),
   salesPersonId: varchar("sales_person_id").notNull().references(() => users.id),
   approvedByUserId: varchar("approved_by_user_id").references(() => users.id),
@@ -1604,6 +1608,8 @@ export const insertQuotationSchema = z.object({
   grandTotal: z.union([z.string(), z.number()]).transform(val => typeof val === 'string' ? parseFloat(val) || 0 : val || 0),
   paymentTerms: z.string().optional(),
   deliveryTerms: z.string().optional(),
+  destination: z.string().optional(),
+  loadingFrom: z.string().optional(),
   specialInstructions: z.string().optional(),
   preparedByUserId: z.string(),
   approvedByUserId: z.string().optional(),
@@ -2115,6 +2121,19 @@ export const salesInvoiceItems = pgTable("sales_invoice_items", {
   igstAmount: decimal("igst_amount", { precision: 15, scale: 2 }).default('0'),
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// Invoice Payments (Individual payment transactions)
+export const invoicePayments = pgTable("invoice_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull().references(() => salesInvoices.id, { onDelete: 'cascade' }),
+  paymentAmount: decimal("payment_amount", { precision: 15, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  paymentMode: text("payment_mode").default('CASH'), // CASH, CHEQUE, BANK_TRANSFER, etc.
+  referenceNumber: text("reference_number"), // Cheque no, transaction ref, etc.
+  remarks: text("remarks"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 

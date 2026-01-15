@@ -61,6 +61,7 @@ import { z } from "zod";
 import { generateBitumenQuotationPDF } from "@/components/quotation-template";
 import { generateBitumenSalesOrderPDF } from "@/components/sales-order-template";
 import { printSalesOrder } from "@/utils/printInvoice";
+import { SalesOrderLedger } from "@/components/SalesOrderLedger";
 
 // Edit Sales Order Form Component
 function EditSalesOrderForm({ salesOrder, onClose, onSave }: any) {
@@ -1289,7 +1290,10 @@ const getCurrentLocalDateTime = () => {
 function LeadCRMSection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   
+  // Debug: Log current user info
+  console.log("Current user in LeadCRMSection:", user);
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -1440,10 +1444,23 @@ function LeadCRMSection() {
     convertToClientMutation.mutate(lead);
   };
 
-  const { data: leads, isLoading } = useQuery<Lead[]>({
+  const { data: leads, isLoading, error } = useQuery<Lead[]>({
     queryKey: ["/api/leads"],
     retry: false,
+    onError: (error: any) => {
+      console.error("Failed to fetch leads:", error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to load leads. Please check your permissions.",
+        variant: "destructive"
+      });
+    }
   });
+
+  // Log leads data for debugging
+  console.log("Leads query result:", { leads, isLoading, error });
+  console.log("Leads array:", leads);
+  console.log("Leads length:", leads?.length);
 
   // Query for all follow-ups to show summary cards
   const { data: allFollowUps = [] } = useQuery<any[]>({
@@ -1613,6 +1630,13 @@ function LeadCRMSection() {
       return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
     }
   }) || [];
+
+  // Debug: Log filtering results
+  console.log("Filtered leads:", filteredLeads);
+  console.log("Filtered and sorted leads:", filteredAndSortedLeads);
+  console.log("Follow-up filter:", followUpFilter);
+  console.log("Status filter:", statusFilter);
+  console.log("Search term:", searchTerm);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -2601,6 +2625,10 @@ function QuotationSection() {
   const [validUntil, setValidUntil] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [description, setDescription] = useState("");
+  const [quotationData, setQuotationData] = useState({
+    destination: "",
+    loadingFrom: ""
+  });
   
   const { data: clients = [] } = useQuery({
     queryKey: ["/api/clients"],
@@ -2660,6 +2688,7 @@ function QuotationSection() {
       setValidUntil("");
       setPaymentTerms("");
       setDescription("");
+      setQuotationData({ destination: "", loadingFrom: "" });
       setEditingQuotationId(null);
     },
     onError: (error: Error) => {
@@ -2688,6 +2717,7 @@ function QuotationSection() {
       setValidUntil("");
       setPaymentTerms("");
       setDescription("");
+      setQuotationData({ destination: "", loadingFrom: "" });
       setEditingQuotationId(null);
     },
     onError: (error: Error) => {
@@ -2785,7 +2815,7 @@ function QuotationSection() {
       return;
     }
 
-    const quotationData = {
+    const quotationPayload = {
       clientId: selectedClient,
       clientType: clientType, // Add client type to identify if it's lead or client
       quotationDate: new Date(quotationDate).toISOString(),
@@ -2797,6 +2827,8 @@ function QuotationSection() {
       grandTotal: totals.total,
       paymentTerms: `${parseInt(paymentTerms) || 30}`,
       deliveryTerms: "Standard delivery terms",
+      destination: quotationData.destination,
+      loadingFrom: quotationData.loadingFrom,
       specialInstructions: description,
       preparedByUserId: user.id,
       approvalStatus: "PENDING",
@@ -2814,10 +2846,10 @@ function QuotationSection() {
 
     if (editingQuotationId) {
       // Update existing quotation
-      updateQuotationMutation.mutate({ id: editingQuotationId, ...quotationData });
+      updateQuotationMutation.mutate({ id: editingQuotationId, ...quotationPayload });
     } else {
       // Create new quotation
-      createQuotationMutation.mutate(quotationData);
+      createQuotationMutation.mutate(quotationPayload);
     }
   };
 
@@ -3451,6 +3483,8 @@ M/S SRI HM BITUMEN CO`;
                     <TableHead>Client</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Valid Until</TableHead>
+                    <TableHead>Destination</TableHead>
+                    <TableHead>Loading From</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                     <TableHead>Payment Terms</TableHead>
                     <TableHead className="text-center">Actions</TableHead>
@@ -3470,6 +3504,8 @@ M/S SRI HM BITUMEN CO`;
                       <TableCell>
                         {quotation.validUntil ? new Date(quotation.validUntil).toLocaleDateString() : '-'}
                       </TableCell>
+                      <TableCell>{quotation.destination || '-'}</TableCell>
+                      <TableCell>{quotation.loadingFrom || '-'}</TableCell>
                       <TableCell className="text-right font-bold">
                         ₹{parseFloat(quotation.totalAmount || 0).toFixed(2)}
                       </TableCell>
@@ -3691,6 +3727,27 @@ M/S SRI HM BITUMEN CO`;
                     <SelectItem value="60">60 Days</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Destination</label>
+                <Input 
+                  type="text" 
+                  value={quotationData.destination || ''}
+                  onChange={(e) => setQuotationData({...quotationData, destination: e.target.value})}
+                  placeholder="Enter delivery destination"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Loading From</label>
+                <Input 
+                  type="text" 
+                  value={quotationData.loadingFrom || ''}
+                  onChange={(e) => setQuotationData({...quotationData, loadingFrom: e.target.value})}
+                  placeholder="Enter loading point"
+                />
               </div>
             </div>
 
@@ -4040,6 +4097,7 @@ function SalesOrderSection() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isLedgerDialogOpen, setIsLedgerDialogOpen] = useState(false);
   const [selectedSalesOrder, setSelectedSalesOrder] = useState<any>(null);
   const [salesOrderToDelete, setSalesOrderToDelete] = useState<any>(null);
   const [whatsappStatus, setWhatsappStatus] = useState<string>('');
@@ -4299,8 +4357,8 @@ M/S SRI HM BITUMEN CO`;
         deliveryTerms: salesOrder.expectedDeliveryDate ? `Expected: ${new Date(salesOrder.expectedDeliveryDate).toLocaleDateString()}` : 'With In 10 to 12 Days',
         paymentTerms: salesOrder.paymentTerms || 'ADVANCE',
         destination: salesOrder.destination || '',
-        dispatchFrom: 'KANDLA',
-        loadingFrom: 'KANDLA',
+        dispatchFrom: salesOrder.loadingFrom || 'KANDLA',
+        loadingFrom: salesOrder.loadingFrom || 'KANDLA',
         placeOfSupply: client?.billingState || client?.state || 'ASSAM',
         
         // Customer (Bill To) details
@@ -4435,6 +4493,8 @@ M/S SRI HM BITUMEN CO`;
                   <TableHead>Client</TableHead>
                   <TableHead>Order Date</TableHead>
                   <TableHead>Expected Delivery</TableHead>
+                  <TableHead>Destination</TableHead>
+                  <TableHead>Loading From</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Credit Check</TableHead>
                   <TableHead className="text-center">Actions</TableHead>
@@ -4458,6 +4518,8 @@ M/S SRI HM BITUMEN CO`;
                     <TableCell>
                       {salesOrder.expectedDeliveryDate ? new Date(salesOrder.expectedDeliveryDate).toLocaleDateString() : '-'}
                     </TableCell>
+                    <TableCell>{salesOrder.destination || '-'}</TableCell>
+                    <TableCell>{salesOrder.loadingFrom || '-'}</TableCell>
                     <TableCell className="text-right font-bold">
                       ₹{parseFloat(salesOrder.totalAmount || 0).toFixed(2)}
                     </TableCell>
@@ -4489,6 +4551,19 @@ M/S SRI HM BITUMEN CO`;
                           className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
                         >
                           <Mail className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedSalesOrder(salesOrder);
+                            setIsLedgerDialogOpen(true);
+                          }}
+                          data-testid={`button-ledger-sales-order-${salesOrder.id}`}
+                          title="Company Ledger"
+                          className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                        >
+                          <DollarSign className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
@@ -4743,6 +4818,17 @@ M/S SRI HM BITUMEN CO`;
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Company Ledger Dialog */}
+      <SalesOrderLedger
+        salesOrderId={selectedSalesOrder?.id || ""}
+        companyId={selectedSalesOrder?.clientId || ""}
+        isOpen={isLedgerDialogOpen}
+        onClose={() => {
+          setIsLedgerDialogOpen(false);
+          setSelectedSalesOrder(null);
+        }}
+      />
     </Card>
   );
 }
