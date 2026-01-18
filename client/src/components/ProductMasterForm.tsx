@@ -170,8 +170,8 @@ export function ProductMasterForm() {
 
   // Predefined options for searchable dropdowns
   const productFamilyOptions = ["VG_BITUMEN", "EMULSION", "BULK", "ACCESSORIES"];
-  const packagingOptions = ["BULK", "DRUM", "EMBOSSED", "UNIT"];
-  const unitOptions = ["MT", "KL", "DRUM", "UNIT"];
+  const packagingOptions = ["BULK", "DRUM", "EMBOSSED", "UNIT", "PIECES"];
+  const unitOptions = ["MT", "KL", "DRUM", "UNIT", "LTR"];
   const gradeOptions = ["VG-10", "VG-30", "VG-40", "CRS", "SS", "RS-1", "RS-2"];
 
   const form = useForm<ProductMasterFormData>({

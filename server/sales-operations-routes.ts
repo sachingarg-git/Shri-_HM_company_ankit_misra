@@ -6,7 +6,7 @@ import * as storage from "./sales-operations-storage";
 import { requireAuth } from "./auth";
 import { storage as mainStorage } from "./storage";
 import { db } from "./db";
-import { clients, productMaster, invoicePayments } from "@shared/schema";
+import { clients, productMaster, invoicePayments, purchaseInvoicePayments } from "@shared/schema";
 import { eq, sum, sql } from "drizzle-orm";
 
 export default function setupSalesOperationsRoutes(app: Express) {
@@ -633,6 +633,84 @@ export default function setupSalesOperationsRoutes(app: Express) {
     } catch (error: any) {
       console.error("Error deleting purchase invoice:", error);
       res.status(500).json({ error: "Failed to delete purchase invoice" });
+    }
+  });
+
+  // ============ PURCHASE INVOICE PAYMENT MANAGEMENT ============
+
+  // Record payment for purchase invoice
+  app.post("/api/sales-operations/purchase-invoices/record-payment", requireAuth, async (req, res) => {
+    try {
+      const { invoiceId, amount, paymentDate, paymentMode, referenceNumber } = req.body;
+      const currentUser = (req as any).user;
+
+      if (!invoiceId || !amount) {
+        return res.status(400).json({ error: "Invoice ID and payment amount are required" });
+      }
+
+      // Get the purchase invoice
+      const invoice = await storage.getPurchaseInvoiceById(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ error: "Purchase invoice not found" });
+      }
+
+      // Create payment record for purchase invoice using purchaseInvoicePayments table
+      await db.insert(purchaseInvoicePayments).values({
+        invoiceId: invoiceId,
+        paymentAmount: amount.toString(),
+        paymentDate: new Date(paymentDate || new Date()),
+        paymentMode: paymentMode || 'CASH',
+        referenceNumber: referenceNumber || null,
+        createdBy: currentUser.id,
+      });
+
+      // Get all payments for this invoice and recalculate totals
+      const allPayments = await db.select({
+        total: sum(purchaseInvoicePayments.paymentAmount),
+      }).from(purchaseInvoicePayments).where(eq(purchaseInvoicePayments.invoiceId, invoiceId));
+
+      const totalPaid = parseFloat(allPayments[0]?.total || '0');
+      const totalInvoiceAmount = parseFloat(invoice.totalInvoiceAmount || '0');
+      const remainingBalance = totalInvoiceAmount - totalPaid;
+
+      let paymentStatus = 'PENDING';
+      if (remainingBalance <= 0) {
+        paymentStatus = 'PAID';
+      } else if (totalPaid > 0) {
+        paymentStatus = 'PARTIAL';
+      }
+
+      // Update purchase invoice with new totals
+      const updatedInvoice = await storage.updatePurchaseInvoice(invoiceId, {
+        paidAmount: totalPaid.toFixed(2),
+        remainingBalance: remainingBalance.toFixed(2),
+        paymentStatus: paymentStatus,
+        modifiedBy: currentUser.id,
+      });
+
+      res.json(updatedInvoice);
+    } catch (error: any) {
+      console.error("Error recording purchase payment:", error);
+      res.status(500).json({ error: "Failed to record payment" });
+    }
+  });
+
+  // Get all payments for a purchase invoice
+  app.get("/api/sales-operations/purchase-invoices/:invoiceId/payments", requireAuth, async (req, res) => {
+    try {
+      const { invoiceId } = req.params;
+      console.log(`🔍 Fetching payments for purchase invoice: ${invoiceId}`);
+
+      const payments = await db
+        .select()
+        .from(purchaseInvoicePayments)
+        .where(eq(purchaseInvoicePayments.invoiceId, invoiceId));
+
+      console.log(`✅ Fetched ${payments.length} payments for purchase invoice ${invoiceId}`);
+      res.json(payments || []);
+    } catch (error: any) {
+      console.error("❌ Error fetching purchase payments:", error.message);
+      res.status(500).json({ error: error.message || "Failed to fetch payments" });
     }
   });
 

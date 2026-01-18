@@ -2625,6 +2625,7 @@ function QuotationSection() {
   const [validUntil, setValidUntil] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [description, setDescription] = useState("");
+  const [freightCharged, setFreightCharged] = useState<number>(0);
   const [quotationData, setQuotationData] = useState({
     destination: "",
     loadingFrom: ""
@@ -2688,6 +2689,7 @@ function QuotationSection() {
       setValidUntil("");
       setPaymentTerms("");
       setDescription("");
+      setFreightCharged(0);
       setQuotationData({ destination: "", loadingFrom: "" });
       setEditingQuotationId(null);
     },
@@ -2768,8 +2770,9 @@ function QuotationSection() {
   const calculateTotals = () => {
     const subtotal = quotationItems.reduce((sum, item) => sum + parseFloat(String(item.amount || "0")), 0);
     const tax = subtotal * 0.18; // 18% GST
-    const total = subtotal + tax;
-    return { subtotal, tax, total };
+    const freightAmount = parseFloat(String(freightCharged || 0));
+    const total = subtotal + tax + freightAmount; // Freight is non-GST, added directly to final total
+    return { subtotal, tax, freight: freightAmount, total };
   };
 
   const totals = calculateTotals();
@@ -2782,6 +2785,7 @@ function QuotationSection() {
     setValidUntil("");
     setPaymentTerms("");
     setDescription("");
+    setFreightCharged(0);
     setQuotationItems([{ productId: "", quantity: 0, unit: "", rate: 0, amount: 0 }]);
     setEditingQuotationId(null); // Reset editing mode
     setIsQuotationDialogOpen(true);
@@ -2815,6 +2819,8 @@ function QuotationSection() {
       return;
     }
 
+    const freightAmount = parseFloat(String(freightCharged || 0));
+
     const quotationPayload = {
       clientId: selectedClient,
       clientType: clientType, // Add client type to identify if it's lead or client
@@ -2824,6 +2830,7 @@ function QuotationSection() {
       discountPercentage: 0,
       discountAmount: 0,
       taxAmount: totals.tax,
+      freightCharged: freightAmount,
       grandTotal: totals.total,
       paymentTerms: `${parseInt(paymentTerms) || 30}`,
       deliveryTerms: "Standard delivery terms",
@@ -3030,6 +3037,7 @@ M/S SRI HM BITUMEN CO`;
     setDescription(quotation.specialInstructions || "");
     setQuotationDate(quotation.quotationDate.split('T')[0]);
     setValidUntil(quotation.validUntil ? quotation.validUntil.split('T')[0] : "");
+    setFreightCharged(parseFloat(quotation.freightCharged || 0));
     
     // Load existing quotation items
     const existingItems = quotation.items?.map((item: any) => ({
@@ -3387,7 +3395,9 @@ M/S SRI HM BITUMEN CO`;
         }));
 
         const subtotal = items.reduce((sum: number, item: any) => sum + item.amount, 0);
-        const total = subtotal * 1.18; // Including 18% GST
+        const taxAmount = subtotal * 0.18; // 18% GST
+        const freightAmount = parseFloat(quotation.freightCharged || 0);
+        const total = subtotal + taxAmount + freightAmount; // Freight is non-GST
 
         const quotationData = {
           quotationNumber: quotation.quotationNumber,
@@ -3403,7 +3413,8 @@ M/S SRI HM BITUMEN CO`;
           description: quotation.description || quotation.specialInstructions || '',
           note: quotation.note || '',
           subtotal: subtotal,
-          freight: 0,
+          freight: freightAmount,
+          gstAmount: taxAmount,
           total: total,
           companyDetails: {
             name: 'M/S SRI HM BITUMEN CO',
@@ -3611,7 +3622,7 @@ M/S SRI HM BITUMEN CO`;
 
       {/* Quotation Creation Dialog */}
       <Dialog open={isQuotationDialogOpen} onOpenChange={setIsQuotationDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingQuotationId ? 'Edit Quotation' : 'Create New Quotation'}</DialogTitle>
             <DialogDescription>
@@ -3761,6 +3772,21 @@ M/S SRI HM BITUMEN CO`;
               />
             </div>
 
+            <div className="bg-yellow-100 border-2 border-yellow-500 rounded-md p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg font-bold text-yellow-800">⚠</span>
+                <label className="text-sm font-bold text-yellow-900">Freight Charged (₹) - Non-GST</label>
+              </div>
+              <Input 
+                type="number"
+                step="0.01"
+                min="0"
+                value={freightCharged || ""}
+                onChange={(e) => setFreightCharged(parseFloat(e.target.value) || 0)}
+                placeholder="0.00"
+              />
+            </div>
+
             <div className="border rounded-lg p-4">
               <h4 className="font-medium mb-3">Quotation Items</h4>
               <div className="grid grid-cols-12 gap-2 text-xs font-medium mb-2">
@@ -3869,6 +3895,7 @@ M/S SRI HM BITUMEN CO`;
               <div className="text-right">
                 <div className="text-sm">Subtotal: ₹{totals.subtotal.toFixed(2)}</div>
                 <div className="text-sm">Tax (18% GST): ₹{totals.tax.toFixed(2)}</div>
+                <div className="text-sm text-blue-600 font-medium">Freight Charged (Non-GST): ₹{totals.freight.toFixed(2)}</div>
                 <div className="text-lg font-bold">Total: ₹{totals.total.toFixed(2)}</div>
               </div>
             </div>

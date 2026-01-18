@@ -35,6 +35,7 @@ interface QuotationData {
   destination?: string;
   loadingFrom?: string;
   freight?: number;
+  freightCharged?: number;
   transportCharges?: {
     quantity: number;
     unit: string;

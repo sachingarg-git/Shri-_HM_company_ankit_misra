@@ -299,13 +299,13 @@ export const generateTaxInvoiceHtml = (invoice: any, type: 'sales' | 'purchase')
               </tr>
               <tr>
                 <td>Dispatch Doc No.</td>
-                <td><strong>${invoice.dispatchDocNumber || ''}</strong></td>
+                <td><strong>${invoice.dispatchDocNumber || invoice.invoiceNumber || ''}</strong></td>
                 <td>Delivery Note Date</td>
                 <td><strong>${invoice.deliveryNoteDate ? formatDate(invoice.deliveryNoteDate) : ''}</strong></td>
               </tr>
               <tr>
                 <td>Dispatched through</td>
-                <td><strong>${invoice.dispatchedThrough || invoice.transporterName || 'SELF'}</strong></td>
+                <td><strong>${invoice.dispatchedThrough || invoice.transporterName || ''}</strong></td>
                 <td>Destination</td>
                 <td><strong>${invoice.destination || ''}</strong></td>
               </tr>

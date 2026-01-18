@@ -1343,6 +1343,7 @@ export const quotations = pgTable("quotations", {
   discountPercentage: decimal("discount_percentage", { precision: 5, scale: 2 }).default('0'),
   discountAmount: decimal("discount_amount", { precision: 15, scale: 2 }).default('0'),
   taxAmount: decimal("tax_amount", { precision: 15, scale: 2 }).default('0'),
+  freightCharged: decimal("freight_charged", { precision: 15, scale: 2 }).default('0'),
   grandTotal: decimal("grand_total", { precision: 15, scale: 2 }).notNull(),
   paymentTerms: text("payment_terms"),
   deliveryTerms: text("delivery_terms"),
@@ -1928,7 +1929,7 @@ export type UserPermission = typeof userPermissions.$inferSelect;
 // Additional Enums for Invoice Management
 export const partyTypeEnum = pgEnum('party_type', ['CUSTOMER', 'SUPPLIER', 'BOTH']);
 export const invoiceTypeEnum = pgEnum('invoice_type', ['TAX_INVOICE', 'PROFORMA', 'CREDIT_NOTE', 'DEBIT_NOTE']);
-export const unitOfMeasurementEnum = pgEnum('unit_of_measurement', ['DRUM', 'KG', 'LITRE', 'PIECE', 'METER', 'TON', 'BOX']);
+export const unitOfMeasurementEnum = pgEnum('unit_of_measurement', ['DRUM', 'KG', 'LITRE', 'LTR', 'PIECE', 'PIECES', 'METER', 'TON', 'BOX', 'UNIT']);
 export const freightTypeEnum = pgEnum('freight_type', ['PAID', 'TO_PAY', 'INCLUDED']);
 export const paymentModeEnum = pgEnum('payment_mode', ['CASH', 'CHEQUE', 'NEFT', 'RTGS', 'UPI', 'CARD', 'ONLINE']);
 export const invoiceStatusEnum = pgEnum('invoice_status', ['DRAFT', 'SUBMITTED', 'CANCELLED']);
@@ -2060,6 +2061,7 @@ export const salesInvoices = pgTable("sales_invoices", {
   lrRrDate: timestamp("lr_rr_date"),
   partyMobileNumber: text("party_mobile_number"),
   dispatchFrom: text("dispatch_from"),
+  dispatchedThrough: text("dispatched_through"),
   dispatchCity: text("dispatch_city"),
   portOfLoading: text("port_of_loading"),
   portOfDischarge: text("port_of_discharge"),
@@ -2134,6 +2136,19 @@ export const invoicePayments = pgTable("invoice_payments", {
   referenceNumber: text("reference_number"), // Cheque no, transaction ref, etc.
   remarks: text("remarks"),
   createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+// Purchase Invoice Payments (Individual payment transactions for purchase invoices)
+export const purchaseInvoicePayments = pgTable("purchase_invoice_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull(),
+  paymentAmount: decimal("payment_amount", { precision: 15, scale: 2 }).notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  paymentMode: text("payment_mode").default('CASH'), // CASH, CHEQUE, BANK_TRANSFER, etc.
+  referenceNumber: text("reference_number"), // Cheque no, transaction ref, etc.
+  remarks: text("remarks"),
+  createdBy: varchar("created_by").notNull(),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 

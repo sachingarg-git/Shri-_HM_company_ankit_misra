@@ -35,7 +35,8 @@ import {
   Download,
   RefreshCw,
   IndianRupee,
-  DollarSign
+  DollarSign,
+  Pencil
 } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,7 +81,7 @@ const mockInvoices: Invoice[] = [
 ];
 
 // Purchase Invoice Form Component (based on your HTML template)
-const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
+const PurchaseInvoiceForm = ({ onBack, editingInvoice }: { onBack: () => void; editingInvoice?: any }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -142,12 +143,185 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
     remarks: ''
   });
 
+  // Pre-populate form when editing an existing invoice
+  useEffect(() => {
+    if (editingInvoice) {
+      console.log('📝 Pre-populating Purchase Invoice form with:', editingInvoice);
+      
+      // Parse items from the invoice
+      let parsedItems = [{
+        id: 1,
+        description: '',
+        hsn: '',
+        quantity: 1,
+        unit: 'DRUM',
+        rate: 0,
+        amount: 0,
+        transitInsurance: 0,
+        totalAmount: 0,
+        taxRate: 18,
+        taxAmount: 0,
+        taxableAmount: 0
+      }];
+      
+      if (editingInvoice.items) {
+        try {
+          const items = typeof editingInvoice.items === 'string' 
+            ? JSON.parse(editingInvoice.items) 
+            : editingInvoice.items;
+          if (Array.isArray(items) && items.length > 0) {
+            parsedItems = items.map((item: any, index: number) => ({
+              id: index + 1,
+              description: item.description || item.productName || item.productDescription || '',
+              hsn: item.hsn || item.hsnCode || item.hsnSacCode || '',
+              quantity: parseFloat(item.quantity) || 1,
+              unit: item.unit || item.unitOfMeasurement || 'DRUM',
+              rate: parseFloat(item.rate) || parseFloat(item.ratePerUnit) || 0,
+              amount: parseFloat(item.amount) || parseFloat(item.grossAmount) || 0,
+              transitInsurance: parseFloat(item.transitInsurance) || 0,
+              totalAmount: parseFloat(item.totalAmount) || 0,
+              taxRate: parseFloat(item.taxRate) || parseFloat(item.cgstRate) * 2 || 18,
+              taxAmount: parseFloat(item.taxAmount) || 0,
+              taxableAmount: parseFloat(item.taxableAmount) || 0
+            }));
+          }
+        } catch (e) {
+          console.error('Error parsing items:', e);
+        }
+      }
+      
+      setFormData({
+        invoiceNo: editingInvoice.invoiceNumber || editingInvoice.invoiceNo || '',
+        invoiceDate: editingInvoice.invoiceDate ? new Date(editingInvoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        ewayBill: editingInvoice.ewayBillNo || editingInvoice.ewayBill || '',
+        ackNo: editingInvoice.ackNo || '',
+        ackDate: editingInvoice.ackDate || '',
+        supplierId: editingInvoice.supplierId || '',
+        supplierName: editingInvoice.supplierName || '',
+        supplierGSTIN: editingInvoice.supplierGstin || editingInvoice.supplierGSTIN || '',
+        supplierAddress: editingInvoice.supplierAddress || '',
+        supplierState: editingInvoice.supplierState || '',
+        supplierStateCode: editingInvoice.supplierStateCode || '',
+        supplierContact: editingInvoice.supplierContact || '',
+        buyerName: editingInvoice.buyerName || 'RAMKRISHNA TRADERS',
+        buyerGSTIN: editingInvoice.buyerGstin || editingInvoice.buyerGSTIN || '18BCWPP7863H1ZL',
+        buyerAddress: editingInvoice.buyerAddress || 'Business Address, Guwahati, Assam',
+        buyerState: editingInvoice.buyerState || 'Assam',
+        buyerStateCode: editingInvoice.buyerStateCode || '18',
+        transporter: editingInvoice.transporter || '',
+        vehicleNo: editingInvoice.vehicleNumber || editingInvoice.vehicleNo || '',
+        lrNo: editingInvoice.lrNumber || editingInvoice.lrNo || '',
+        placeOfLoading: editingInvoice.placeOfLoading || editingInvoice.loadingFrom || '',
+        destination: editingInvoice.destination || '',
+        distance: editingInvoice.distance || '',
+        items: parsedItems,
+        insurance: parseFloat(editingInvoice.insurance) || 0,
+        freight: parseFloat(editingInvoice.freight) || 0,
+        otherCharges: parseFloat(editingInvoice.otherCharges) || 0,
+        paymentTerms: editingInvoice.paymentTerms || '30 DAYS CREDIT',
+        dueDate: editingInvoice.dueDate ? new Date(editingInvoice.dueDate).toISOString().split('T')[0] : '',
+        remarks: editingInvoice.remarks || editingInvoice.description || ''
+      });
+      
+      // Set supplier selection
+      if (editingInvoice.supplierId) {
+        setSelectedSupplierId(editingInvoice.supplierId.toString());
+      }
+      
+      // Set product selections for each item
+      if (editingInvoice.items) {
+        try {
+          const items = typeof editingInvoice.items === 'string' 
+            ? JSON.parse(editingInvoice.items) 
+            : editingInvoice.items;
+          if (Array.isArray(items) && items.length > 0) {
+            const productSelections: { [key: number]: string } = {};
+            items.forEach((item: any, index: number) => {
+              if (item.productId) {
+                productSelections[index] = item.productId.toString();
+              }
+            });
+            setSelectedProductIds(productSelections);
+            console.log('📦 Set product selections for purchase:', productSelections);
+          }
+        } catch (e) {
+          console.error('Error setting product selections:', e);
+        }
+      }
+    }
+  }, [editingInvoice]);
+
+  // Set supplier selection AFTER suppliers list is loaded
+  useEffect(() => {
+    if (editingInvoice && suppliers.length > 0) {
+      // First try to match by supplierId
+      if (editingInvoice.supplierId) {
+        const supplierIdStr = String(editingInvoice.supplierId);
+        console.log('🏪 Setting selectedSupplierId to:', supplierIdStr);
+        
+        const matchingSupplier = suppliers.find(s => String(s.id) === supplierIdStr);
+        console.log('🏪 Matching supplier found:', matchingSupplier);
+        
+        if (matchingSupplier) {
+          setSelectedSupplierId(supplierIdStr);
+          return;
+        }
+      }
+      
+      // Fallback: try to match by supplier name
+      if (editingInvoice.supplierName) {
+        const matchingSupplier = suppliers.find((s: any) => 
+          s.supplierName && s.supplierName.toLowerCase() === editingInvoice.supplierName.toLowerCase()
+        );
+        if (matchingSupplier) {
+          console.log('🏪 Matched supplier by name:', editingInvoice.supplierName, '-> ID:', matchingSupplier.id);
+          setSelectedSupplierId(String(matchingSupplier.id));
+        }
+      }
+    }
+  }, [editingInvoice, suppliers]);
+
+  // Set product selections AFTER products list is loaded
+  useEffect(() => {
+    if (editingInvoice && editingInvoice.items && products.length > 0) {
+      try {
+        const items = typeof editingInvoice.items === 'string' 
+          ? JSON.parse(editingInvoice.items) 
+          : editingInvoice.items;
+        if (Array.isArray(items) && items.length > 0) {
+          const productSelections: { [key: number]: string } = {};
+          items.forEach((item: any, index: number) => {
+            // First try to match by productId
+            if (item.productId) {
+              productSelections[index] = item.productId.toString();
+            } else {
+              // Fallback: try to match by product name/description
+              const productName = item.productName || item.description || '';
+              const matchingProduct = products.find((p: any) => 
+                (p.name && p.name.toLowerCase() === productName.toLowerCase()) ||
+                (p.description && p.description.toLowerCase() === productName.toLowerCase())
+              );
+              if (matchingProduct) {
+                productSelections[index] = matchingProduct.id.toString();
+                console.log('📦 Matched product by name:', productName, '-> ID:', matchingProduct.id);
+              }
+            }
+          });
+          console.log('📦 Setting product selections for purchase after load:', productSelections);
+          setSelectedProductIds(productSelections);
+        }
+      } catch (e) {
+        console.error('Error setting product selections:', e);
+      }
+    }
+  }, [editingInvoice, products]);
+
   // No auto-generation for purchase invoice - manual entry required
 
   // Handle supplier selection and auto-fill (from Suppliers Master)
   const handleSupplierChange = (supplierId: string) => {
     setSelectedSupplierId(supplierId);
-    const supplier = suppliers.find(s => s.id === supplierId);
+    const supplier = suppliers.find(s => String(s.id) === supplierId);
     
     if (supplier) {
       // Build full address from Suppliers Master data
@@ -192,7 +366,7 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
   // Handle product selection and auto-fill
   const handleProductChange = (productId: string, itemIndex: number) => {
     setSelectedProductIds(prev => ({ ...prev, [itemIndex]: productId }));
-    const product = products.find(p => p.id === productId);
+    const product = products.find(p => String(p.id) === productId);
     
     if (product) {
       const newItems = [...formData.items];
@@ -200,7 +374,8 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
       let unit = product.unit || 'DRUM';
       const unitMap: { [key: string]: string } = {
         'MT': 'TON', 'METRIC TON': 'TON', 'KGS': 'KG', 'KILOGRAM': 'KG',
-        'LTR': 'LITRE', 'LITRES': 'LITRE', 'PCS': 'PIECE', 'NOS': 'PIECE'
+        'LTR': 'LTR', 'LITRE': 'LITRE', 'LITRES': 'LITRE', 'PCS': 'PIECE', 'NOS': 'PIECE',
+        'PIECES': 'PIECES', 'UNIT': 'UNIT'
       };
       unit = unitMap[unit.toUpperCase()] || unit.toUpperCase();
       
@@ -316,12 +491,18 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
   // Mutation for saving invoice
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
+      const isEditing = editingInvoice && editingInvoice.id;
       console.log('=== CLIENT: Sending invoice data ===');
+      console.log('Is Editing:', isEditing);
       console.log('Invoice:', JSON.stringify(data.invoice, null, 2));
       console.log('Items:', JSON.stringify(data.items, null, 2));
       
-      const response = await fetch('/api/sales-operations/purchase-invoices', {
-        method: 'POST',
+      const url = isEditing 
+        ? `/api/sales-operations/purchase-invoices/${editingInvoice.id}`
+        : '/api/sales-operations/purchase-invoices';
+      
+      const response = await fetch(url, {
+        method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
         credentials: 'include'
@@ -353,7 +534,7 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/sales-operations/purchase-invoices'] });
       toast({
         title: "Success!",
-        description: "Purchase Invoice saved successfully!",
+        description: editingInvoice ? "Purchase Invoice updated successfully!" : "Purchase Invoice saved successfully!",
       });
       // Reset form or go back
       setTimeout(() => onBack(), 1500);
@@ -438,7 +619,7 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
         const sgstAmount = (item.amount * sgstRate) / 100;
         
         return {
-          productId: null, // Will be handled by backend
+          productId: selectedProductIds[index] ? parseInt(selectedProductIds[index]) : null,
           productName: item.description,
           productDescription: item.description,
           hsnSacCode: item.hsn,
@@ -561,9 +742,9 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
           <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-lg shadow-lg">
             <h1 className="text-3xl font-bold mb-2 flex items-center">
               <Package className="w-8 h-8 mr-3" />
-              Purchase Invoice Entry Form
+              {editingInvoice ? 'Edit Purchase Invoice' : 'Purchase Invoice Entry Form'}
             </h1>
-            <p className="text-green-100">Enter all invoice details accurately</p>
+            <p className="text-green-100">{editingInvoice ? 'Update existing purchase invoice' : 'Enter all invoice details accurately'}</p>
           </div>
         </div>
 
@@ -662,7 +843,7 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                         <SelectItem value="no-suppliers" disabled>No suppliers found - Add in Suppliers Master</SelectItem>
                       ) : (
                         suppliers.map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.id}>
+                          <SelectItem key={supplier.id} value={String(supplier.id)}>
                             {supplier.supplierName}{supplier.gstin ? ` - ${supplier.gstin}` : (supplier.taxId ? ` - ${supplier.taxId}` : '')}
                           </SelectItem>
                         ))
@@ -735,7 +916,7 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                                 <SelectItem value="no-products" disabled>No products found</SelectItem>
                               ) : (
                                 products.map((product) => (
-                                  <SelectItem key={product.id} value={product.id}>
+                                  <SelectItem key={product.id} value={String(product.id)}>
                                     {product.name || product.description} - {product.productCode}
                                   </SelectItem>
                                 ))
@@ -788,9 +969,12 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                             <option value="KG">KG</option>
                             <option value="TON">TON (MT)</option>
                             <option value="LITRE">LITRE</option>
+                            <option value="LTR">LTR</option>
                             <option value="PIECE">PIECE</option>
+                            <option value="PIECES">PIECES</option>
                             <option value="METER">METER</option>
                             <option value="BOX">BOX</option>
+                            <option value="UNIT">UNIT</option>
                           </select>
                         </td>
                         <td className="border border-gray-300 p-2">
@@ -915,7 +1099,7 @@ const PurchaseInvoiceForm = ({ onBack }: { onBack: () => void }) => {
 };
 
 // Sales Invoice Form Component
-const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
+const SalesInvoiceForm = ({ onBack, editingInvoice }: { onBack: () => void; editingInvoice?: any }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -927,6 +1111,11 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
   // Fetch products from Product Master
   const { data: products = [], isLoading: productsLoading } = useQuery<any[]>({
     queryKey: ['/api/product-master'],
+  });
+
+  // Fetch users for Sales Person dropdown
+  const { data: users = [], isLoading: usersLoading } = useQuery<any[]>({
+    queryKey: ['/api/users'],
   });
 
   // Debug logging
@@ -944,24 +1133,48 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
       'PCS': 'PIECE',
       'PC': 'PIECE',
       'PIECE': 'PIECE',
+      'PIECES': 'PIECES',
       'MT': 'TON',
       'TON': 'TON',
       'DRUM': 'DRUM',
       'KG': 'KG',
       'LITRE': 'LITRE',
       'LITER': 'LITRE',
+      'LTR': 'LTR',
       'L': 'LITRE',
       'METER': 'METER',
       'M': 'METER',
       'BOX': 'BOX',
+      'UNIT': 'UNIT',
       '': 'PIECE' // Default to PIECE if empty
     };
-    return unitMap[unit.toUpperCase()] || 'PIECE';
+    return unitMap[unit.toUpperCase()] || unit.toUpperCase();
   };
 
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedProductIds, setSelectedProductIds] = useState<{ [key: number]: string }>({});
   const [gstType, setGstType] = useState<'CGST_SGST' | 'IGST'>('CGST_SGST'); // GST Type selection
+  const [customerSearchTerm, setCustomerSearchTerm] = useState<string>('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState<boolean>(false);
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close customer dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target as Node)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter clients based on search term
+  const filteredClients = clients.filter((client: any) => {
+    const name = client.name || client.clientName || client.companyName || '';
+    return name.toLowerCase().includes(customerSearchTerm.toLowerCase());
+  });
+
   const [formData, setFormData] = useState({
     invoiceNo: '',
     invoiceDate: new Date().toISOString().split('T')[0],
@@ -975,6 +1188,7 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
     transitInsurance: 0,
     destination: '',
     loadingFrom: 'KANDLA',
+    dispatchedThrough: '',
     paymentTerms: 'ADVANCE',
     customerId: '',
     customerName: '',
@@ -1015,28 +1229,180 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
     }]
   });
 
-  // Auto-generate sales order number on form load
+  // Pre-populate form when editing an existing invoice
   useEffect(() => {
-    const fetchNextSalesOrderNumber = async () => {
-      try {
-        const res = await fetch('/api/sales-operations/next-invoice-number?type=SALES', {
-          credentials: 'include'
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setFormData(prev => ({ ...prev, invoiceNo: data.invoiceNumber }));
+    if (editingInvoice) {
+      console.log('📝 Pre-populating Sales Invoice form with:', editingInvoice);
+      console.log('📝 Items from invoice:', editingInvoice.items);
+      
+      // Parse items from the invoice
+      let parsedItems = [{
+        id: 1,
+        description: '',
+        hsn: '',
+        unit: '',
+        quantity: 1,
+        rate: 0,
+        amount: 0,
+        taxRate: 18,
+        totalAmount: 0,
+        taxAmount: 0,
+        taxableAmount: 0
+      }];
+      
+      // Track product selections
+      const productSelections: { [key: number]: string } = {};
+      
+      if (editingInvoice.items) {
+        try {
+          const items = typeof editingInvoice.items === 'string' 
+            ? JSON.parse(editingInvoice.items) 
+            : editingInvoice.items;
+          console.log('📝 Parsed items:', items);
+          if (Array.isArray(items) && items.length > 0) {
+            parsedItems = items.map((item: any, index: number) => {
+              // Set product selection for this item
+              if (item.productId) {
+                productSelections[index] = String(item.productId);
+              }
+              
+              return {
+                id: index + 1,
+                description: item.description || item.productName || item.productDescription || '',
+                hsn: item.hsn || item.hsnCode || item.hsnSacCode || '',
+                unit: item.unit || item.unitOfMeasurement || 'PIECE',
+                quantity: parseFloat(item.quantity) || 1,
+                rate: parseFloat(item.rate || item.ratePerUnit) || 0,
+                amount: parseFloat(item.amount || item.grossAmount) || 0,
+                taxRate: parseFloat(item.taxRate || item.cgstRate * 2 || item.sgstRate * 2) || 18,
+                totalAmount: parseFloat(item.totalAmount) || 0,
+                taxAmount: parseFloat(item.taxAmount || item.cgstAmount + item.sgstAmount) || 0,
+                taxableAmount: parseFloat(item.taxableAmount) || 0
+              };
+            });
+            
+            // Set product selections
+            setSelectedProductIds(productSelections);
+            console.log('📦 Set product selections:', productSelections);
+          }
+        } catch (e) {
+          console.error('Error parsing items:', e);
         }
-      } catch (error) {
-        console.error('Failed to fetch next sales order number:', error);
       }
-    };
-    fetchNextSalesOrderNumber();
-  }, []);
+      
+      setFormData({
+        invoiceNo: editingInvoice.invoiceNumber || editingInvoice.invoiceNo || '',
+        invoiceDate: editingInvoice.invoiceDate ? new Date(editingInvoice.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        dueDate: editingInvoice.dueDate ? new Date(editingInvoice.dueDate).toISOString().split('T')[0] : '',
+        ewayBillNo: editingInvoice.ewayBillNo || editingInvoice.ewayBillNumber || '',
+        ewayBillExpiryDate: editingInvoice.ewayBillValidUpto ? new Date(editingInvoice.ewayBillValidUpto).toISOString().split('T')[0] : '',
+        vehicleNumber: editingInvoice.vehicleNumber || '',
+        salesOrderNumber: editingInvoice.salesOrderNumber || '',
+        lrNumber: editingInvoice.lrNumber || editingInvoice.lrRrNumber || '',
+        partyMobileNumber: editingInvoice.partyMobileNumber || editingInvoice.customerMobile || '',
+        transitInsurance: parseFloat(editingInvoice.transitInsurance) || 0,
+        destination: editingInvoice.destination || '',
+        loadingFrom: editingInvoice.loadingFrom || editingInvoice.dispatchFrom || 'KANDLA',
+        dispatchedThrough: editingInvoice.dispatchedThrough || '',
+        paymentTerms: editingInvoice.paymentTerms || 'ADVANCE',
+        customerId: editingInvoice.customerId || '',
+        customerName: editingInvoice.customerName || '',
+        customerGSTIN: editingInvoice.customerGstin || editingInvoice.customerGSTIN || '',
+        customerAddress: editingInvoice.customerAddress || '',
+        customerCity: editingInvoice.customerCity || '',
+        customerState: editingInvoice.customerState || '',
+        customerPincode: editingInvoice.customerPincode || '',
+        customerCountry: editingInvoice.customerCountry || 'India',
+        customerContactPerson: editingInvoice.customerContactPerson || '',
+        customerMobile: editingInvoice.customerMobile || '',
+        customerEmail: editingInvoice.customerEmail || '',
+        customerPaymentTerms: editingInvoice.customerPaymentTerms || '',
+        shipToName: editingInvoice.shipToName || editingInvoice.customerName || '',
+        shipToAddress: editingInvoice.shipToAddress || editingInvoice.customerAddress || '',
+        shipToCity: editingInvoice.shipToCity || editingInvoice.customerCity || '',
+        shipToState: editingInvoice.shipToState || editingInvoice.customerState || '',
+        shipToPincode: editingInvoice.shipToPincode || editingInvoice.customerPincode || '',
+        shipToGstin: editingInvoice.shipToGstin || editingInvoice.customerGstin || '',
+        shipToMobile: editingInvoice.shipToMobile || editingInvoice.customerMobile || '',
+        shipToEmail: editingInvoice.shipToEmail || editingInvoice.customerEmail || '',
+        salesPersonName: editingInvoice.salesPersonName || '',
+        description: editingInvoice.description || '',
+        items: parsedItems
+      });
+    }
+  }, [editingInvoice]);
+
+  // Set client selection AFTER clients list is loaded
+  useEffect(() => {
+    if (editingInvoice && editingInvoice.customerId && clients.length > 0) {
+      const clientIdStr = String(editingInvoice.customerId);
+      console.log('🔑 Setting selectedClientId to:', clientIdStr);
+      console.log('🔑 Available clients:', clients.map(c => ({ id: c.id, idStr: String(c.id), name: c.name })));
+      
+      // Check if the client exists in the list
+      const matchingClient = clients.find(c => String(c.id) === clientIdStr);
+      console.log('🔑 Matching client found:', matchingClient);
+      
+      if (matchingClient) {
+        setSelectedClientId(clientIdStr);
+        // Set customer search term for the searchable dropdown
+        setCustomerSearchTerm(matchingClient.name || matchingClient.clientName || matchingClient.companyName || '');
+      }
+    }
+  }, [editingInvoice, clients]);
+
+  // Set product selections AFTER products list is loaded
+  useEffect(() => {
+    if (editingInvoice && editingInvoice.items && products.length > 0) {
+      try {
+        const items = typeof editingInvoice.items === 'string' 
+          ? JSON.parse(editingInvoice.items) 
+          : editingInvoice.items;
+        
+        if (Array.isArray(items) && items.length > 0) {
+          const productSelections: { [key: number]: string } = {};
+          items.forEach((item: any, index: number) => {
+            if (item.productId) {
+              const productIdStr = String(item.productId);
+              const matchingProduct = products.find(p => String(p.id) === productIdStr);
+              if (matchingProduct) {
+                productSelections[index] = productIdStr;
+              }
+            }
+          });
+          console.log('📦 Setting product selections after products loaded:', productSelections);
+          setSelectedProductIds(productSelections);
+        }
+      } catch (e) {
+        console.error('Error setting product selections:', e);
+      }
+    }
+  }, [editingInvoice, products]);
+
+  // Auto-generate sales order number on form load (only for new invoices)
+  useEffect(() => {
+    if (!editingInvoice) {
+      const fetchNextSalesOrderNumber = async () => {
+        try {
+          const res = await fetch('/api/sales-operations/next-invoice-number?type=SALES', {
+            credentials: 'include'
+          });
+          if (res.ok) {
+            const data = await res.json();
+            setFormData(prev => ({ ...prev, invoiceNo: data.invoiceNumber }));
+          }
+        } catch (error) {
+          console.error('Failed to fetch next sales order number:', error);
+        }
+      };
+      fetchNextSalesOrderNumber();
+    }
+  }, [editingInvoice]);
 
   // Handle client selection and auto-fill
   const handleClientChange = (clientId: string) => {
     setSelectedClientId(clientId);
-    const client = clients.find(c => c.id === clientId);
+    const client = clients.find(c => String(c.id) === clientId);
     
     if (client) {
       // Build full billing address
@@ -1092,7 +1458,7 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
   // Handle product selection and auto-fill
   const handleProductChange = (productId: string, index: number) => {
     setSelectedProductIds(prev => ({ ...prev, [index]: productId }));
-    const product = products.find(p => p.id === productId);
+    const product = products.find(p => String(p.id) === productId);
     
     if (product) {
       const newItems = [...formData.items];
@@ -1255,6 +1621,7 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
         dueDate: formData.dueDate || null, // Keep as string
         destination: formData.destination || null,
         dispatchFrom: formData.loadingFrom || 'KANDLA',
+        dispatchedThrough: formData.dispatchedThrough || null,
         vehicleNumber: formData.vehicleNumber || null,
         lrRrNumber: formData.lrNumber || null,
         paymentTerms: formData.paymentTerms || '30 Days Credit',
@@ -1331,8 +1698,13 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
       console.log('Prepared invoice data:', JSON.stringify(invoice, null, 2));
       console.log('Prepared items data:', JSON.stringify(items, null, 2));
 
-      const response = await fetch('/api/sales-operations/sales-invoices', {
-        method: 'POST',
+      const isEditing = editingInvoice && editingInvoice.id;
+      const url = isEditing 
+        ? `/api/sales-operations/sales-invoices/${editingInvoice.id}`
+        : '/api/sales-operations/sales-invoices';
+
+      const response = await fetch(url, {
+        method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ invoice, items })
@@ -1342,7 +1714,7 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
       console.log('Response ok:', response.ok);
 
       if (!response.ok) {
-        let errorMessage = 'Failed to create invoice';
+        let errorMessage = isEditing ? 'Failed to update invoice' : 'Failed to create invoice';
         try {
           const error = await response.json();
           console.error('Server error response:', error);
@@ -1357,14 +1729,14 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
       }
 
       const result = await response.json();
-      console.log('Invoice created successfully:', result);
+      console.log(isEditing ? 'Invoice updated successfully:' : 'Invoice created successfully:', result);
 
       // Invalidate and refetch sales invoices list
       queryClient.invalidateQueries({ queryKey: ['/api/sales-operations/sales-invoices'] });
 
       toast({
         title: 'Success',
-        description: 'Sales invoice created successfully!',
+        description: isEditing ? 'Sales invoice updated successfully!' : 'Sales invoice created successfully!',
       });
 
       // Reset form and go back
@@ -1400,9 +1772,9 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
           <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-6 rounded-lg shadow-lg">
             <h1 className="text-3xl font-bold mb-2 flex items-center">
               <ShoppingCart className="w-8 h-8 mr-3" />
-              Sales Invoice Entry Form
+              {editingInvoice ? 'Edit Sales Invoice' : 'Sales Invoice Entry Form'}
             </h1>
-            <p className="text-blue-100">Create and manage sales invoices</p>
+            <p className="text-blue-100">{editingInvoice ? 'Update existing sales invoice' : 'Create and manage sales invoices'}</p>
           </div>
         </div>
 
@@ -1537,10 +1909,35 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                   />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Dispatched Through *</label>
+                  <select
+                    value={formData.dispatchedThrough}
+                    onChange={(e) => setFormData(prev => ({ ...prev, dispatchedThrough: e.target.value }))}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-yellow-50"
+                  >
+                    <option value="">Select Transport</option>
+                    <option value="HANU ROAD CARRIER">HANU ROAD CARRIER</option>
+                    <option value="OM PARIVAHAN">OM PARIVAHAN</option>
+                    <option value="VINAYAK BULK CARRIER">VINAYAK BULK CARRIER</option>
+                    <option value="VIKASH LOGISTICS SERVICES">VIKASH LOGISTICS SERVICES</option>
+                    <option value="OM SHANTI OIL TANKERS">OM SHANTI OIL TANKERS</option>
+                    <option value="SHREE HEMKANWAR TRANSPORT">SHREE HEMKANWAR TRANSPORT</option>
+                    <option value="TRUCK">TRUCK</option>
+                    <option value="TANKER">TANKER</option>
+                    <option value="BY ROAD">BY ROAD</option>
+                  </select>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
                   <select
-                    value={formData.paymentTerms}
-                    onChange={(e) => setFormData(prev => ({ ...prev, paymentTerms: e.target.value }))}
+                    value={formData.paymentTerms === 'ADVANCE' || formData.paymentTerms === '30 Days Credit' || formData.paymentTerms === '45 Days Credit' || formData.paymentTerms === '60 Days Credit' || formData.paymentTerms === 'COD' ? formData.paymentTerms : 'CUSTOM'}
+                    onChange={(e) => {
+                      if (e.target.value === 'CUSTOM') {
+                        setFormData(prev => ({ ...prev, paymentTerms: '' }));
+                      } else {
+                        setFormData(prev => ({ ...prev, paymentTerms: e.target.value }));
+                      }
+                    }}
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="ADVANCE">ADVANCE</option>
@@ -1548,17 +1945,32 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                     <option value="45 Days Credit">45 Days Credit</option>
                     <option value="60 Days Credit">60 Days Credit</option>
                     <option value="COD">COD (Cash on Delivery)</option>
+                    <option value="CUSTOM">Custom (Enter Below)</option>
                   </select>
+                  {(formData.paymentTerms !== 'ADVANCE' && formData.paymentTerms !== '30 Days Credit' && formData.paymentTerms !== '45 Days Credit' && formData.paymentTerms !== '60 Days Credit' && formData.paymentTerms !== 'COD') && (
+                    <input
+                      type="text"
+                      value={formData.paymentTerms}
+                      onChange={(e) => setFormData(prev => ({ ...prev, paymentTerms: e.target.value }))}
+                      placeholder="Enter custom payment terms"
+                      className="w-full p-2 mt-2 border border-blue-400 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-yellow-50"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Sales Person Name</label>
-                  <input
-                    type="text"
+                  <select
                     value={formData.salesPersonName}
                     onChange={(e) => setFormData(prev => ({ ...prev, salesPersonName: e.target.value }))}
-                    placeholder="Enter Sales Person Name"
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  >
+                    <option value="">Select Sales Person</option>
+                    {users.map((user: any) => (
+                      <option key={user.id} value={`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username}>
+                        {`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description / Remarks</label>
@@ -1574,6 +1986,7 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
             </CardContent>
           </Card>
 
+
           {/* Customer Details */}
           <Card className="shadow-lg">
             <CardHeader className="bg-gray-50 border-b">
@@ -1584,37 +1997,42 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
+                <div className="relative" ref={customerDropdownRef}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Select Customer *</label>
-                  <Select 
-                    value={selectedClientId}
-                    onValueChange={handleClientChange}
-                  >
-                    <SelectTrigger className="w-full" style={{ backgroundColor: '#ffffff', color: '#111827' }}>
-                      <SelectValue placeholder="Select Customer from Client Master" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white" style={{ backgroundColor: '#ffffff' }}>
+                  <input
+                    type="text"
+                    placeholder="Search Customer..."
+                    value={customerSearchTerm}
+                    onChange={(e) => {
+                      setCustomerSearchTerm(e.target.value);
+                      setShowCustomerDropdown(true);
+                    }}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  {showCustomerDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                       {clientsLoading ? (
-                        <SelectItem value="loading" disabled style={{ color: '#6B7280', backgroundColor: '#FEE2E2' }}>Loading customers...</SelectItem>
-                      ) : clients.length === 0 ? (
-                        <SelectItem value="no-clients" disabled style={{ color: '#DC2626', backgroundColor: '#FEE2E2' }}>No customers found - Add in Client Master</SelectItem>
+                        <div className="p-2 text-gray-500">Loading customers...</div>
+                      ) : filteredClients.length === 0 ? (
+                        <div className="p-2 text-red-500">No customers found</div>
                       ) : (
-                        clients.map((client) => (
-                          <SelectItem 
-                            key={client.id} 
-                            value={client.id} 
-                            style={{ 
-                              color: '#000000',
-                              backgroundColor: '#ffffff',
-                              fontWeight: 'bold'
+                        filteredClients.map((client) => (
+                          <div
+                            key={client.id}
+                            className="p-2 hover:bg-blue-100 cursor-pointer font-medium"
+                            onClick={() => {
+                              handleClientChange(String(client.id));
+                              setCustomerSearchTerm(client.name || client.clientName || client.companyName || 'Unnamed Client');
+                              setShowCustomerDropdown(false);
                             }}
                           >
                             {client.name || client.clientName || client.companyName || 'Unnamed Client'}
-                          </SelectItem>
+                          </div>
                         ))
                       )}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
@@ -1695,7 +2113,7 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                                 <SelectItem value="no-products" disabled style={{ color: '#DC2626' }}>No products - Add in Product Master</SelectItem>
                               ) : (
                                 products.map((product) => (
-                                  <SelectItem key={product.id} value={product.id} style={{ color: '#111827' }}>
+                                  <SelectItem key={product.id} value={String(product.id)} style={{ color: '#111827' }}>
                                     {product.name || product.productName || 'Unnamed Product'}
                                   </SelectItem>
                                 ))
@@ -1728,17 +2146,26 @@ const SalesInvoiceForm = ({ onBack }: { onBack: () => void }) => {
                           />
                         </td>
                         <td className="border border-gray-300 p-2">
-                          <input
-                            type="text"
+                          <select
                             value={item.unit}
                             onChange={(e) => {
                               const newItems = [...formData.items];
                               newItems[index].unit = e.target.value;
                               setFormData(prev => ({ ...prev, items: newItems }));
                             }}
-                            className="w-full p-1 border border-gray-200 rounded"
-                            placeholder="Unit"
-                          />
+                            className="w-full p-1 border border-gray-200 rounded bg-white"
+                          >
+                            <option value="DRUM">DRUM</option>
+                            <option value="KG">KG</option>
+                            <option value="TON">TON (MT)</option>
+                            <option value="LITRE">LITRE</option>
+                            <option value="LTR">LTR</option>
+                            <option value="PIECE">PIECE</option>
+                            <option value="PIECES">PIECES</option>
+                            <option value="METER">METER</option>
+                            <option value="BOX">BOX</option>
+                            <option value="UNIT">UNIT</option>
+                          </select>
                         </td>
                         <td className="border border-gray-300 p-2">
                           <input
@@ -2143,6 +2570,10 @@ const InvoiceManagement: React.FC = () => {
   const [isLedgerDialogOpen, setIsLedgerDialogOpen] = useState(false);
   const [selectedInvoiceForLedger, setSelectedInvoiceForLedger] = useState<any>(null);
 
+  // State for editing invoice
+  const [editingInvoice, setEditingInvoice] = useState<any>(null);
+  const [editInvoiceType, setEditInvoiceType] = useState<'sales' | 'purchase' | null>(null);
+
   // Debug: Monitor viewDialogOpen state
   useEffect(() => {
     console.log('📊 viewDialogOpen state changed:', viewDialogOpen);
@@ -2377,6 +2808,44 @@ const InvoiceManagement: React.FC = () => {
     }
   };
 
+  // Handle Edit Invoice
+  const handleEditInvoice = async (invoice: any, invoiceType: 'sales' | 'purchase') => {
+    console.log('✏️ Editing invoice:', { id: invoice.id, type: invoiceType, invoice });
+    
+    // Fetch full invoice details including items
+    try {
+      const endpoint = invoiceType === 'sales'
+        ? `/api/sales-operations/sales-invoices/${invoice.id}`
+        : `/api/sales-operations/purchase-invoices/${invoice.id}`;
+      
+      console.log('📡 Fetching full invoice for editing from:', endpoint);
+      const response = await fetch(endpoint);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Full invoice loaded for editing - RAW DATA:', data);
+        
+        // Handle nested structure: { invoice: {...}, items: [...] } or flat structure
+        const fullInvoice = data.invoice ? { ...data.invoice, items: data.items } : data;
+        
+        console.log('✅ Full invoice with items for editing:', fullInvoice);
+        setEditingInvoice(fullInvoice);
+      } else {
+        console.log('⚠️ Could not fetch full details for editing, using list data');
+        setEditingInvoice(invoice);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching invoice details for editing:', error);
+      setEditingInvoice(invoice);
+    }
+    
+    setEditInvoiceType(invoiceType);
+    if (invoiceType === 'sales') {
+      setViewMode('sales-form');
+    } else {
+      setViewMode('purchase-form');
+    }
+  };
+
   // Handle E-way Bill Details Click
   const handleEwayBillClick = (filterType: 'today' | 'tomorrow' | 'thisWeek' | 'thisMonth' | 'thisYear', invoices: any[]) => {
     const today = new Date();
@@ -2580,6 +3049,9 @@ const InvoiceManagement: React.FC = () => {
   const handleBackToMain = () => {
     setViewMode('main');
     setSelectedType(null);
+    // Clear editing state
+    setEditingInvoice(null);
+    setEditInvoiceType(null);
   };
 
   // Render all dialogs at component level (before conditional returns)
@@ -2764,7 +3236,7 @@ const InvoiceManagement: React.FC = () => {
     return (
       <>
         {renderDialogs()}
-        <PurchaseInvoiceForm onBack={handleBackToMain} />
+        <PurchaseInvoiceForm onBack={handleBackToMain} editingInvoice={editInvoiceType === 'purchase' ? editingInvoice : undefined} />
       </>
     );
   }
@@ -2773,7 +3245,7 @@ const InvoiceManagement: React.FC = () => {
     return (
       <>
         {renderDialogs()}
-        <SalesInvoiceForm onBack={handleBackToMain} />
+        <SalesInvoiceForm onBack={handleBackToMain} editingInvoice={editInvoiceType === 'sales' ? editingInvoice : undefined} />
       </>
     );
   }
@@ -3096,6 +3568,15 @@ const InvoiceManagement: React.FC = () => {
                             </button>
                             <button
                               type="button"
+                              onClick={() => handleEditInvoice(invoice, 'sales')}
+                              title="Edit"
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded border border-blue-200 cursor-pointer"
+                              style={{ pointerEvents: 'auto' }}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
@@ -3171,10 +3652,18 @@ const InvoiceManagement: React.FC = () => {
             </Button>
             <h1 className="text-2xl font-bold text-gray-900">All Purchase Invoices</h1>
           </div>
-          <Button onClick={() => handleTypeSelection('purchase')} className="bg-green-600 hover:bg-green-700">
-            <Plus className="w-4 h-4 mr-2" />
-            New Purchase Invoice
-          </Button>
+          <div className="flex items-center space-x-3">
+            <a href="/purchase-ledger">
+              <Button variant="outline" className="flex items-center space-x-2 border-green-300 text-green-700 hover:bg-green-50">
+                <DollarSign className="w-4 h-4" />
+                <span>View Ledger</span>
+              </Button>
+            </a>
+            <Button onClick={() => handleTypeSelection('purchase')} className="bg-green-600 hover:bg-green-700">
+              <Plus className="w-4 h-4 mr-2" />
+              New Purchase Invoice
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -3384,6 +3873,9 @@ const InvoiceManagement: React.FC = () => {
                               </Button>
                               <Button variant="outline" size="sm" title="Print/PDF Invoice" onClick={() => handlePrintInvoice(invoice, 'purchase')}>
                                 <Printer className="w-4 h-4" />
+                              </Button>
+                              <Button variant="outline" size="sm" title="Edit Invoice" className="text-blue-600 hover:bg-blue-50" onClick={() => handleEditInvoice(invoice, 'purchase')}>
+                                <Pencil className="w-4 h-4" />
                               </Button>
                               <Button variant="outline" size="sm" title="Delete Invoice" className="text-red-600 hover:bg-red-50" onClick={() => handleDeleteClick(invoice, 'purchase')}>
                                 <Trash2 className="w-4 h-4" />

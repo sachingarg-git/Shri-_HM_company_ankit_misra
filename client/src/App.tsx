@@ -24,6 +24,7 @@ import TourAdvance from "@/pages/tour-advance";
 import TAReports from "@/pages/ta-reports";
 import InvoiceManagement from "@/pages/invoice-management";
 import CompanyLedger from "@/pages/company-ledger";
+import PurchaseLedger from "@/pages/purchase-ledger";
 import Reports from "@/pages/reports";
 
 import UserManagement from "@/pages/user-management";
@@ -78,6 +79,7 @@ function Router() {
             <Route path="/pricing" component={Pricing} />
             <Route path="/invoice-management" component={InvoiceManagement} />
             <Route path="/company-ledger" component={CompanyLedger} />
+            <Route path="/purchase-ledger" component={PurchaseLedger} />
             <Route path="/reports" component={Reports} />
 
             <Route path="/master-data" component={MasterData} />
