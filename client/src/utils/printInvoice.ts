@@ -547,7 +547,7 @@ export const printTaxInvoice = async (invoice: any, type: 'sales' | 'purchase', 
 };
 
 // Generate Sales Order HTML matching the screenshot format
-export const generateSalesOrderHtml = (invoice: any): string => {
+export const generateSalesOrderHtml = (invoice: any, stampBase64: string = ''): string => {
   const formatDate = (dateStr: string): string => {
     if (!dateStr) return '';
     const date = new Date(dateStr);
@@ -961,7 +961,7 @@ export const printSalesOrder = async (invoice: any, showError?: (msg: string) =>
       return;
     }
 
-    let orderHtml = generateSalesOrderHtml(invoice);
+    let orderHtml = generateSalesOrderHtml(invoice, stampBase64);
     // Replace the logo src with base64
     if (logoBase64) {
       orderHtml = orderHtml.replace(/src="\/logo\.jpg"/g, `src="${logoBase64}"`);
