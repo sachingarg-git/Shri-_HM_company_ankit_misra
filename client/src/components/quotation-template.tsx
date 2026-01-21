@@ -238,7 +238,7 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
     // ===================== ITEMS TABLE =====================
     const totalTableWidth = pageWidth - 2 * margin;
     const itemTableHeaders = ['Item #', 'Description', 'Qty', 'Unit', 'Rate', 'Amount', 'GST', 'Total'];
-    const itemColWidths = [12, 38, 12, 14, 18, 20, 18, 20];
+    const itemColWidths = [14, 44, 12, 14, 18, 20, 18, 20];
     
     // Calculate column positions
     const tableColPositions = [margin];
@@ -246,89 +246,106 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
       tableColPositions.push(tableColPositions[i] + itemColWidths[i]);
     }
 
-    // Draw table header
-    doc.setFillColor(230, 126, 34);
+    // Draw table outer border
     doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.5);
+    doc.setLineWidth(0.8);
     
-    // Draw header background
-    doc.rect(margin, currentY, totalTableWidth, 8, 'F');
+    const headerY = currentY;
+    const rowHeight = 7;
     
-    // Draw header with column dividers
+    // Draw header
+    doc.setFillColor(230, 126, 34);
+    doc.rect(margin, headerY, totalTableWidth, rowHeight, 'F');
+    doc.rect(margin, headerY, totalTableWidth, rowHeight);
+    
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
 
     itemTableHeaders.forEach((header, i) => {
       const xPos = tableColPositions[i];
       const colWidth = itemColWidths[i];
       
+      // Draw column divider
+      if (i > 0) {
+        doc.setLineWidth(0.4);
+        doc.line(xPos, headerY, xPos, headerY + rowHeight);
+      }
+      
       // Add text
       if (i > 1) {
         // Right align numbers
-        doc.text(header, xPos + colWidth - 1, currentY + 5, { align: 'right' });
+        doc.text(header, xPos + colWidth - 2, headerY + 5, { align: 'right' });
       } else {
-        doc.text(header, xPos + 1, currentY + 5);
+        doc.text(header, xPos + 2, headerY + 5);
       }
     });
-    
-    // Bottom border
-    doc.line(margin, currentY + 8, margin + totalTableWidth, currentY + 8);
 
-    currentY += 8;
+    currentY = headerY + rowHeight;
 
-    // Draw table rows with cells
+    // Draw table rows
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.setLineWidth(0.5);
+    doc.setLineWidth(0.4);
 
     quotationData.items?.forEach((item, index) => {
+      const rowY = currentY;
+      
       // Alternate row colors
       if (index % 2 === 0) {
         doc.setFillColor(245, 245, 245);
-        doc.rect(margin, currentY, totalTableWidth, 8, 'F');
+        doc.rect(margin, rowY, totalTableWidth, rowHeight, 'F');
       }
 
-      // Draw row bottom border
-      doc.setDrawColor(200, 200, 200);
-      doc.line(margin, currentY + 8, margin + totalTableWidth, currentY + 8);
+      // Draw row borders
+      doc.setDrawColor(180, 180, 180);
       
-      // Draw column dividers
+      // Vertical column dividers
       for (let i = 1; i < tableColPositions.length; i++) {
-        doc.line(tableColPositions[i], currentY, tableColPositions[i], currentY + 8);
+        doc.line(tableColPositions[i], rowY, tableColPositions[i], rowY + rowHeight);
       }
+      
+      // Row bottom border
+      doc.line(margin, rowY + rowHeight, margin + totalTableWidth, rowY + rowHeight);
+      
+      // Left border
+      doc.line(margin, rowY, margin, rowY + rowHeight);
+      
+      // Right border
+      doc.line(margin + totalTableWidth, rowY, margin + totalTableWidth, rowY + rowHeight);
 
       // Add text for each column
       doc.setTextColor(0, 0, 0);
       
       // Column 0: Item #
-      doc.text((index + 1).toString(), tableColPositions[0] + 2, currentY + 5);
+      const itemNum = (index + 1).toString();
+      doc.text(itemNum, tableColPositions[0] + itemColWidths[0] / 2, rowY + 4.5, { align: 'center' });
       
-      // Column 1: Description  
-      const desc = (item.description || 'N/A').substring(0, 20);
-      doc.text(desc, tableColPositions[1] + 2, currentY + 5);
+      // Column 1: Description
+      const desc = (item.description || 'N/A').substring(0, 25);
+      doc.text(desc, tableColPositions[1] + 2, rowY + 4.5);
       
       // Column 2: Qty
-      doc.text(item.quantity.toString(), tableColPositions[2] + itemColWidths[2] - 2, currentY + 5, { align: 'right' });
+      doc.text(String(parseFloat(item.quantity.toString()).toFixed(2)), tableColPositions[2] + itemColWidths[2] - 2, rowY + 4.5, { align: 'right' });
       
       // Column 3: Unit
-      doc.text(item.unit || 'N/A', tableColPositions[3] + 2, currentY + 5);
+      doc.text(item.unit || 'N/A', tableColPositions[3] + itemColWidths[3] / 2, rowY + 4.5, { align: 'center' });
       
       // Column 4: Rate
-      doc.text(formatCurrency(item.rate), tableColPositions[4] + itemColWidths[4] - 2, currentY + 5, { align: 'right' });
+      doc.text(formatCurrency(item.rate), tableColPositions[4] + itemColWidths[4] - 2, rowY + 4.5, { align: 'right' });
       
       // Column 5: Amount
-      doc.text(formatCurrency(item.amount), tableColPositions[5] + itemColWidths[5] - 2, currentY + 5, { align: 'right' });
+      doc.text(formatCurrency(item.amount), tableColPositions[5] + itemColWidths[5] - 2, rowY + 4.5, { align: 'right' });
       
       // Column 6: GST
       const gstAmount = item.gstRate === 0 ? 0 : (item.gstAmount || 0);
-      doc.text(formatCurrency(gstAmount), tableColPositions[6] + itemColWidths[6] - 2, currentY + 5, { align: 'right' });
+      doc.text(formatCurrency(gstAmount), tableColPositions[6] + itemColWidths[6] - 2, rowY + 4.5, { align: 'right' });
       
       // Column 7: Total
-      doc.text(formatCurrency(item.totalAmount), tableColPositions[7] + itemColWidths[7] - 2, currentY + 5, { align: 'right' });
+      doc.text(formatCurrency(item.totalAmount), tableColPositions[7] + itemColWidths[7] - 2, rowY + 4.5, { align: 'right' });
 
-      currentY += 8;
+      currentY += rowHeight;
     });
 
     currentY += 5;
