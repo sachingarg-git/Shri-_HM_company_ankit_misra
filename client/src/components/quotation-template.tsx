@@ -236,8 +236,8 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
     currentY += 37;
 
     // ===================== ITEMS TABLE =====================
-    const tableHeaders = ['Item #', 'Description', 'Qty', 'Unit', 'Ex Factory Rate(₹)', 'Amount(₹)', 'GST@18%(₹)', 'Total Amount(₹)'];
-    const colWidths = [12, 45, 12, 12, 18, 18, 18, 18];
+    const tableHeaders = ['Item #', 'Description', 'Qty', 'Unit', 'Rate(₹)', 'Amount(₹)', 'GST(₹)', 'Total(₹)'];
+    const colWidths = [10, 38, 10, 10, 20, 22, 20, 22];
     
     let colX = margin;
     const colPositions = [colX];
@@ -255,7 +255,12 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
     doc.setFont('helvetica', 'bold');
 
     tableHeaders.forEach((header, i) => {
-      doc.text(header, colPositions[i] + 1, currentY + 6);
+      // Right align numeric headers (columns 2,4,5,6,7)
+      if (i >= 2 && i !== 3) {
+        doc.text(header, colPositions[i] + colWidths[i] - 1, currentY + 6, { align: 'right' });
+      } else {
+        doc.text(header, colPositions[i] + 1, currentY + 6);
+      }
     });
 
     currentY += 8;
@@ -280,14 +285,14 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
       doc.setTextColor(0, 0, 0);
       doc.text((index + 1).toString(), colPositions[0] + 1, currentY + 6);
       doc.text(item.description || 'N/A', colPositions[1] + 1, currentY + 6);
-      doc.text(item.quantity.toString(), colPositions[2] + 1, currentY + 6);
+      doc.text(item.quantity.toString(), colPositions[2] + 2, currentY + 6, { align: 'right' });
       doc.text(item.unit || 'N/A', colPositions[3] + 1, currentY + 6);
-      doc.text(formatCurrency(item.rate), colPositions[4] + 1, currentY + 6);
-      doc.text(formatCurrency(item.amount), colPositions[5] + 1, currentY + 6);
+      doc.text(formatCurrency(item.rate), colPositions[4] + 2, currentY + 6, { align: 'right' });
+      doc.text(formatCurrency(item.amount), colPositions[5] + 2, currentY + 6, { align: 'right' });
       
       const gstAmount = item.gstRate === 0 ? 0 : (item.gstAmount || 0);
-      doc.text(formatCurrency(gstAmount), colPositions[6] + 1, currentY + 6);
-      doc.text(formatCurrency(item.totalAmount), colPositions[7] + 1, currentY + 6);
+      doc.text(formatCurrency(gstAmount), colPositions[6] + 2, currentY + 6, { align: 'right' });
+      doc.text(formatCurrency(item.totalAmount), colPositions[7] + 2, currentY + 6, { align: 'right' });
 
       currentY += 8;
     });
@@ -353,9 +358,9 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
       doc.rect(summaryX, summaryY, summaryWidth, 7);
       doc.setFontSize(9);
       doc.text(item.label, summaryX + 2, summaryY + 5);
-      // Format: ₹ 12,34,567.89
-      const formattedAmount = `₹ ${formatCurrency(item.value)}`;
-      doc.text(formattedAmount, summaryX + summaryWidth - 3, summaryY + 5, { align: 'right' });
+      // Format: ₹ 12,34,567.89 - right aligned
+      const formattedAmount = `₹${formatCurrency(item.value)}`;
+      doc.text(formattedAmount, summaryX + summaryWidth - 2, summaryY + 5, { align: 'right' });
 
       summaryY += 7;
     });
