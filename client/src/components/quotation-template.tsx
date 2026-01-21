@@ -395,11 +395,14 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
 
       doc.rect(summaryX, summaryY, summaryWidth, 7, 'F');
       doc.rect(summaryX, summaryY, summaryWidth, 7);
-      doc.setFontSize(9);
+      doc.setFontSize(8);
+      
+      // Label on left
       doc.text(item.label, summaryX + 2, summaryY + 5);
-      // Format: ₹ 12,34,567.89 - right aligned
-      const formattedAmount = `₹${formatCurrency(item.value)}`;
-      doc.text(formattedAmount, summaryX + summaryWidth - 2, summaryY + 5, { align: 'right' });
+      
+      // Amount on right with rupee symbol using text directly
+      const amountText = formatCurrency(item.value);
+      doc.text('₹ ' + amountText, summaryX + summaryWidth - 2, summaryY + 5, { align: 'right' });
 
       summaryY += 7;
     });
