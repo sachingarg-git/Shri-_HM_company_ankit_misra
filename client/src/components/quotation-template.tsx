@@ -236,43 +236,57 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
     currentY += 37;
 
     // ===================== ITEMS TABLE =====================
-    // Recalculate column widths to fit page properly
     const totalTableWidth = pageWidth - 2 * margin;
     const itemTableHeaders = ['Item #', 'Description', 'Qty', 'Unit', 'Rate(₹)', 'Amount(₹)', 'GST(₹)', 'Total(₹)'];
-    const itemColWidths = [8, 32, 10, 12, 18, 20, 18, 20];
+    const itemColWidths = [10, 30, 12, 12, 20, 22, 18, 22];
     
-    // Verify total width
-    const totalColWidth = itemColWidths.reduce((a, b) => a + b, 0);
-    const colPositions = [margin];
+    // Calculate column positions
+    const tableColPositions = [margin];
     for (let i = 0; i < itemColWidths.length - 1; i++) {
-      colPositions.push(colPositions[i] + itemColWidths[i]);
+      tableColPositions.push(tableColPositions[i] + itemColWidths[i]);
     }
 
-    // Table headers
+    // Draw table header
     doc.setFillColor(230, 126, 34);
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    
+    // Draw header background
     doc.rect(margin, currentY, totalTableWidth, 8, 'F');
-
+    
+    // Draw header with column dividers
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
 
     itemTableHeaders.forEach((header, i) => {
-      const xPos = colPositions[i];
+      const xPos = tableColPositions[i];
       const colWidth = itemColWidths[i];
-      // Right align numeric headers (columns 2,4,5,6,7)
+      
+      // Draw column border
+      doc.line(xPos, currentY, xPos, currentY + 8);
+      
+      // Add text
       if (i >= 2 && i !== 3) {
-        doc.text(header, xPos + colWidth - 1, currentY + 6, { align: 'right' });
+        // Right align numbers
+        doc.text(header, xPos + colWidth - 1, currentY + 5, { align: 'right' });
       } else {
-        doc.text(header, xPos + 1, currentY + 6);
+        doc.text(header, xPos + 1, currentY + 5);
       }
     });
+    
+    // Right border
+    doc.line(margin + totalTableWidth, currentY, margin + totalTableWidth, currentY + 8);
+    // Bottom border
+    doc.line(margin, currentY + 8, margin + totalTableWidth, currentY + 8);
 
     currentY += 8;
 
-    // Table rows
+    // Draw table rows with cells
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(7);
+    doc.setLineWidth(0.3);
 
     quotationData.items?.forEach((item, index) => {
       // Alternate row colors
@@ -281,29 +295,43 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
         doc.rect(margin, currentY, totalTableWidth, 8, 'F');
       }
 
-      // Draw borders
-      doc.setDrawColor(200, 200, 200);
-      doc.rect(margin, currentY, totalTableWidth, 8);
+      // Draw cells with borders
+      itemColWidths.forEach((colWidth, colIndex) => {
+        const xPos = tableColPositions[colIndex];
+        
+        // Draw cell
+        doc.setDrawColor(200, 200, 200);
+        doc.rect(xPos, currentY, colWidth, 8);
+      });
 
-      // Add text at proper positions
+      // Add text for each column
       doc.setTextColor(0, 0, 0);
+      
       // Column 0: Item #
-      doc.text((index + 1).toString(), colPositions[0] + 1, currentY + 6);
-      // Column 1: Description
-      doc.text(item.description || 'N/A', colPositions[1] + 1, currentY + 6);
-      // Column 2: Qty (right aligned)
-      doc.text(item.quantity.toString(), colPositions[2] + itemColWidths[2] - 1, currentY + 6, { align: 'right' });
+      doc.text((index + 1).toString(), tableColPositions[0] + 1, currentY + 5);
+      
+      // Column 1: Description  
+      const desc = (item.description || 'N/A').substring(0, 25);
+      doc.text(desc, tableColPositions[1] + 1, currentY + 5);
+      
+      // Column 2: Qty
+      doc.text(item.quantity.toString(), tableColPositions[2] + itemColWidths[2] - 1, currentY + 5, { align: 'right' });
+      
       // Column 3: Unit
-      doc.text(item.unit || 'N/A', colPositions[3] + 1, currentY + 6);
-      // Column 4: Rate (right aligned)
-      doc.text(formatCurrency(item.rate), colPositions[4] + itemColWidths[4] - 1, currentY + 6, { align: 'right' });
-      // Column 5: Amount (right aligned)
-      doc.text(formatCurrency(item.amount), colPositions[5] + itemColWidths[5] - 1, currentY + 6, { align: 'right' });
-      // Column 6: GST (right aligned)
+      doc.text(item.unit || 'N/A', tableColPositions[3] + 1, currentY + 5);
+      
+      // Column 4: Rate
+      doc.text(formatCurrency(item.rate), tableColPositions[4] + itemColWidths[4] - 1, currentY + 5, { align: 'right' });
+      
+      // Column 5: Amount
+      doc.text(formatCurrency(item.amount), tableColPositions[5] + itemColWidths[5] - 1, currentY + 5, { align: 'right' });
+      
+      // Column 6: GST
       const gstAmount = item.gstRate === 0 ? 0 : (item.gstAmount || 0);
-      doc.text(formatCurrency(gstAmount), colPositions[6] + itemColWidths[6] - 1, currentY + 6, { align: 'right' });
-      // Column 7: Total (right aligned)
-      doc.text(formatCurrency(item.totalAmount), colPositions[7] + itemColWidths[7] - 1, currentY + 6, { align: 'right' });
+      doc.text(formatCurrency(gstAmount), tableColPositions[6] + itemColWidths[6] - 1, currentY + 5, { align: 'right' });
+      
+      // Column 7: Total
+      doc.text(formatCurrency(item.totalAmount), tableColPositions[7] + itemColWidths[7] - 1, currentY + 5, { align: 'right' });
 
       currentY += 8;
     });
