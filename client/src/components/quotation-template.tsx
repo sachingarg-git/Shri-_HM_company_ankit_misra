@@ -236,30 +236,34 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
     currentY += 37;
 
     // ===================== ITEMS TABLE =====================
-    const tableHeaders = ['Item #', 'Description', 'Qty', 'Unit', 'Rate(₹)', 'Amount(₹)', 'GST(₹)', 'Total(₹)'];
-    const colWidths = [10, 38, 10, 10, 20, 22, 20, 22];
+    // Recalculate column widths to fit page properly
+    const totalTableWidth = pageWidth - 2 * margin;
+    const itemTableHeaders = ['Item #', 'Description', 'Qty', 'Unit', 'Rate(₹)', 'Amount(₹)', 'GST(₹)', 'Total(₹)'];
+    const itemColWidths = [8, 32, 10, 12, 18, 20, 18, 20];
     
-    let colX = margin;
-    const colPositions = [colX];
-    for (let i = 0; i < colWidths.length - 1; i++) {
-      colX += colWidths[i];
-      colPositions.push(colX);
+    // Verify total width
+    const totalColWidth = itemColWidths.reduce((a, b) => a + b, 0);
+    const colPositions = [margin];
+    for (let i = 0; i < itemColWidths.length - 1; i++) {
+      colPositions.push(colPositions[i] + itemColWidths[i]);
     }
 
     // Table headers
     doc.setFillColor(230, 126, 34);
-    doc.rect(margin, currentY, infoTableWidth, 8, 'F');
+    doc.rect(margin, currentY, totalTableWidth, 8, 'F');
 
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
 
-    tableHeaders.forEach((header, i) => {
+    itemTableHeaders.forEach((header, i) => {
+      const xPos = colPositions[i];
+      const colWidth = itemColWidths[i];
       // Right align numeric headers (columns 2,4,5,6,7)
       if (i >= 2 && i !== 3) {
-        doc.text(header, colPositions[i] + colWidths[i] - 1, currentY + 6, { align: 'right' });
+        doc.text(header, xPos + colWidth - 1, currentY + 6, { align: 'right' });
       } else {
-        doc.text(header, colPositions[i] + 1, currentY + 6);
+        doc.text(header, xPos + 1, currentY + 6);
       }
     });
 
@@ -274,25 +278,32 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
       // Alternate row colors
       if (index % 2 === 0) {
         doc.setFillColor(245, 245, 245);
-        doc.rect(margin, currentY, infoTableWidth, 8, 'F');
+        doc.rect(margin, currentY, totalTableWidth, 8, 'F');
       }
 
       // Draw borders
       doc.setDrawColor(200, 200, 200);
-      doc.rect(margin, currentY, infoTableWidth, 8);
+      doc.rect(margin, currentY, totalTableWidth, 8);
 
-      // Add text
+      // Add text at proper positions
       doc.setTextColor(0, 0, 0);
+      // Column 0: Item #
       doc.text((index + 1).toString(), colPositions[0] + 1, currentY + 6);
+      // Column 1: Description
       doc.text(item.description || 'N/A', colPositions[1] + 1, currentY + 6);
-      doc.text(item.quantity.toString(), colPositions[2] + 2, currentY + 6, { align: 'right' });
+      // Column 2: Qty (right aligned)
+      doc.text(item.quantity.toString(), colPositions[2] + itemColWidths[2] - 1, currentY + 6, { align: 'right' });
+      // Column 3: Unit
       doc.text(item.unit || 'N/A', colPositions[3] + 1, currentY + 6);
-      doc.text(formatCurrency(item.rate), colPositions[4] + 2, currentY + 6, { align: 'right' });
-      doc.text(formatCurrency(item.amount), colPositions[5] + 2, currentY + 6, { align: 'right' });
-      
+      // Column 4: Rate (right aligned)
+      doc.text(formatCurrency(item.rate), colPositions[4] + itemColWidths[4] - 1, currentY + 6, { align: 'right' });
+      // Column 5: Amount (right aligned)
+      doc.text(formatCurrency(item.amount), colPositions[5] + itemColWidths[5] - 1, currentY + 6, { align: 'right' });
+      // Column 6: GST (right aligned)
       const gstAmount = item.gstRate === 0 ? 0 : (item.gstAmount || 0);
-      doc.text(formatCurrency(gstAmount), colPositions[6] + 2, currentY + 6, { align: 'right' });
-      doc.text(formatCurrency(item.totalAmount), colPositions[7] + 2, currentY + 6, { align: 'right' });
+      doc.text(formatCurrency(gstAmount), colPositions[6] + itemColWidths[6] - 1, currentY + 6, { align: 'right' });
+      // Column 7: Total (right aligned)
+      doc.text(formatCurrency(item.totalAmount), colPositions[7] + itemColWidths[7] - 1, currentY + 6, { align: 'right' });
 
       currentY += 8;
     });
