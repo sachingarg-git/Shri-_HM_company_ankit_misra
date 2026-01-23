@@ -3156,6 +3156,22 @@ M/S SRI HM BITUMEN CO`;
     const { jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     
+    // Load company logo as base64
+    let logoBase64 = '';
+    try {
+      const logoResponse = await fetch('/logo.jpg');
+      if (logoResponse.ok) {
+        const logoBlob = await logoResponse.blob();
+        logoBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(logoBlob);
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load logo:', err);
+    }
+    
     // Page setup for professional printing
     const margin = 15;
     const pageWidth = doc.internal.pageSize.width;
@@ -3196,52 +3212,102 @@ M/S SRI HM BITUMEN CO`;
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
       
-      // Company info box
+      // Company info box with logo
       doc.setFillColor(245, 245, 245);
-      doc.rect(15, 50, 180, 25, 'F');
-      doc.text('Your Company Name', 20, 62);
-      doc.text('Address Line 1, City, State, ZIP', 20, 68);
-      doc.text('Phone: +91-XXXXXXXXXX | Email: info@company.com', 20, 74);
+      doc.rect(15, 50, 180, 35, 'F');
+      
+      // Add logo if available
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, 'JPEG', 20, 55, 20, 20);
+        } catch (error) {
+          console.error('Failed to add logo to PDF:', error);
+        }
+      }
+      
+      // Company details with matching colors
+      doc.setTextColor(230, 126, 34); // Orange color matching logo
+      doc.setFont('helvetica', 'bold');
+      doc.text('M/S SRI HM BITUMEN CO', logoBase64 ? 45 : 20, 62);
+      
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Dag No: 1071, Patta No: 264, Guwahati, Assam 781035', logoBase64 ? 45 : 20, 68);
+      doc.text('GSTIN/UIN: 18CGMPP6536N2ZG', logoBase64 ? 45 : 20, 74);
+      doc.text('Mobile: +91 8453059698 | Email: info.srihmbitumen@gmail.com', logoBase64 ? 45 : 20, 80);
       
     } else if (format === 'professional') {
-      // Professional Format - Clean and Structured
-      doc.setFillColor(41, 128, 185); // Blue header
+      // Professional Format - Clean and Structured with company branding
+      doc.setFillColor(230, 126, 34); // Orange header matching logo
       doc.rect(0, 0, 210, 35, 'F');
       
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(20);
       doc.setFont('helvetica', 'bold');
-      doc.text('BUSINESS QUOTATION', 105, 22, { align: 'center' });
+      doc.text('QUOTATION - M/S SRI HM BITUMEN CO', 105, 22, { align: 'center' });
       
       doc.setTextColor(0, 0, 0);
       
-      // Two-column layout for company and quotation details
+      // Two-column layout for logo and company details
       doc.setFillColor(250, 250, 250);
-      doc.rect(15, 45, 85, 30, 'F');
-      doc.rect(110, 45, 85, 30, 'F');
+      doc.rect(15, 45, 85, 40, 'F');
+      doc.rect(110, 45, 85, 40, 'F');
+      
+      // Add logo to left column
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, 'JPEG', 20, 50, 25, 25);
+        } catch (error) {
+          console.error('Failed to add logo to PDF:', error);
+        }
+      }
+      
+      // Company details in right column
+      doc.setTextColor(230, 126, 34);
+      doc.setFont('helvetica', 'bold');
+      doc.text('M/S SRI HM BITUMEN CO', 115, 55);
+      
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text('Dag No: 1071, Patta No: 264', 115, 62);
+      doc.text('Guwahati, Assam 781035', 115, 67);
+      doc.text('GSTIN: 18CGMPP6536N2ZG', 115, 72);
+      doc.text('Mobile: +91 8453059698', 115, 77);
       
     } else {
-      // Advanced Format - Feature Rich with Graphics
-      doc.setFillColor(76, 175, 80); // Green header
-      doc.rect(0, 0, 210, 45, 'F');
+      // Advanced Format - Feature Rich with Graphics and Company Branding
+      doc.setFillColor(230, 126, 34); // Orange header matching logo
+      doc.rect(0, 0, 210, 50, 'F');
       
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(26);
       doc.setFont('helvetica', 'bold');
       doc.text('QUOTATION', 105, 25, { align: 'center' });
       doc.setFontSize(12);
-      doc.text('Professional Business Solutions', 105, 35, { align: 'center' });
+      doc.text('M/S SRI HM BITUMEN CO', 105, 35, { align: 'center' });
+      doc.setFontSize(10);
+      doc.text('Quality & Service is our Specialty', 105, 42, { align: 'center' });
       
       doc.setTextColor(0, 0, 0);
       
-      // Decorative border
-      doc.setDrawColor(76, 175, 80);
+      // Add logo in top left corner
+      if (logoBase64) {
+        try {
+          doc.addImage(logoBase64, 'JPEG', 15, 12, 25, 25);
+        } catch (error) {
+          console.error('Failed to add logo to PDF:', error);
+        }
+      }
+      
+      // Decorative border with company color
+      doc.setDrawColor(230, 126, 34);
       doc.setLineWidth(2);
       doc.rect(10, 10, 190, 277, 'S');
     }
     
     // Common content positioning based on format
-    let startY = format === 'advanced' ? 55 : format === 'professional' ? 45 : 50;
+    let startY = format === 'advanced' ? 60 : format === 'professional' ? 85 : 85;
     
     // Quotation details
     doc.setFontSize(12);

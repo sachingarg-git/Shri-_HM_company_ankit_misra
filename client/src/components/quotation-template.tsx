@@ -60,6 +60,22 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
   try {
     const doc = new jsPDF();
     
+    // Load company logo as base64
+    let logoBase64 = '';
+    try {
+      const logoResponse = await fetch('/logo.jpg');
+      if (logoResponse.ok) {
+        const logoBlob = await logoResponse.blob();
+        logoBase64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(logoBlob);
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load logo:', err);
+    }
+    
     // Load stamp image as base64
     let stampBase64 = '';
     try {
@@ -81,10 +97,12 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
     const margin = 10;
     let currentY = 10;
 
-    // Colors - Clean professional colors
-    const orangeColor: [number, number, number] = [230, 126, 34];
+    // Colors - Match the company logo colors
+    const orangeColor: [number, number, number] = [230, 126, 34]; // #E67E22
+    const darkOrangeColor: [number, number, number] = [211, 84, 0]; // #D35400
     const blackColor: [number, number, number] = [0, 0, 0];
-    const grayColor: [number, number, number] = [80, 80, 80];
+    const grayColor: [number, number, number] = [102, 102, 102]; // #666
+    const lightGrayColor: [number, number, number] = [136, 136, 136]; // #888
     const borderColor: [number, number, number] = [0, 0, 0];
 
     // Format currency in Indian format
@@ -103,18 +121,38 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
     currentY = 15;
 
     // ===================== HEADER SECTION =====================
-    // Draw "Shri" symbol and HM text
-    doc.setTextColor(orangeColor[0], orangeColor[1], orangeColor[2]);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Shri', margin + 5, currentY + 5);
-    doc.setFontSize(20);
-    doc.text('HM', margin + 5, currentY + 14);
-    doc.setFontSize(8);
-    doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
-    doc.text('BITUMEN COMPANY', margin + 3, currentY + 20);
+    // Add company logo on the left
+    const logoSize = 25;
+    if (logoBase64) {
+      try {
+        doc.addImage(logoBase64, 'JPEG', margin + 5, currentY, logoSize, logoSize);
+      } catch (error) {
+        console.error('Failed to add logo to PDF:', error);
+        // Fallback to text if logo fails
+        doc.setTextColor(orangeColor[0], orangeColor[1], orangeColor[2]);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Shri', margin + 5, currentY + 5);
+        doc.setFontSize(20);
+        doc.text('HM', margin + 5, currentY + 14);
+        doc.setFontSize(8);
+        doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+        doc.text('BITUMEN COMPANY', margin + 3, currentY + 20);
+      }
+    } else {
+      // Fallback text logo if image not loaded
+      doc.setTextColor(orangeColor[0], orangeColor[1], orangeColor[2]);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Shri', margin + 5, currentY + 5);
+      doc.setFontSize(20);
+      doc.text('HM', margin + 5, currentY + 14);
+      doc.setFontSize(8);
+      doc.setTextColor(grayColor[0], grayColor[1], grayColor[2]);
+      doc.text('BITUMEN COMPANY', margin + 3, currentY + 20);
+    }
 
-    // Company Name and Details (right side)
+    // Company Name and Details (right side) - Match logo colors
     doc.setTextColor(orangeColor[0], orangeColor[1], orangeColor[2]);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
@@ -209,36 +247,112 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
 
     currentY += 8;
 
-    // Content boxes
-    doc.setFillColor(240, 240, 240);
-    doc.rect(margin, currentY, partyWidth, 35, 'F');
-    doc.rect(margin + partyWidth + 2, currentY, partyWidth, 35, 'F');
+    // Content boxes with improved spacing
+    doc.setFillColor(248, 249, 250);
+    doc.rect(margin, currentY, partyWidth, 45, 'F');
+    doc.rect(margin + partyWidth + 2, currentY, partyWidth, 45, 'F');
+    
+    // Add border to content boxes
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, currentY, partyWidth, 45);
+    doc.rect(margin + partyWidth + 2, currentY, partyWidth, 45);
 
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
 
-    const clientDetails = [
-      `Name: ${quotationData.client.name || 'N/A'}`,
-      `GST: ${quotationData.client.gstNumber || 'N/A'}`,
-      `Address: ${quotationData.client.address || 'N/A'}`,
-      `State: ${quotationData.client.state || 'N/A'}`,
-      `Pin: ${quotationData.client.pinCode || 'N/A'}`
-    ];
+    // Helper function to split long text
+    const splitText = (text: string, maxLength: number): string[] => {
+      if (text.length <= maxLength) return [text];
+      const words = text.split(' ');
+      const lines: string[] = [];
+      let currentLine = '';
+      
+      for (const word of words) {
+        if ((currentLine + word).length <= maxLength) {
+          currentLine += (currentLine ? ' ' : '') + word;
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      }
+      if (currentLine) lines.push(currentLine);
+      return lines;
+    };
 
-    let detailY = currentY + 3;
-    clientDetails.forEach(detail => {
-      doc.text(detail, margin + 2, detailY);
-      doc.text(detail, margin + partyWidth + 4, detailY);
-      detailY += 6;
+    const clientName = quotationData.client.name || 'N/A';
+    const clientGST = quotationData.client.gstNumber || 'N/A';
+    const clientAddress = quotationData.client.address || 'N/A';
+    const clientState = quotationData.client.state || 'N/A';
+    const clientPin = quotationData.client.pinCode || 'N/A';
+
+    // Calculate available width for text (subtract margins and padding)
+    const availableWidth = partyWidth - 6;
+    const maxCharsPerLine = Math.floor(availableWidth / 2.2); // Improved calculation
+
+    let detailY = currentY + 4;
+    
+    // Name - with improved alignment
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('Name:', margin + 3, detailY);
+    doc.text('Name:', margin + partyWidth + 5, detailY);
+    doc.setFont('helvetica', 'normal');
+    
+    const nameLines = splitText(clientName, maxCharsPerLine - 6);
+    nameLines.forEach((line, index) => {
+      doc.text(line, margin + 20, detailY + (index * 3.5));
+      doc.text(line, margin + partyWidth + 22, detailY + (index * 3.5));
     });
+    detailY += Math.max(nameLines.length * 3.5, 5);
 
-    currentY += 37;
+    // GST - with improved alignment
+    doc.setFont('helvetica', 'bold');
+    doc.text('GST:', margin + 3, detailY);
+    doc.text('GST:', margin + partyWidth + 5, detailY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(clientGST, margin + 20, detailY);
+    doc.text(clientGST, margin + partyWidth + 22, detailY);
+    detailY += 5;
+
+    // Address - Handle long addresses with improved spacing
+    doc.setFont('helvetica', 'bold');
+    doc.text('Address:', margin + 3, detailY);
+    doc.text('Address:', margin + partyWidth + 5, detailY);
+    doc.setFont('helvetica', 'normal');
+    
+    const addressLines = splitText(clientAddress, maxCharsPerLine - 9);
+    addressLines.forEach((line, index) => {
+      doc.text(line, margin + 26, detailY + (index * 3.5));
+      doc.text(line, margin + partyWidth + 28, detailY + (index * 3.5));
+    });
+    detailY += Math.max(addressLines.length * 3.5, 5);
+
+    // State - with improved alignment
+    doc.setFont('helvetica', 'bold');
+    doc.text('State:', margin + 3, detailY);
+    doc.text('State:', margin + partyWidth + 5, detailY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(clientState, margin + 20, detailY);
+    doc.text(clientState, margin + partyWidth + 22, detailY);
+    detailY += 5;
+
+    // Pin Code - with improved alignment
+    doc.setFont('helvetica', 'bold');
+    doc.text('Pin:', margin + 3, detailY);
+    doc.text('Pin:', margin + partyWidth + 5, detailY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(clientPin, margin + 17, detailY);
+    doc.text(clientPin, margin + partyWidth + 19, detailY);
+
+    currentY += 47;
 
     // ===================== ITEMS TABLE =====================
     const totalTableWidth = pageWidth - 2 * margin;
     const itemTableHeaders = ['Item #', 'Description', 'Qty', 'Unit', 'Rate', 'Amount', 'GST', 'Total'];
-    const itemColWidths = [14, 44, 12, 14, 18, 20, 18, 20];
+    // Improved column widths for better balance
+    const itemColWidths = [13, 42, 12, 13, 20, 22, 18, 22];
     
     // Calculate column positions
     const tableColPositions = [margin];
@@ -248,14 +362,18 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
 
     // Draw table outer border
     doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.8);
+    doc.setLineWidth(0.5);
     
     const headerY = currentY;
-    const rowHeight = 7;
+    const rowHeight = 10; // Increased height to accommodate multi-line descriptions
     
-    // Draw header
+    // Draw header with improved styling
     doc.setFillColor(230, 126, 34);
     doc.rect(margin, headerY, totalTableWidth, rowHeight, 'F');
+    
+    // Header border
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
     doc.rect(margin, headerY, totalTableWidth, rowHeight);
     
     doc.setTextColor(255, 255, 255);
@@ -266,89 +384,143 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
       const xPos = tableColPositions[i];
       const colWidth = itemColWidths[i];
       
-      // Draw column divider
+      // Draw column dividers
       if (i > 0) {
-        doc.setLineWidth(0.4);
+        doc.setDrawColor(255, 255, 255);
+        doc.setLineWidth(0.3);
         doc.line(xPos, headerY, xPos, headerY + rowHeight);
+        doc.setDrawColor(0, 0, 0);
       }
       
-      // Add text
-      if (i > 1) {
-        // Right align numbers
-        doc.text(header, xPos + colWidth - 2, headerY + 5, { align: 'right' });
+      // Add text with improved alignment
+      if (i >= 2 && i !== 1) { // Right align numeric columns (Qty, Unit, Rate, Amount, GST, Total)
+        doc.text(header, xPos + colWidth - 3, headerY + 5.5, { align: 'right' });
       } else {
-        doc.text(header, xPos + 2, headerY + 5);
+        doc.text(header, xPos + 3, headerY + 5.5);
       }
     });
 
     currentY = headerY + rowHeight;
 
-    // Draw table rows
+    // Draw table rows with improved formatting
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.setLineWidth(0.4);
 
     quotationData.items?.forEach((item, index) => {
       const rowY = currentY;
       
-      // Alternate row colors
+      // Alternate row colors for better readability
       if (index % 2 === 0) {
-        doc.setFillColor(245, 245, 245);
+        doc.setFillColor(248, 249, 250);
         doc.rect(margin, rowY, totalTableWidth, rowHeight, 'F');
       }
 
-      // Draw row borders
-      doc.setDrawColor(180, 180, 180);
+      // Draw row borders with consistent styling
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.3);
       
       // Vertical column dividers
       for (let i = 1; i < tableColPositions.length; i++) {
         doc.line(tableColPositions[i], rowY, tableColPositions[i], rowY + rowHeight);
       }
       
-      // Row bottom border
+      // Row borders
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.2);
       doc.line(margin, rowY + rowHeight, margin + totalTableWidth, rowY + rowHeight);
       
-      // Left border
-      doc.line(margin, rowY, margin, rowY + rowHeight);
-      
-      // Right border
-      doc.line(margin + totalTableWidth, rowY, margin + totalTableWidth, rowY + rowHeight);
+      // Outer borders
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.5);
+      doc.line(margin, rowY, margin, rowY + rowHeight); // Left border
+      doc.line(margin + totalTableWidth, rowY, margin + totalTableWidth, rowY + rowHeight); // Right border
 
-      // Add text for each column
+      // Add text for each column with improved alignment
       doc.setTextColor(0, 0, 0);
+      doc.setFontSize(8);
       
-      // Column 0: Item #
+      // Column 0: Item # (centered)
       const itemNum = (index + 1).toString();
-      doc.text(itemNum, tableColPositions[0] + itemColWidths[0] / 2, rowY + 4.5, { align: 'center' });
+      doc.text(itemNum, tableColPositions[0] + itemColWidths[0] / 2, rowY + 6.5, { align: 'center' });
       
-      // Column 1: Description
-      const desc = (item.description || 'N/A').substring(0, 25);
-      doc.text(desc, tableColPositions[1] + 2, rowY + 4.5);
+      // Column 1: Description (with proper text wrapping)
+      const desc = (item.description || 'N/A');
+      const descWidth = itemColWidths[1] - 6; // Available width minus padding
+      const maxCharsPerLine = Math.floor(descWidth / 2.3); // Approximate chars that fit
       
-      // Column 2: Qty
-      doc.text(String(parseFloat(item.quantity.toString()).toFixed(2)), tableColPositions[2] + itemColWidths[2] - 2, rowY + 4.5, { align: 'right' });
+      // Split description into multiple lines if needed
+      const descLines = [];
+      if (desc.length <= maxCharsPerLine) {
+        descLines.push(desc);
+      } else {
+        const words = desc.split(' ');
+        let currentLine = '';
+        
+        for (const word of words) {
+          if ((currentLine + word).length <= maxCharsPerLine) {
+            currentLine += (currentLine ? ' ' : '') + word;
+          } else {
+            if (currentLine) descLines.push(currentLine);
+            currentLine = word;
+            // Limit to 2 lines to maintain table structure
+            if (descLines.length >= 2) {
+              break;
+            }
+          }
+        }
+        if (currentLine && descLines.length < 2) {
+          descLines.push(currentLine);
+        }
+        
+        // If still too long, truncate the last line with ellipsis
+        if (descLines.length >= 2 && currentLine && currentLine !== descLines[descLines.length - 1]) {
+          const lastLine = descLines[descLines.length - 1];
+          if (lastLine.length > maxCharsPerLine - 3) {
+            descLines[descLines.length - 1] = lastLine.substring(0, maxCharsPerLine - 3) + '...';
+          } else {
+            descLines[descLines.length - 1] = lastLine + '...';
+          }
+        }
+      }
       
-      // Column 3: Unit
-      doc.text(item.unit || 'N/A', tableColPositions[3] + itemColWidths[3] / 2, rowY + 4.5, { align: 'center' });
+      // Display description lines
+      descLines.forEach((line, lineIndex) => {
+        const lineY = rowY + 4 + (lineIndex * 3);
+        doc.text(line, tableColPositions[1] + 3, lineY);
+      });
       
-      // Column 4: Rate
-      doc.text(formatCurrency(item.rate), tableColPositions[4] + itemColWidths[4] - 2, rowY + 4.5, { align: 'right' });
+      // Column 2: Qty (right aligned)
+      const qty = parseFloat(item.quantity.toString()).toFixed(2);
+      doc.text(qty, tableColPositions[2] + itemColWidths[2] - 3, rowY + 6.5, { align: 'right' });
       
-      // Column 5: Amount
-      doc.text(formatCurrency(item.amount), tableColPositions[5] + itemColWidths[5] - 2, rowY + 4.5, { align: 'right' });
+      // Column 3: Unit (centered)
+      doc.text(item.unit || 'N/A', tableColPositions[3] + itemColWidths[3] / 2, rowY + 6.5, { align: 'center' });
       
-      // Column 6: GST
+      // Column 4: Rate (right aligned)
+      doc.text(formatCurrency(item.rate), tableColPositions[4] + itemColWidths[4] - 3, rowY + 6.5, { align: 'right' });
+      
+      // Column 5: Amount (right aligned)
+      doc.text(formatCurrency(item.amount), tableColPositions[5] + itemColWidths[5] - 3, rowY + 6.5, { align: 'right' });
+      
+      // Column 6: GST (right aligned)
       const gstAmount = item.gstRate === 0 ? 0 : (item.gstAmount || 0);
-      doc.text(formatCurrency(gstAmount), tableColPositions[6] + itemColWidths[6] - 2, rowY + 4.5, { align: 'right' });
+      doc.text(formatCurrency(gstAmount), tableColPositions[6] + itemColWidths[6] - 3, rowY + 6.5, { align: 'right' });
       
-      // Column 7: Total
-      doc.text(formatCurrency(item.totalAmount), tableColPositions[7] + itemColWidths[7] - 2, rowY + 4.5, { align: 'right' });
+      // Column 7: Total (right aligned, bold for emphasis)
+      doc.setFont('helvetica', 'bold');
+      doc.text(formatCurrency(item.totalAmount), tableColPositions[7] + itemColWidths[7] - 3, rowY + 6.5, { align: 'right' });
+      doc.setFont('helvetica', 'normal');
 
       currentY += rowHeight;
     });
 
-    currentY += 5;
+    // Final table border
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.line(margin, currentY, margin + totalTableWidth, currentY);
+
+    currentY += 8;
 
     // ===================== BANK DETAILS =====================
     doc.setFillColor(39, 174, 96);
@@ -357,22 +529,25 @@ export const generateBitumenQuotationPDF = async (quotationData: QuotationData) 
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('🏦 BANK DETAILS', margin + 2, currentY + 6);
+    doc.text('BANK DETAILS', margin + 2, currentY + 6);
 
     currentY += 8;
     
     doc.setFillColor(240, 250, 240);
-    doc.rect(margin, currentY, 80, 20, 'F');
-    doc.rect(margin, currentY, 80, 20);
+    doc.rect(margin, currentY, 80, 22, 'F');
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, currentY, 80, 22);
 
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
 
-    doc.text('Bank: State Bank of India', margin + 2, currentY + 4);
-    doc.text('A/c: 40464693538', margin + 2, currentY + 9);
-    doc.text('Branch: Paltan Bazar', margin + 2, currentY + 14);
-    doc.text('IFSC: SBIN0040464', margin + 2, currentY + 19);
+    doc.text('Bank: State Bank of India', margin + 3, currentY + 4);
+    doc.text('A/c: 40464693538', margin + 3, currentY + 8);
+    doc.text('Branch: Paltan Bazar', margin + 3, currentY + 12);
+    doc.text('IFSC: SBIN0040464', margin + 3, currentY + 16);
+    doc.text('Name: M/S SRI HM BITUMEN CO', margin + 3, currentY + 20);
 
     // ===================== TOTALS (RIGHT SIDE) =====================
     const summaryX = margin + 100;

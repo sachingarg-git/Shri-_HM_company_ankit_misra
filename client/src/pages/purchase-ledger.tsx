@@ -302,7 +302,7 @@ export default function PurchaseLedger() {
 
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 128, 0);
+    doc.setTextColor(230, 126, 34); // #E67E22 - Orange color matching logo
     doc.text('M/S. SRI HM BITUMEN CO', pageWidth - margin - 2, yPosition + 2, { align: 'right' });
 
     doc.setFontSize(7.5);

@@ -301,10 +301,10 @@ export default function CompanyLedger() {
       console.log('Could not load company logo:', error);
     }
 
-    // Company name on RIGHT (RED, bold, larger)
+    // Company name on RIGHT (Orange color matching logo, bold, larger)
     doc.setFontSize(13);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(192, 0, 0);
+    doc.setTextColor(230, 126, 34); // #E67E22 - Orange color matching logo
     doc.text('M/S. SRI HM BITUMEN CO', pageWidth - margin - 2, yPosition + 2, { align: 'right' });
 
     // Company details - structured layout, right aligned
